@@ -407,3 +407,213 @@ export async function downloadWikis(
 
   command.log('\nWikiのダウンロードが完了しました！')
 }
+
+/**
+ * Backlogからドキュメントをダウンロードする
+ * @param command コマンドインスタンス
+ * @param options ドキュメントダウンロードのオプション
+ */
+export async function downloadDocuments(
+  command: Command,
+  options: {
+    apiKey: string
+    domain: string
+    keyword?: string
+    lastUpdated?: string
+    outputDir: string
+    projectId: number
+  },
+): Promise<void> {
+  const baseUrl = `https://${options.domain}/api/v2`
+
+  command.log('ドキュメントの取得を開始します...')
+
+  // APIリクエスト数をカウントするためのRateLimiterを作成
+  const rateLimiter = new RateLimiter(command)
+
+  // ドキュメントツリーの取得
+  command.log('ドキュメントツリーを取得しています...')
+
+  // APIリクエスト数をインクリメント
+  await rateLimiter.increment()
+
+  // ドキュメントノードの型定義
+  type DocumentNode = {
+    children: DocumentNode[]
+    emoji?: string
+    emojiType?: string
+    id: string
+    name: string
+    updated?: string
+  }
+
+  const documentTree = await ky
+    .get(`${baseUrl}/documents/tree?projectIdOrKey=${options.projectId}&apiKey=${options.apiKey}`)
+    .json<{
+      activeTree: {
+        children: DocumentNode[]
+        id: string
+      }
+      projectId: number
+      trashTree: {
+        children: DocumentNode[]
+        id: string
+      }
+    }>()
+
+  command.log('アクティブなドキュメントツリーを処理します...')
+
+  // ツリー構造をトラバースして、各ドキュメントの詳細を取得・保存
+  const processedDocuments: string[] = []
+
+  /**
+   * ドキュメントノードを再帰的に処理する
+   */
+  const processDocumentNode = async (node: DocumentNode, currentPath: string): Promise<void> => {
+    // フォルダの場合
+    if (node.children && node.children.length > 0) {
+      // フォルダを作成
+      const folderPath = path.join(options.outputDir, currentPath, sanitizeFileName(node.name))
+      await fs.mkdir(folderPath, {recursive: true})
+
+      // 子ノードを処理
+      for (const child of node.children) {
+        // eslint-disable-next-line no-await-in-loop
+        await processDocumentNode(child, path.join(currentPath, sanitizeFileName(node.name)))
+      }
+    } else {
+      // ドキュメントファイルの場合
+      try {
+        // 既に処理済みのドキュメントはスキップ
+        if (processedDocuments.includes(node.id)) {
+          return
+        }
+
+        processedDocuments.push(node.id)
+
+        // APIリクエスト数をインクリメント
+        await rateLimiter.increment()
+
+        // 進捗状況を表示
+        process.stdout.write(`\rドキュメント「${node.name}」を処理中...`)
+
+        // ドキュメント詳細を取得
+        const documentDetail = await ky.get(`${baseUrl}/documents/${node.id}?apiKey=${options.apiKey}`).json<{
+          attachments: Array<{
+            created: string
+            createdUser: {
+              id: number
+              name: string
+            }
+            id: number
+            name: string
+            size: number
+          }>
+          created: string
+          createdUser: {
+            id: number
+            name: string
+          }
+          emoji?: string
+          id: string
+          json: string
+          plain: string
+          statusId: number
+          tags: Array<{
+            id: number
+            name: string
+          }>
+          title: string
+          updated: string
+          updatedUser: {
+            id: number
+            name: string
+          }
+        }>()
+
+        // 前回の更新日時チェック
+        if (options.lastUpdated) {
+          const lastUpdatedDate = new Date(options.lastUpdated)
+          const documentUpdatedDate = new Date(documentDetail.updated)
+          if (documentUpdatedDate <= lastUpdatedDate) {
+            return // 更新が必要ない場合はスキップ
+          }
+        }
+
+        // ファイルパスを構築
+        const sanitizedTitle = sanitizeFileName(documentDetail.title)
+        const documentFileName = `${sanitizedTitle}.md`
+        const documentFilePath = path.join(options.outputDir, currentPath, documentFileName)
+
+        // ディレクトリを作成（必要に応じて）
+        const dirPath = path.dirname(documentFilePath)
+        await fs.mkdir(dirPath, {recursive: true})
+
+        // Backlogのドキュメントへのリンクを作成
+        const backlogDocumentUrl = `https://${options.domain}/document/${node.id}`
+
+        // 添付ファイルリストの作成
+        let attachmentsSection = ''
+        if (documentDetail.attachments && documentDetail.attachments.length > 0) {
+          attachmentsSection = '\n\n## 添付ファイル\n'
+          for (const attachment of documentDetail.attachments) {
+            const attachmentDate = new Date(attachment.created).toLocaleString('ja-JP')
+            const fileSize = (attachment.size / 1024).toFixed(1)
+            attachmentsSection += `- **${attachment.name}** (${fileSize} KB) - 作成者: ${attachment.createdUser.name}, 作成日時: ${attachmentDate}\n`
+          }
+        }
+
+        // タグリストの作成
+        let tagsSection = ''
+        if (documentDetail.tags && documentDetail.tags.length > 0) {
+          tagsSection = '\n\n## タグ\n'
+          for (const tag of documentDetail.tags) {
+            tagsSection += `- ${tag.name}\n`
+          }
+        }
+
+        // 作成者・更新者情報
+        const createdDate = new Date(documentDetail.created).toLocaleString('ja-JP')
+        const updatedDate = new Date(documentDetail.updated).toLocaleString('ja-JP')
+
+        // Markdownファイルに書き込む
+        const markdownContent = `# ${documentDetail.title}
+
+[Backlog Document Link](${backlogDocumentUrl})
+
+**ステータス**: ${documentDetail.statusId}${documentDetail.emoji ? ` ${documentDetail.emoji}` : ''}
+**作成者**: ${documentDetail.createdUser.name}
+**作成日時**: ${createdDate}
+**更新者**: ${documentDetail.updatedUser.name}
+**更新日時**: ${updatedDate}
+
+## 内容
+
+${documentDetail.plain || '（内容なし）'}${attachmentsSection}${tagsSection}`
+
+        await fs.writeFile(documentFilePath, markdownContent)
+
+        // ログに記録
+        await appendLog(
+          options.outputDir,
+          `ドキュメント「${documentDetail.title}」を更新しました: ${backlogDocumentUrl}`,
+        )
+      } catch (error) {
+        command.warn(
+          `ドキュメント ${node.name} の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      }
+    }
+  }
+
+  // アクティブツリーのルートから処理開始
+  if (documentTree.activeTree.children && documentTree.activeTree.children.length > 0) {
+    for (const rootNode of documentTree.activeTree.children) {
+      // eslint-disable-next-line no-await-in-loop
+      await processDocumentNode(rootNode, '')
+    }
+  }
+
+  command.log(`\n合計 ${processedDocuments.length}件のドキュメントが処理されました。`)
+  command.log('ドキュメントのダウンロードが完了しました！')
+}

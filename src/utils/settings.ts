@@ -5,6 +5,7 @@ import {join} from 'node:path'
  * フォルダタイプの定義
  */
 export enum FolderType {
+  DOCUMENT = 'document',
   ISSUE = 'issue',
   WIKI = 'wiki',
 }
