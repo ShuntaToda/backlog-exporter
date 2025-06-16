@@ -3,7 +3,7 @@ import * as dotenv from 'dotenv'
 import {access, readdir} from 'node:fs/promises'
 import {join} from 'node:path'
 
-import {downloadIssues, downloadWikis} from '../../utils/backlog-api.js'
+import {downloadDocuments, downloadIssues, downloadWikis} from '../../utils/backlog-api.js'
 import {validateAndGetProjectId} from '../../utils/backlog.js'
 import {createOutputDirectory, getApiKey} from '../../utils/common.js'
 import {FolderType, getSettingsFilePath, loadSettings, updateSettings} from '../../utils/settings.js'
@@ -14,6 +14,7 @@ dotenv.config()
 // フラグの型定義
 interface UpdateFlags {
   apiKey?: string
+  documentsOnly?: boolean
   domain?: string
   force?: boolean
   issuesOnly?: boolean
@@ -46,6 +47,10 @@ export default class Update extends Command {
   static flags = {
     apiKey: Flags.string({
       description: 'Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能)',
+      required: false,
+    }),
+    documentsOnly: Flags.boolean({
+      description: 'ドキュメントのみを更新する',
       required: false,
     }),
     domain: Flags.string({
@@ -93,6 +98,7 @@ export default class Update extends Command {
     force: boolean
     projectIdOrKey: string
     targetDir: string
+    updateDocuments: boolean
     updateIssues: boolean
     updateWikis: boolean
   }): Promise<boolean> {
@@ -107,11 +113,12 @@ export default class Update extends Command {
       this.log(`- フォルダタイプ: ${options.folderType}`)
     }
 
-    this.log(
-      `- 更新対象: ${options.updateIssues ? '課題' : ''}${options.updateIssues && options.updateWikis ? 'と' : ''}${
-        options.updateWikis ? 'Wiki' : ''
-      }`,
-    )
+    const updateTargets = []
+    if (options.updateIssues) updateTargets.push('課題')
+    if (options.updateWikis) updateTargets.push('Wiki')
+    if (options.updateDocuments) updateTargets.push('ドキュメント')
+
+    this.log(`- 更新対象: ${updateTargets.join('・')}`)
 
     // 確認プロンプトを表示
     this.log('更新を実行しますか？ (y/n)')
@@ -135,27 +142,43 @@ export default class Update extends Command {
   // 更新対象の決定
   private determineUpdateTargets(
     folderType: FolderType | undefined,
+    documentsOnly: boolean | undefined,
     issuesOnly: boolean | undefined,
     wikisOnly: boolean | undefined,
   ): {
+    updateDocuments: boolean
     updateIssues: boolean
     updateWikis: boolean
   } {
-    let updateIssues = !wikisOnly
-    let updateWikis = !issuesOnly
+    let updateIssues = !wikisOnly && !documentsOnly
+    let updateWikis = !issuesOnly && !documentsOnly
+    let updateDocuments = !issuesOnly && !wikisOnly
 
-    // フォルダタイプがISSUEの場合は課題のみ更新
-    if (folderType === FolderType.ISSUE) {
-      updateIssues = true
-      updateWikis = false
-    }
-    // フォルダタイプがWIKIの場合はWikiのみ更新
-    else if (folderType === FolderType.WIKI) {
-      updateIssues = false
-      updateWikis = true
+    // フォルダタイプに応じて更新対象を決定
+    switch (folderType) {
+      case FolderType.DOCUMENT: {
+        updateIssues = false
+        updateWikis = false
+        updateDocuments = true
+        break
+      }
+
+      case FolderType.ISSUE: {
+        updateIssues = true
+        updateWikis = false
+        updateDocuments = false
+        break
+      }
+
+      case FolderType.WIKI: {
+        updateIssues = false
+        updateWikis = true
+        updateDocuments = false
+        break
+      }
     }
 
-    return {updateIssues, updateWikis}
+    return {updateDocuments, updateIssues, updateWikis}
   }
 
   // 設定ファイルを探索して更新を実行
@@ -202,7 +225,7 @@ export default class Update extends Command {
     const domain = flags.domain || settings.domain
     const projectIdOrKey = flags.projectIdOrKey || settings.projectIdOrKey
     const {folderType} = settings
-    const {force, issuesOnly, wikisOnly} = flags
+    const {documentsOnly, force, issuesOnly, wikisOnly} = flags
 
     // 必須パラメータの検証
     if (!domain) {
@@ -216,7 +239,12 @@ export default class Update extends Command {
     }
 
     // 更新対象の決定
-    const {updateIssues, updateWikis} = this.determineUpdateTargets(folderType, issuesOnly, wikisOnly)
+    const {updateDocuments, updateIssues, updateWikis} = this.determineUpdateTargets(
+      folderType,
+      documentsOnly,
+      issuesOnly,
+      wikisOnly,
+    )
 
     // 更新前の確認
     const confirmed = await this.confirmUpdate({
@@ -225,6 +253,7 @@ export default class Update extends Command {
       force: force || false,
       projectIdOrKey,
       targetDir,
+      updateDocuments,
       updateIssues,
       updateWikis,
     })
@@ -258,7 +287,52 @@ export default class Update extends Command {
       })
     }
 
+    // ドキュメントの更新
+    if (updateDocuments) {
+      await this.updateDocuments({
+        apiKey,
+        domain,
+        projectId,
+        projectIdOrKey,
+        targetDir,
+      })
+    }
+
     this.log(`${targetDir} の更新が完了しました！`)
+  }
+
+  // ドキュメントの更新
+  private async updateDocuments(options: {
+    apiKey: string
+    domain: string
+    projectId: number
+    projectIdOrKey: string
+    targetDir: string
+  }): Promise<void> {
+    this.log('ドキュメントの更新を開始します...')
+
+    // 設定ファイルから前回の更新日時を取得
+    const {lastUpdated} = await loadSettings(options.targetDir)
+
+    await downloadDocuments(this, {
+      apiKey: options.apiKey,
+      domain: options.domain,
+      lastUpdated,
+      outputDir: options.targetDir,
+      projectId: options.projectId,
+    })
+
+    // 設定ファイルを更新
+    await updateSettings(options.targetDir, {
+      apiKey: options.apiKey,
+      domain: options.domain,
+      folderType: FolderType.DOCUMENT,
+      lastUpdated: new Date().toISOString(),
+      outputDir: options.targetDir,
+      projectIdOrKey: options.projectIdOrKey,
+    })
+
+    this.log('ドキュメントの更新が完了しました')
   }
 
   // 課題の更新

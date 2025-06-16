@@ -2,7 +2,7 @@ import {Command, Flags} from '@oclif/core'
 import * as dotenv from 'dotenv'
 import path from 'node:path'
 
-import {downloadIssues, downloadWikis} from '../../utils/backlog-api.js'
+import {downloadDocuments, downloadIssues, downloadWikis} from '../../utils/backlog-api.js'
 import {validateAndGetProjectId} from '../../utils/backlog.js'
 import {createOutputDirectory, getApiKey} from '../../utils/common.js'
 import {FolderType, updateSettings} from '../../utils/settings.js'
@@ -11,16 +11,16 @@ import {FolderType, updateSettings} from '../../utils/settings.js'
 dotenv.config()
 
 export default class All extends Command {
-  static description = 'Backlogから課題とWikiを取得してMarkdownファイルとして保存する'
+  static description = 'Backlogから課題・Wiki・ドキュメントを取得してMarkdownファイルとして保存する'
   static examples = [
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY
-課題とWikiをMarkdownファイルとして保存する
+課題・Wiki・ドキュメントをMarkdownファイルとして保存する
 `,
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./my-project
-指定したディレクトリに課題とWikiを保存する
+指定したディレクトリに課題・Wiki・ドキュメントを保存する
 `,
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --maxCount 1000
-最大1000件の課題を取得する（デフォルトは100件）
+最大1000件の課題を取得する（デフォルトは5000件）
 `,
   ]
   static flags = {
@@ -72,6 +72,10 @@ export default class All extends Command {
       const wikiOutput = path.join(outputRoot, 'wiki')
       await createOutputDirectory(wikiOutput)
 
+      // ドキュメントの出力ディレクトリ
+      const documentOutput = path.join(outputRoot, 'documents')
+      await createOutputDirectory(documentOutput)
+
       // 課題フォルダに設定ファイルを保存
       await updateSettings(issueOutput, {
         apiKey,
@@ -87,6 +91,15 @@ export default class All extends Command {
         domain,
         folderType: FolderType.WIKI,
         outputDir: wikiOutput,
+        projectIdOrKey,
+      })
+
+      // ドキュメントフォルダに設定ファイルを保存
+      await updateSettings(documentOutput, {
+        apiKey,
+        domain,
+        folderType: FolderType.DOCUMENT,
+        outputDir: documentOutput,
         projectIdOrKey,
       })
 
@@ -120,6 +133,21 @@ export default class All extends Command {
         lastUpdated: new Date().toISOString(),
       })
       this.log('Wikiの取得が完了しました')
+
+      // ドキュメントの取得と保存
+      this.log('ドキュメントの取得を開始します...')
+      await downloadDocuments(this, {
+        apiKey,
+        domain,
+        outputDir: documentOutput,
+        projectId,
+      })
+
+      // ドキュメントフォルダの最終更新日時を更新
+      await updateSettings(documentOutput, {
+        lastUpdated: new Date().toISOString(),
+      })
+      this.log('ドキュメントの取得が完了しました')
 
       this.log('すべてのデータの取得が完了しました！')
     } catch (error) {
