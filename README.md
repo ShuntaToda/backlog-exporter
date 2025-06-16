@@ -66,7 +66,7 @@ $ npm install -g backlog-exporter
 $ backlog-exporter COMMAND
 running command...
 $ backlog-exporter (--version)
-backlog-exporter/0.5.1-1 darwin-arm64 node-v22.15.1
+backlog-exporter/0.5.1 darwin-arm64 node-v22.15.1
 $ backlog-exporter --help [COMMAND]
 USAGE
   $ backlog-exporter COMMAND
@@ -281,7 +281,7 @@ EXAMPLES
   最大1000件の課題を取得する（デフォルトは5000件）
 ```
 
-_See code: [src/commands/all/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.5.1-1/src/commands/all/index.ts)_
+_See code: [src/commands/all/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.5.1/src/commands/all/index.ts)_
 
 ## `backlog-exporter document`
 
@@ -313,7 +313,7 @@ EXAMPLES
   キーワード「仕様書」を含むドキュメントのみを取得する
 ```
 
-_See code: [src/commands/document/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.5.1-1/src/commands/document/index.ts)_
+_See code: [src/commands/document/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.5.1/src/commands/document/index.ts)_
 
 ## `backlog-exporter help [COMMAND]`
 
@@ -369,7 +369,7 @@ EXAMPLES
   最大10000件の課題を取得する（デフォルトは5000件）
 ```
 
-_See code: [src/commands/issue/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.5.1-1/src/commands/issue/index.ts)_
+_See code: [src/commands/issue/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.5.1/src/commands/issue/index.ts)_
 
 ## `backlog-exporter plugins`
 
@@ -699,7 +699,7 @@ EXAMPLES
   指定したディレクトリの設定を使用して更新する
 ```
 
-_See code: [src/commands/update/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.5.1-1/src/commands/update/index.ts)_
+_See code: [src/commands/update/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.5.1/src/commands/update/index.ts)_
 
 ## `backlog-exporter wiki`
 
@@ -726,7 +726,7 @@ EXAMPLES
   指定したディレクトリにWikiを保存する
 ```
 
-_See code: [src/commands/wiki/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.5.1-1/src/commands/wiki/index.ts)_
+_See code: [src/commands/wiki/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.5.1/src/commands/wiki/index.ts)_
 <!-- commandsstop -->
 
 # 出力形式
