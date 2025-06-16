@@ -422,6 +422,7 @@ export async function downloadDocuments(
     lastUpdated?: string
     outputDir: string
     projectId: number
+    projectIdOrKey: string
   },
 ): Promise<void> {
   const baseUrl = `https://${options.domain}/api/v2`
@@ -550,7 +551,7 @@ export async function downloadDocuments(
         await fs.mkdir(dirPath, {recursive: true})
 
         // Backlogのドキュメントへのリンクを作成
-        const backlogDocumentUrl = `https://${options.domain}/document/${node.id}`
+        const backlogDocumentUrl = `https://${options.domain}/document/${options.projectIdOrKey}/${node.id}`
 
         // 添付ファイルリストの作成
         let attachmentsSection = ''

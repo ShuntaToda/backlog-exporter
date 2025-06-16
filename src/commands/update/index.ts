@@ -330,6 +330,7 @@ export default class Update extends Command {
       lastUpdated,
       outputDir: options.targetDir,
       projectId: options.projectId,
+      projectIdOrKey: options.projectIdOrKey,
     })
 
     // 設定ファイルを更新
