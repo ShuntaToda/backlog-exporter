@@ -66,6 +66,7 @@ $ npm install -g backlog-exporter
 $ backlog-exporter COMMAND
 running command...
 $ backlog-exporter (--version)
+
 backlog-exporter/0.4.1-0 darwin-arm64 node-v22.15.1
 $ backlog-exporter --help [COMMAND]
 USAGE
@@ -234,10 +235,7 @@ $ backlog-exporter update --apiKey YOUR_API_KEY
 # コマンド
 
 <!-- commands -->
-* [`backlog-exporter all`](#backlog-exporter-all)
-* [`backlog-exporter document`](#backlog-exporter-document)
 * [`backlog-exporter help [COMMAND]`](#backlog-exporter-help-command)
-* [`backlog-exporter issue`](#backlog-exporter-issue)
 * [`backlog-exporter plugins`](#backlog-exporter-plugins)
 * [`backlog-exporter plugins add PLUGIN`](#backlog-exporter-plugins-add-plugin)
 * [`backlog-exporter plugins:inspect PLUGIN...`](#backlog-exporter-pluginsinspect-plugin)
@@ -727,6 +725,7 @@ EXAMPLES
 ```
 
 _See code: [src/commands/wiki/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.4.1-0/src/commands/wiki/index.ts)_
+
 <!-- commandsstop -->
 
 # 出力形式
