@@ -221,7 +221,6 @@ export default class Update extends Command {
     const settings = await loadSettings(targetDir)
 
     // コマンドライン引数と設定ファイルを組み合わせて使用する値を決定
-    const apiKey = flags.apiKey || settings.apiKey || getApiKey(this)
     const domain = flags.domain || settings.domain
     const projectIdOrKey = flags.projectIdOrKey || settings.projectIdOrKey
     const {folderType} = settings
@@ -235,6 +234,17 @@ export default class Update extends Command {
 
     if (!projectIdOrKey) {
       this.warn(`${targetDir}: プロジェクトIDまたはキーが指定されていません。スキップします。`)
+      return
+    }
+
+    // APIキーの検証
+    let apiKey: string
+    try {
+      apiKey = flags.apiKey || settings.apiKey || getApiKey(this)
+    } catch {
+      this.warn(
+        `${targetDir}: APIキーが指定されていません。--apiKey フラグまたは BACKLOG_API_KEY 環境変数で設定してください。`,
+      )
       return
     }
 
