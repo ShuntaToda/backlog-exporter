@@ -77,6 +77,7 @@ export default class Document extends Command {
         keyword,
         outputDir,
         projectId,
+        projectIdOrKey,
       })
 
       // 最終更新日時を更新

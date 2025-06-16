@@ -141,6 +141,7 @@ export default class All extends Command {
         domain,
         outputDir: documentOutput,
         projectId,
+        projectIdOrKey,
       })
 
       // ドキュメントフォルダの最終更新日時を更新
