@@ -9,9 +9,61 @@ import {appendLog} from './log.js'
 import {RateLimiter} from './sleep.js'
 
 /**
+ * カスタム属性セクションを作成する
+ * @param customFields カスタム属性の配列
+ * @returns Markdownテーブル形式のカスタム属性セクション
+ */
+export function createCustomFieldsSection(customFields?: Array<{
+  id: number
+  name: string
+  value: unknown
+}>): string {
+  if (!customFields || customFields.length === 0) {
+    return ''
+  }
+
+  let customFieldsSection = '\n\n## カスタム属性\n\n| 属性名 | 値 |\n|--------|----|\n'
+  
+  for (const customField of customFields) {
+    let fieldValue = 'なし'
+    if (customField.value !== null && customField.value !== undefined) {
+      if (Array.isArray(customField.value)) {
+        // 配列の場合（複数選択など）
+        fieldValue = (customField.value as Array<{name?: string; value?: string}>)
+          .map(item => item.name || item.value || String(item))
+          .join(', ')
+      } else if (typeof customField.value === 'object' && customField.value !== null) {
+        // オブジェクトの場合（単一選択など）
+        const valueObj = customField.value as {name?: string; value?: string}
+        fieldValue = valueObj.name || valueObj.value || String(customField.value)
+      } else {
+        // プリミティブ値の場合
+        fieldValue = String(customField.value)
+      }
+    }
+
+    // テーブル内では改行をHTMLの<br>タグに変換し、パイプ文字をエスケープ
+    const escapedFieldValue = fieldValue
+      .replaceAll('|', String.raw`\|`)
+      .replaceAll('\n', '<br>')
+    
+    customFieldsSection += `| ${customField.name} | ${escapedFieldValue} |\n`
+  }
+
+  return customFieldsSection
+}
+
+/**
  * Backlogから課題をダウンロードする
  * @param command コマンドインスタンス
  * @param options 課題ダウンロードのオプション
+ * @param options.apiKey Backlog API key
+ * @param options.count 取得する課題の最大数
+ * @param options.domain Backlogのドメイン
+ * @param options.lastUpdated 最終更新日時
+ * @param options.outputDir 出力ディレクトリ
+ * @param options.projectId プロジェクトID
+ * @param options.statusId ステータスID
  */
 export async function downloadIssues(
   command: Command,
@@ -33,6 +85,11 @@ export async function downloadIssues(
   let allIssues: Array<{
     assignee: null | {id: number; name: string}
     created: string
+    customFields: Array<{
+      id: number
+      name: string
+      value: unknown
+    }>
     description: string
     id: number
     issueKey: string
@@ -56,6 +113,11 @@ export async function downloadIssues(
     Array<{
       assignee: null | {id: number; name: string}
       created: string
+      customFields: Array<{
+        id: number
+        name: string
+        value: unknown
+      }>
       description: string
       id: number
       issueKey: string
@@ -88,6 +150,11 @@ export async function downloadIssues(
       Array<{
         assignee: null | {id: number; name: string}
         created: string
+        customFields: Array<{
+          id: number
+          name: string
+          value: unknown
+        }>
         description: string
         id: number
         issueKey: string
@@ -192,6 +259,9 @@ export async function downloadIssues(
       const issueFileName = `${sanitizeFileName(issue.summary)}.md`
       const issueFilePath = path.join(yearDirPath, issueFileName)
 
+      // カスタム属性セクションを作成
+      const customFieldsSection = createCustomFieldsSection(issue.customFields)
+
       // Markdownファイルに書き込む
       const assigneeName = issue.assignee ? issue.assignee.name : '未割り当て'
       const markdownContent = `# ${issue.summary}
@@ -203,7 +273,7 @@ export async function downloadIssues(
 - 担当者: ${assigneeName}
 - 作成日時: ${new Date(issue.created).toLocaleString('ja-JP')}
 - 更新日時: ${new Date(issue.updated).toLocaleString('ja-JP')}
-- [Backlog Issue Link](${backlogIssueUrl})
+- [Backlog Issue Link](${backlogIssueUrl})${customFieldsSection}
 
 ## 詳細
 ${issue.description || '詳細情報なし'}${commentsSection}`
@@ -296,6 +366,11 @@ async function fetchAllCommentsForIssue({
  * BacklogからWikiをダウンロードする
  * @param command コマンドインスタンス
  * @param options Wikiダウンロードのオプション
+ * @param options.apiKey Backlog API key
+ * @param options.domain Backlogのドメイン
+ * @param options.lastUpdated 最終更新日時
+ * @param options.outputDir 出力ディレクトリ
+ * @param options.projectIdOrKey プロジェクトIDまたはキー
  */
 export async function downloadWikis(
   command: Command,
@@ -412,6 +487,13 @@ export async function downloadWikis(
  * Backlogからドキュメントをダウンロードする
  * @param command コマンドインスタンス
  * @param options ドキュメントダウンロードのオプション
+ * @param options.apiKey Backlog API key
+ * @param options.domain Backlogのドメイン
+ * @param options.keyword キーワードフィルター
+ * @param options.lastUpdated 最終更新日時
+ * @param options.outputDir 出力ディレクトリ
+ * @param options.projectId プロジェクトID
+ * @param options.projectIdOrKey プロジェクトIDまたはキー
  */
 export async function downloadDocuments(
   command: Command,
