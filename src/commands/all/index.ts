@@ -38,6 +38,10 @@ export default class All extends Command {
       description: '一度に取得する課題の最大数（デフォルト: 5000）',
       required: false,
     }),
+    only: Flags.string({
+      description: "Export only the specified types, separated by commas (e.g., 'issues,wiki')",
+      required: false,
+    }),
     output: Flags.string({
       char: 'o',
       description: '出力ディレクトリパス',
@@ -53,9 +57,18 @@ export default class All extends Command {
     const {flags} = await this.parse(All)
 
     try {
-      const {domain, maxCount, projectIdOrKey} = flags
+      const {domain, maxCount, only, projectIdOrKey} = flags
       const apiKey = flags.apiKey || getApiKey(this)
       const outputRoot = flags.output || './backlog-data'
+      const targets = only ? only.split(',') : ['issues', 'wiki', 'documents']
+
+      // Validate targets
+      const validTargets = ['issues', 'wiki', 'documents']
+      for (const target of targets) {
+        if (!validTargets.includes(target)) {
+          this.error(`Invalid target '${target}'. Available targets are: ${validTargets.join(', ')}`)
+        }
+      }
 
       // 出力ディレクトリの作成
       await createOutputDirectory(outputRoot)
@@ -64,91 +77,97 @@ export default class All extends Command {
       const projectId = await validateAndGetProjectId(domain, projectIdOrKey, apiKey)
       this.log(`プロジェクトID: ${projectId} を使用します`)
 
-      // 課題の出力ディレクトリ
-      const issueOutput = path.join(outputRoot, 'issues')
-      await createOutputDirectory(issueOutput)
+      if (targets.includes('issues')) {
+        // 課題の出力ディレクトリ
+        const issueOutput = path.join(outputRoot, 'issues')
+        await createOutputDirectory(issueOutput)
 
-      // Wikiの出力ディレクトリ
-      const wikiOutput = path.join(outputRoot, 'wiki')
-      await createOutputDirectory(wikiOutput)
+        // 課題フォルダに設定ファイルを保存
+        await updateSettings(issueOutput, {
+          apiKey,
+          domain,
+          folderType: FolderType.ISSUE,
+          outputDir: issueOutput,
+          projectIdOrKey,
+        })
 
-      // ドキュメントの出力ディレクトリ
-      const documentOutput = path.join(outputRoot, 'documents')
-      await createOutputDirectory(documentOutput)
+        // 課題の取得と保存
+        this.log('課題の取得を開始します...')
+        await downloadIssues(this, {
+          apiKey,
+          count: maxCount,
+          domain,
+          outputDir: issueOutput,
+          projectId,
+        })
 
-      // 課題フォルダに設定ファイルを保存
-      await updateSettings(issueOutput, {
-        apiKey,
-        domain,
-        folderType: FolderType.ISSUE,
-        outputDir: issueOutput,
-        projectIdOrKey,
-      })
+        // 課題フォルダの最終更新日時を更新
+        await updateSettings(issueOutput, {
+          lastUpdated: new Date().toISOString(),
+        })
+        this.log('課題の取得が完了しました')
+      }
 
-      // Wikiフォルダに設定ファイルを保存
-      await updateSettings(wikiOutput, {
-        apiKey,
-        domain,
-        folderType: FolderType.WIKI,
-        outputDir: wikiOutput,
-        projectIdOrKey,
-      })
+      if (targets.includes('wiki')) {
+        // Wikiの出力ディレクトリ
+        const wikiOutput = path.join(outputRoot, 'wiki')
+        await createOutputDirectory(wikiOutput)
 
-      // ドキュメントフォルダに設定ファイルを保存
-      await updateSettings(documentOutput, {
-        apiKey,
-        domain,
-        folderType: FolderType.DOCUMENT,
-        outputDir: documentOutput,
-        projectIdOrKey,
-      })
+        // Wikiフォルダに設定ファイルを保存
+        await updateSettings(wikiOutput, {
+          apiKey,
+          domain,
+          folderType: FolderType.WIKI,
+          outputDir: wikiOutput,
+          projectIdOrKey,
+        })
 
-      // 課題の取得と保存
-      this.log('課題の取得を開始します...')
-      await downloadIssues(this, {
-        apiKey,
-        count: maxCount,
-        domain,
-        outputDir: issueOutput,
-        projectId,
-      })
+        // Wikiの取得と保存
+        this.log('Wikiの取得を開始します...')
+        await downloadWikis(this, {
+          apiKey,
+          domain,
+          outputDir: wikiOutput,
+          projectIdOrKey,
+        })
 
-      // 課題フォルダの最終更新日時を更新
-      await updateSettings(issueOutput, {
-        lastUpdated: new Date().toISOString(),
-      })
-      this.log('課題の取得が完了しました')
+        // Wikiフォルダの最終更新日時を更新
+        await updateSettings(wikiOutput, {
+          lastUpdated: new Date().toISOString(),
+        })
+        this.log('Wikiの取得が完了しました')
+      }
 
-      // Wikiの取得と保存
-      this.log('Wikiの取得を開始します...')
-      await downloadWikis(this, {
-        apiKey,
-        domain,
-        outputDir: wikiOutput,
-        projectIdOrKey,
-      })
+      if (targets.includes('documents')) {
+        // ドキュメントの出力ディレクトリ
+        const documentOutput = path.join(outputRoot, 'documents')
+        await createOutputDirectory(documentOutput)
 
-      // Wikiフォルダの最終更新日時を更新
-      await updateSettings(wikiOutput, {
-        lastUpdated: new Date().toISOString(),
-      })
-      this.log('Wikiの取得が完了しました')
+        // ドキュメントフォルダに設定ファイルを保存
+        await updateSettings(documentOutput, {
+          apiKey,
+          domain,
+          folderType: FolderType.DOCUMENT,
+          outputDir: documentOutput,
+          projectIdOrKey,
+        })
 
-      // ドキュメントの取得と保存
-      this.log('ドキュメントの取得を開始します...')
-      await downloadDocuments(this, {
-        apiKey,
-        domain,
-        outputDir: documentOutput,
-        projectId,
-        projectIdOrKey,
-      })
+        // ドキュメントの取得と保存
+        this.log('ドキュメントの取得を開始します...')
+        await downloadDocuments(this, {
+          apiKey,
+          domain,
+          outputDir: documentOutput,
+          projectId,
+          projectIdOrKey,
+        })
 
-      // ドキュメントフォルダの最終更新日時を更新
-      await updateSettings(documentOutput, {
-        lastUpdated: new Date().toISOString(),
-      })
-      this.log('ドキュメントの取得が完了しました')
+        // ドキュメントフォルダの最終更新日時を更新
+        await updateSettings(documentOutput, {
+          lastUpdated: new Date().toISOString(),
+        })
+        this.log('ドキュメントの取得が完了しました')
+      }
 
       this.log('すべてのデータの取得が完了しました！')
     } catch (error) {
