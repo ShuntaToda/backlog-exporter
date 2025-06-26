@@ -19,6 +19,12 @@ export default class All extends Command {
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./my-project
 指定したディレクトリに課題・Wiki・ドキュメントを保存する
 `,
+    `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --only issues,wiki
+課題とWikiのみを取得する
+`,
+    `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --exclude documents
+ドキュメント以外（課題とWiki）を取得する
+`,
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --maxCount 1000
 最大1000件の課題を取得する（デフォルトは5000件）
 `,
@@ -31,6 +37,10 @@ export default class All extends Command {
     domain: Flags.string({
       description: 'Backlog domain (e.g. example.backlog.jp)',
       required: true,
+    }),
+    exclude: Flags.string({
+      description: "Exclude the specified types, separated by commas (e.g., 'documents,wiki')",
+      required: false,
     }),
     maxCount: Flags.integer({
       char: 'm',
@@ -57,17 +67,39 @@ export default class All extends Command {
     const {flags} = await this.parse(All)
 
     try {
-      const {domain, maxCount, only, projectIdOrKey} = flags
+      const {domain, exclude, maxCount, only, projectIdOrKey} = flags
       const apiKey = flags.apiKey || getApiKey(this)
       const outputRoot = flags.output || './backlog-data'
-      const targets = only ? only.split(',') : ['issues', 'wiki', 'documents']
+
+      // Check for conflicting flags
+      if (only && exclude) {
+        this.error('Cannot use both --only and --exclude flags together. Please use only one.')
+      }
+
+      // Determine targets based on flags
+      let targets: string[]
+      if (only) {
+        targets = only.split(',')
+      } else if (exclude) {
+        const excludeTargets = exclude.split(',')
+        const allTargets = ['issues', 'wiki', 'documents']
+        targets = allTargets.filter(target => !excludeTargets.includes(target))
+      } else {
+        targets = ['issues', 'wiki', 'documents']
+      }
 
       // Validate targets
       const validTargets = ['issues', 'wiki', 'documents']
-      for (const target of targets) {
+      const inputTargets = only ? only.split(',') : exclude ? exclude.split(',') : []
+      for (const target of inputTargets) {
         if (!validTargets.includes(target)) {
           this.error(`Invalid target '${target}'. Available targets are: ${validTargets.join(', ')}`)
         }
+      }
+
+      // Check if any targets remain after exclusion
+      if (targets.length === 0) {
+        this.error('No targets remaining after exclusion. Please specify valid targets to export.')
       }
 
       // 出力ディレクトリの作成
