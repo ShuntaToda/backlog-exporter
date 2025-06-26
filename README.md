@@ -99,6 +99,12 @@ $ backlog-exporter document --domain example.backlog.jp --projectIdOrKey PROJECT
 # 課題・Wiki・ドキュメントの一括エクスポート
 $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./backlog-data
 
+# 特定のデータタイプのみをエクスポート（onlyフラグ）
+$ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --only issues,wiki
+
+# 特定のデータタイプを除外してエクスポート（excludeフラグ）
+$ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --exclude documents
+
 # データの更新
 $ backlog-exporter update
 ```
@@ -220,9 +226,43 @@ $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY 
 
 # 出力先を指定
 $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./backlog-data
+
+# 特定のデータタイプのみをエクスポート（onlyフラグ）
+$ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --only issues,wiki
+
+# 特定のデータタイプを除外してエクスポート（excludeフラグ）
+$ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --exclude documents
 ```
 
 一括エクスポートでは、課題は`issues`ディレクトリに、Wiki は`wiki`ディレクトリに、ドキュメントは`documents`ディレクトリに保存されます。
+
+## エクスポート対象の制御
+
+`all`コマンドでは、以下のフラグを使用してエクスポート対象を制御できます：
+
+### --only フラグ
+特定のデータタイプのみをエクスポートします。カンマ区切りで複数指定可能です。
+
+```sh
+# 課題とWikiのみをエクスポート
+$ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --only issues,wiki
+
+# ドキュメントのみをエクスポート
+$ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --only documents
+```
+
+### --exclude フラグ
+特定のデータタイプを除外してエクスポートします。カンマ区切りで複数指定可能です。
+
+```sh
+# ドキュメント以外（課題とWiki）をエクスポート
+$ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --exclude documents
+
+# 課題以外（WikiとDocuments）をエクスポート
+$ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --exclude issues
+```
+
+**注意**: `--only`と`--exclude`フラグは同時に使用できません。どちらか一方を使用してください。
 
 # データの更新
 
