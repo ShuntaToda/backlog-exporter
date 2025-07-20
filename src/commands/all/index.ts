@@ -28,6 +28,9 @@ export default class All extends Command {
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --maxCount 1000
 最大1000件の課題を取得する（デフォルトは5000件）
 `,
+    `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --useIssueKeyFolder
+課題キーでフォルダを作成し、その中に課題キー名のMarkdownファイルを出力する
+`,
   ]
   static flags = {
     apiKey: Flags.string({
@@ -61,13 +64,17 @@ export default class All extends Command {
       description: 'Backlog project ID or key',
       required: true,
     }),
+    useIssueKeyFolder: Flags.boolean({
+      description: '課題キーでフォルダを作成し、その中に課題キー名のMarkdownファイルを出力する',
+      required: false,
+    }),
   }
 
   async run(): Promise<void> {
     const {flags} = await this.parse(All)
 
     try {
-      const {domain, exclude, maxCount, only, projectIdOrKey} = flags
+      const {domain, exclude, maxCount, only, projectIdOrKey, useIssueKeyFolder} = flags
       const apiKey = flags.apiKey || getApiKey(this)
       const outputRoot = flags.output || './backlog-data'
 
@@ -131,6 +138,7 @@ export default class All extends Command {
           domain,
           outputDir: issueOutput,
           projectId,
+          useIssueKeyFolder,
         })
 
         // 課題フォルダの最終更新日時を更新

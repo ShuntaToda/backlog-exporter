@@ -20,6 +20,7 @@ interface UpdateFlags {
   issuesOnly?: boolean
   projectIdOrKey?: string
   wikisOnly?: boolean
+  useIssueKeyFolder?: boolean
 }
 
 export default class Update extends Command {
@@ -42,6 +43,9 @@ export default class Update extends Command {
 `,
     `<%= config.bin %> <%= command.id %> ./my-project
 指定したディレクトリの設定を使用して更新する
+`,
+    `<%= config.bin %> <%= command.id %> --useIssueKeyFolder
+課題キーでフォルダを作成し、その中に課題キー名のMarkdownファイルを出力する
 `,
   ]
   static flags = {
@@ -72,6 +76,10 @@ export default class Update extends Command {
     }),
     wikisOnly: Flags.boolean({
       description: 'Wikiのみを更新する',
+      required: false,
+    }),
+    useIssueKeyFolder: Flags.boolean({
+      description: '課題キーでフォルダを作成し、その中に課題キー名のMarkdownファイルを出力する',
       required: false,
     }),
   }
@@ -224,7 +232,7 @@ export default class Update extends Command {
     const domain = flags.domain || settings.domain
     const projectIdOrKey = flags.projectIdOrKey || settings.projectIdOrKey
     const {folderType} = settings
-    const {documentsOnly, force, issuesOnly, wikisOnly} = flags
+    const {documentsOnly, force, issuesOnly, wikisOnly, useIssueKeyFolder} = flags
 
     // 必須パラメータの検証
     if (!domain) {
@@ -284,6 +292,7 @@ export default class Update extends Command {
         projectId,
         projectIdOrKey,
         targetDir,
+        useIssueKeyFolder,
       })
     }
 
@@ -353,6 +362,7 @@ export default class Update extends Command {
     projectId: number
     projectIdOrKey: string
     targetDir: string
+    useIssueKeyFolder?: boolean
   }): Promise<void> {
     this.log('課題の更新を開始します...')
 
@@ -366,6 +376,7 @@ export default class Update extends Command {
       lastUpdated,
       outputDir: options.targetDir,
       projectId: options.projectId,
+      useIssueKeyFolder: options.useIssueKeyFolder,
     })
 
     // 設定ファイルを更新
