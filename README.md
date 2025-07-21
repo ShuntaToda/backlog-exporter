@@ -7,52 +7,53 @@ Backlog のデータをエクスポートするためのコマンドラインツ
 [![Downloads/week](https://img.shields.io/npm/dw/backlog-exporter.svg)](https://npmjs.org/package/backlog-exporter)
 
 <!-- toc -->
-* [backlog-exporter](#backlog-exporter)
-* [概要](#概要)
-* [インストール](#インストール)
-* [使用方法](#使用方法)
-* [課題のエクスポート](#課題のエクスポート)
-* [Wikiのエクスポート](#wikiのエクスポート)
-* [ドキュメントのエクスポート](#ドキュメントのエクスポート)
-* [課題・Wiki・ドキュメントの一括エクスポート](#課題wikiドキュメントの一括エクスポート)
-* [特定のデータタイプのみをエクスポート（onlyフラグ）](#特定のデータタイプのみをエクスポートonlyフラグ)
-* [特定のデータタイプを除外してエクスポート（excludeフラグ）](#特定のデータタイプを除外してエクスポートexcludeフラグ)
-* [データの更新](#データの更新)
-* [npxを使った課題のエクスポート](#npxを使った課題のエクスポート)
-* [npxを使ったデータの更新](#npxを使ったデータの更新)
-* [課題のエクスポート](#課題のエクスポート)
-* [基本的な使用方法](#基本的な使用方法)
-* [出力先を指定](#出力先を指定)
-* [Wiki のエクスポート](#wiki-のエクスポート)
-* [基本的な使用方法](#基本的な使用方法)
-* [出力先を指定](#出力先を指定)
-* [ドキュメント のエクスポート](#ドキュメント-のエクスポート)
-* [基本的な使用方法](#基本的な使用方法)
-* [出力先を指定](#出力先を指定)
-* [キーワード検索](#キーワード検索)
-* [課題・Wiki・ドキュメント の一括エクスポート](#課題wikiドキュメント-の一括エクスポート)
-* [基本的な使用方法](#基本的な使用方法)
-* [出力先を指定](#出力先を指定)
-* [特定のデータタイプのみをエクスポート（onlyフラグ）](#特定のデータタイプのみをエクスポートonlyフラグ)
-* [特定のデータタイプを除外してエクスポート（excludeフラグ）](#特定のデータタイプを除外してエクスポートexcludeフラグ)
-* [課題とWikiのみをエクスポート](#課題とwikiのみをエクスポート)
-* [ドキュメントのみをエクスポート](#ドキュメントのみをエクスポート)
-* [ドキュメント以外（課題とWiki）をエクスポート](#ドキュメント以外課題とwikiをエクスポート)
-* [課題以外（WikiとDocuments）をエクスポート](#課題以外wikiとdocumentsをエクスポート)
-* [データの更新](#データの更新)
-* [カレントディレクトリとそのサブディレクトリのデータを更新](#カレントディレクトリとそのサブディレクトリのデータを更新)
-* [指定したディレクトリとそのサブディレクトリのデータを更新](#指定したディレクトリとそのサブディレクトリのデータを更新)
-* [確認プロンプトをスキップして更新](#確認プロンプトをスキップして更新)
-* [課題のみを更新](#課題のみを更新)
-* [Wikiのみを更新](#wikiのみを更新)
-* [ドキュメントのみを更新](#ドキュメントのみを更新)
-* [APIキーを指定して更新](#apiキーを指定して更新)
-* [コマンド](#コマンド)
-* [出力形式](#出力形式)
-* [課題のタイトル](#課題のタイトル)
-* [Wiki のタイトル](#wiki-のタイトル)
-* [ドキュメントのタイトル](#ドキュメントのタイトル)
-* [その他の特徴](#その他の特徴)
+
+- [backlog-exporter](#backlog-exporter)
+- [概要](#概要)
+- [インストール](#インストール)
+- [使用方法](#使用方法)
+- [課題のエクスポート](#課題のエクスポート)
+- [Wikiのエクスポート](#wikiのエクスポート)
+- [ドキュメントのエクスポート](#ドキュメントのエクスポート)
+- [課題・Wiki・ドキュメントの一括エクスポート](#課題wikiドキュメントの一括エクスポート)
+- [特定のデータタイプのみをエクスポート（onlyフラグ）](#特定のデータタイプのみをエクスポートonlyフラグ)
+- [特定のデータタイプを除外してエクスポート（excludeフラグ）](#特定のデータタイプを除外してエクスポートexcludeフラグ)
+- [データの更新](#データの更新)
+- [npxを使った課題のエクスポート](#npxを使った課題のエクスポート)
+- [npxを使ったデータの更新](#npxを使ったデータの更新)
+- [課題のエクスポート](#課題のエクスポート)
+- [基本的な使用方法](#基本的な使用方法)
+- [出力先を指定](#出力先を指定)
+- [Wiki のエクスポート](#wiki-のエクスポート)
+- [基本的な使用方法](#基本的な使用方法)
+- [出力先を指定](#出力先を指定)
+- [ドキュメント のエクスポート](#ドキュメント-のエクスポート)
+- [基本的な使用方法](#基本的な使用方法)
+- [出力先を指定](#出力先を指定)
+- [キーワード検索](#キーワード検索)
+- [課題・Wiki・ドキュメント の一括エクスポート](#課題wikiドキュメント-の一括エクスポート)
+- [基本的な使用方法](#基本的な使用方法)
+- [出力先を指定](#出力先を指定)
+- [特定のデータタイプのみをエクスポート（onlyフラグ）](#特定のデータタイプのみをエクスポートonlyフラグ)
+- [特定のデータタイプを除外してエクスポート（excludeフラグ）](#特定のデータタイプを除外してエクスポートexcludeフラグ)
+- [課題とWikiのみをエクスポート](#課題とwikiのみをエクスポート)
+- [ドキュメントのみをエクスポート](#ドキュメントのみをエクスポート)
+- [ドキュメント以外（課題とWiki）をエクスポート](#ドキュメント以外課題とwikiをエクスポート)
+- [課題以外（WikiとDocuments）をエクスポート](#課題以外wikiとdocumentsをエクスポート)
+- [データの更新](#データの更新)
+- [カレントディレクトリとそのサブディレクトリのデータを更新](#カレントディレクトリとそのサブディレクトリのデータを更新)
+- [指定したディレクトリとそのサブディレクトリのデータを更新](#指定したディレクトリとそのサブディレクトリのデータを更新)
+- [確認プロンプトをスキップして更新](#確認プロンプトをスキップして更新)
+- [課題のみを更新](#課題のみを更新)
+- [Wikiのみを更新](#wikiのみを更新)
+- [ドキュメントのみを更新](#ドキュメントのみを更新)
+- [APIキーを指定して更新](#apiキーを指定して更新)
+- [コマンド](#コマンド)
+- [出力形式](#出力形式)
+- [課題のタイトル](#課題のタイトル)
+- [Wiki のタイトル](#wiki-のタイトル)
+- [ドキュメントのタイトル](#ドキュメントのタイトル)
+- [その他の特徴](#その他の特徴)
 <!-- tocstop -->
 
 # 概要
@@ -69,6 +70,7 @@ backlog-exporter は、Backlog のデータをローカルにエクスポート�
 # インストール
 
 <!-- usage -->
+
 ```sh-session
 $ npm install -g backlog-exporter
 $ backlog-exporter COMMAND
@@ -80,6 +82,7 @@ USAGE
   $ backlog-exporter COMMAND
 ...
 ```
+
 <!-- usagestop -->
 
 # 使用方法
@@ -155,21 +158,23 @@ $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KE
 課題のエクスポートでは、Backlogのカスタム属性も含めて出力されます：
 
 ### 対応している値の型
+
 - **プリミティブ値**: 文字列、数値などの単純な値
 - **配列値**: 複数選択のカスタム属性（カンマ区切りで表示）
 - **オブジェクト値**: 単一選択のカスタム属性（name または value プロパティを使用）
 
 ### 表示形式
+
 カスタム属性はMarkdownテーブル形式で表示され、改行やパイプ文字も適切に処理されます：
 
 ```markdown
 ## カスタム属性
 
-| 属性名 | 値 |
-|--------|----| 
-| 工数（エンジニア） | 3 |
-| 担当チーム | フロントエンド, バックエンド |
-| 詳細 | 実装内容<br>- 機能A<br>- 機能B |
+| 属性名             | 値                             |
+| ------------------ | ------------------------------ |
+| 工数（エンジニア） | 3                              |
+| 担当チーム         | フロントエンド, バックエンド   |
+| 詳細               | 実装内容<br>- 機能A<br>- 機能B |
 ```
 
 # Wiki のエクスポート
@@ -206,10 +211,12 @@ $ backlog-exporter document --domain example.backlog.jp --projectIdOrKey PROJECT
 ドキュメントは **ツリー構造を保持** してエクスポートされます：
 
 ### ディレクトリ構造の保持
+
 - Backlogのドキュメントツリーの階層構造がそのままローカルディレクトリ構造として再現されます
 - フォルダはディレクトリとして作成され、ドキュメントはMarkdownファイルとして保存されます
 
 ### 出力例
+
 ```
 documents/
 ├── プロジェクト概要/
@@ -226,6 +233,7 @@ documents/
 ```
 
 ### 特徴
+
 - **階層構造の完全再現**: Backlogのフォルダ階層がそのまま保持されます
 - **重複処理の防止**: 同じドキュメントが複数回処理されることを防ぎます
 - **ファイル名の自動サニタイズ**: 不正な文字を自動的に除去して安全なファイル名を生成します
@@ -258,6 +266,7 @@ $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY 
 `all`コマンドでは、以下のフラグを使用してエクスポート対象を制御できます：
 
 ### --only フラグ
+
 特定のデータタイプのみをエクスポートします。カンマ区切りで複数指定可能です。
 
 ```sh
@@ -269,6 +278,7 @@ $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY 
 ```
 
 ### --exclude フラグ
+
 特定のデータタイプを除外してエクスポートします。カンマ区切りで複数指定可能です。
 
 ```sh
@@ -313,17 +323,18 @@ $ backlog-exporter update --apiKey YOUR_API_KEY
 # コマンド
 
 <!-- commands -->
-* [`backlog-exporter help [COMMAND]`](#backlog-exporter-help-command)
-* [`backlog-exporter plugins`](#backlog-exporter-plugins)
-* [`backlog-exporter plugins add PLUGIN`](#backlog-exporter-plugins-add-plugin)
-* [`backlog-exporter plugins:inspect PLUGIN...`](#backlog-exporter-pluginsinspect-plugin)
-* [`backlog-exporter plugins install PLUGIN`](#backlog-exporter-plugins-install-plugin)
-* [`backlog-exporter plugins link PATH`](#backlog-exporter-plugins-link-path)
-* [`backlog-exporter plugins remove [PLUGIN]`](#backlog-exporter-plugins-remove-plugin)
-* [`backlog-exporter plugins reset`](#backlog-exporter-plugins-reset)
-* [`backlog-exporter plugins uninstall [PLUGIN]`](#backlog-exporter-plugins-uninstall-plugin)
-* [`backlog-exporter plugins unlink [PLUGIN]`](#backlog-exporter-plugins-unlink-plugin)
-* [`backlog-exporter plugins update`](#backlog-exporter-plugins-update)
+
+- [`backlog-exporter help [COMMAND]`](#backlog-exporter-help-command)
+- [`backlog-exporter plugins`](#backlog-exporter-plugins)
+- [`backlog-exporter plugins add PLUGIN`](#backlog-exporter-plugins-add-plugin)
+- [`backlog-exporter plugins:inspect PLUGIN...`](#backlog-exporter-pluginsinspect-plugin)
+- [`backlog-exporter plugins install PLUGIN`](#backlog-exporter-plugins-install-plugin)
+- [`backlog-exporter plugins link PATH`](#backlog-exporter-plugins-link-path)
+- [`backlog-exporter plugins remove [PLUGIN]`](#backlog-exporter-plugins-remove-plugin)
+- [`backlog-exporter plugins reset`](#backlog-exporter-plugins-reset)
+- [`backlog-exporter plugins uninstall [PLUGIN]`](#backlog-exporter-plugins-uninstall-plugin)
+- [`backlog-exporter plugins unlink [PLUGIN]`](#backlog-exporter-plugins-unlink-plugin)
+- [`backlog-exporter plugins update`](#backlog-exporter-plugins-update)
 
 ## `backlog-exporter help [COMMAND]`
 
@@ -634,6 +645,7 @@ DESCRIPTION
 ```
 
 _See code: [@oclif/plugin-plugins](https://github.com/oclif/plugin-plugins/blob/v5.4.34/src/commands/plugins/update.ts)_
+
 <!-- commandsstop -->
 
 # 出力形式
@@ -657,12 +669,12 @@ _See code: [@oclif/plugin-plugins](https://github.com/oclif/plugin-plugins/blob/
 
 ## カスタム属性
 
-| 属性名 | 値 |
-|--------|----| 
-| 工数（エンジニア） | 3 |
-| 工数（PPO） | なし |
-| 担当チーム | フロントエンド, バックエンド |
-| 詳細 | 実装内容<br>- 機能A<br>- 機能B |
+| 属性名             | 値                             |
+| ------------------ | ------------------------------ |
+| 工数（エンジニア） | 3                              |
+| 工数（PPO）        | なし                           |
+| 担当チーム         | フロントエンド, バックエンド   |
+| 詳細               | 実装内容<br>- 機能A<br>- 機能B |
 
 ## 詳細
 
@@ -721,10 +733,12 @@ Backlog の書式がそのまま保持されます。
 Backlog の書式がそのまま保持されます。
 
 ## 添付ファイル
+
 - **資料.pdf** (1024.5 KB) - 作成者: 山田太郎, 作成日時: 2023/01/01 10:00:00
 - **画像.png** (256.3 KB) - 作成者: 佐藤次郎, 作成日時: 2023/01/01 10:30:00
 
 ## タグ
+
 - 仕様書
 - 設計書
 ```

@@ -13,24 +13,26 @@ import {RateLimiter} from './sleep.js'
  * @param customFields カスタム属性の配列
  * @returns Markdownテーブル形式のカスタム属性セクション
  */
-export function createCustomFieldsSection(customFields?: Array<{
-  id: number
-  name: string
-  value: unknown
-}>): string {
+export function createCustomFieldsSection(
+  customFields?: Array<{
+    id: number
+    name: string
+    value: unknown
+  }>,
+): string {
   if (!customFields || customFields.length === 0) {
     return ''
   }
 
   let customFieldsSection = '\n\n## カスタム属性\n\n| 属性名 | 値 |\n|--------|----|\n'
-  
+
   for (const customField of customFields) {
     let fieldValue = 'なし'
     if (customField.value !== null && customField.value !== undefined) {
       if (Array.isArray(customField.value)) {
         // 配列の場合（複数選択など）
         fieldValue = (customField.value as Array<{name?: string; value?: string}>)
-          .map(item => item.name || item.value || String(item))
+          .map((item) => item.name || item.value || String(item))
           .join(', ')
       } else if (typeof customField.value === 'object' && customField.value !== null) {
         // オブジェクトの場合（単一選択など）
@@ -43,10 +45,8 @@ export function createCustomFieldsSection(customFields?: Array<{
     }
 
     // テーブル内では改行をHTMLの<br>タグに変換し、パイプ文字をエスケープ
-    const escapedFieldValue = fieldValue
-      .replaceAll('|', String.raw`\|`)
-      .replaceAll('\n', '<br>')
-    
+    const escapedFieldValue = fieldValue.replaceAll('|', String.raw`\|`).replaceAll('\n', '<br>')
+
     customFieldsSection += `| ${customField.name} | ${escapedFieldValue} |\n`
   }
 
@@ -267,13 +267,13 @@ export async function downloadIssues(
         const issueKeyDirPath = path.join(yearDirPath, issue.issueKey)
         // eslint-disable-next-line no-await-in-loop
         await fs.mkdir(issueKeyDirPath, {recursive: true})
-        
+
         // ファイル名を課題名（標準）にするか課題キーにするかを決定
-        issueFileName = options.issueKeyFileName ? `${issue.issueKey}.md` : `${sanitizeFileName(issue.summary)}.md`;
+        issueFileName = options.issueKeyFileName ? `${issue.issueKey}.md` : `${sanitizeFileName(issue.summary)}.md`
         issueFilePath = path.join(issueKeyDirPath, issueFileName)
       } else {
         // 年ごとのフォルダ内に、Markdownファイルを作成
-        issueFileName = options.issueKeyFileName ? `${issue.issueKey}.md` : `${sanitizeFileName(issue.summary)}.md`;
+        issueFileName = options.issueKeyFileName ? `${issue.issueKey}.md` : `${sanitizeFileName(issue.summary)}.md`
         issueFilePath = path.join(yearDirPath, issueFileName)
       }
 
