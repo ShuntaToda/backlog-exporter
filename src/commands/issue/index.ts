@@ -24,6 +24,15 @@ export default class Issue extends Command {
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --maxCount 10000
 最大10000件の課題を取得する（デフォルトは5000件）
 `,
+    `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFileName
+ファイル名を課題キーにする
+`,
+    `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFolder
+課題キーでフォルダを作成する
+`,
+    `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFileName --issueKeyFolder
+課題キーでフォルダを作成し、ファイル名も課題キーにする
+`,
   ]
   static flags = {
     apiKey: Flags.string({
@@ -33,6 +42,14 @@ export default class Issue extends Command {
     domain: Flags.string({
       description: 'Backlog domain (e.g. example.backlog.jp)',
       required: true,
+    }),
+    issueKeyFileName: Flags.boolean({
+      description: 'ファイル名を課題キーにする',
+      required: false,
+    }),
+    issueKeyFolder: Flags.boolean({
+      description: '課題キーでフォルダを作成する',
+      required: false,
     }),
     maxCount: Flags.integer({
       char: 'm',
@@ -59,7 +76,7 @@ export default class Issue extends Command {
     const {flags} = await this.parse(Issue)
 
     try {
-      const {domain, maxCount, projectIdOrKey, statusId} = flags
+      const {domain, issueKeyFileName, issueKeyFolder, maxCount, projectIdOrKey, statusId} = flags
       const apiKey = flags.apiKey || getApiKey(this)
       const outputDir = flags.output || './backlog-issues'
 
@@ -75,6 +92,8 @@ export default class Issue extends Command {
         apiKey,
         domain,
         folderType: FolderType.ISSUE,
+        issueKeyFileName,
+        issueKeyFolder,
         outputDir,
         projectIdOrKey,
       })
@@ -84,6 +103,8 @@ export default class Issue extends Command {
         apiKey,
         count: maxCount,
         domain,
+        issueKeyFileName,
+        issueKeyFolder,
         outputDir,
         projectId,
         statusId,

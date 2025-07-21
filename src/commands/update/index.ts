@@ -17,6 +17,8 @@ interface UpdateFlags {
   documentsOnly?: boolean
   domain?: string
   force?: boolean
+  issueKeyFileName?: boolean
+  issueKeyFolder?: boolean
   issuesOnly?: boolean
   projectIdOrKey?: string
   wikisOnly?: boolean
@@ -43,6 +45,15 @@ export default class Update extends Command {
     `<%= config.bin %> <%= command.id %> ./my-project
 指定したディレクトリの設定を使用して更新する
 `,
+    `<%= config.bin %> <%= command.id %> --issueKeyFileName
+ファイル名を課題キーにする
+`,
+    `<%= config.bin %> <%= command.id %> --issueKeyFolder
+課題キーでフォルダを作成する
+`,
+    `<%= config.bin %> <%= command.id %> --issueKeyFileName --issueKeyFolder
+課題キーでフォルダを作成し、ファイル名も課題キーにする
+`,
   ]
   static flags = {
     apiKey: Flags.string({
@@ -60,6 +71,14 @@ export default class Update extends Command {
     force: Flags.boolean({
       char: 'f',
       description: '確認プロンプトをスキップする',
+      required: false,
+    }),
+    issueKeyFileName: Flags.boolean({
+      description: 'ファイル名を課題キーにする',
+      required: false,
+    }),
+    issueKeyFolder: Flags.boolean({
+      description: '課題キーでフォルダを作成する',
       required: false,
     }),
     issuesOnly: Flags.boolean({
@@ -225,6 +244,10 @@ export default class Update extends Command {
     const projectIdOrKey = flags.projectIdOrKey || settings.projectIdOrKey
     const {folderType} = settings
     const {documentsOnly, force, issuesOnly, wikisOnly} = flags
+    
+    // 設定ファイルからオプションを読み込み、コマンドライン引数で上書き
+    const issueKeyFileName = flags.issueKeyFileName ?? settings.issueKeyFileName
+    const issueKeyFolder = flags.issueKeyFolder ?? settings.issueKeyFolder
 
     // 必須パラメータの検証
     if (!domain) {
@@ -281,6 +304,8 @@ export default class Update extends Command {
       await this.updateIssues({
         apiKey,
         domain,
+        issueKeyFileName,
+        issueKeyFolder,
         projectId,
         projectIdOrKey,
         targetDir,
@@ -350,6 +375,8 @@ export default class Update extends Command {
   private async updateIssues(options: {
     apiKey: string
     domain: string
+    issueKeyFileName?: boolean
+    issueKeyFolder?: boolean
     projectId: number
     projectIdOrKey: string
     targetDir: string
@@ -363,6 +390,8 @@ export default class Update extends Command {
       apiKey: options.apiKey,
       count: 100,
       domain: options.domain,
+      issueKeyFileName: options.issueKeyFileName,
+      issueKeyFolder: options.issueKeyFolder,
       lastUpdated,
       outputDir: options.targetDir,
       projectId: options.projectId,
