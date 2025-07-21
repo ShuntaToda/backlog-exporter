@@ -7,53 +7,55 @@ Backlog のデータをエクスポートするためのコマンドラインツ
 [![Downloads/week](https://img.shields.io/npm/dw/backlog-exporter.svg)](https://npmjs.org/package/backlog-exporter)
 
 <!-- toc -->
-
-- [backlog-exporter](#backlog-exporter)
-- [概要](#概要)
-- [インストール](#インストール)
-- [使用方法](#使用方法)
-- [課題のエクスポート](#課題のエクスポート)
-- [Wikiのエクスポート](#wikiのエクスポート)
-- [ドキュメントのエクスポート](#ドキュメントのエクスポート)
-- [課題・Wiki・ドキュメントの一括エクスポート](#課題wikiドキュメントの一括エクスポート)
-- [特定のデータタイプのみをエクスポート（onlyフラグ）](#特定のデータタイプのみをエクスポートonlyフラグ)
-- [特定のデータタイプを除外してエクスポート（excludeフラグ）](#特定のデータタイプを除外してエクスポートexcludeフラグ)
-- [データの更新](#データの更新)
-- [npxを使った課題のエクスポート](#npxを使った課題のエクスポート)
-- [npxを使ったデータの更新](#npxを使ったデータの更新)
-- [課題のエクスポート](#課題のエクスポート)
-- [基本的な使用方法](#基本的な使用方法)
-- [出力先を指定](#出力先を指定)
-- [Wiki のエクスポート](#wiki-のエクスポート)
-- [基本的な使用方法](#基本的な使用方法)
-- [出力先を指定](#出力先を指定)
-- [ドキュメント のエクスポート](#ドキュメント-のエクスポート)
-- [基本的な使用方法](#基本的な使用方法)
-- [出力先を指定](#出力先を指定)
-- [キーワード検索](#キーワード検索)
-- [課題・Wiki・ドキュメント の一括エクスポート](#課題wikiドキュメント-の一括エクスポート)
-- [基本的な使用方法](#基本的な使用方法)
-- [出力先を指定](#出力先を指定)
-- [特定のデータタイプのみをエクスポート（onlyフラグ）](#特定のデータタイプのみをエクスポートonlyフラグ)
-- [特定のデータタイプを除外してエクスポート（excludeフラグ）](#特定のデータタイプを除外してエクスポートexcludeフラグ)
-- [課題とWikiのみをエクスポート](#課題とwikiのみをエクスポート)
-- [ドキュメントのみをエクスポート](#ドキュメントのみをエクスポート)
-- [ドキュメント以外（課題とWiki）をエクスポート](#ドキュメント以外課題とwikiをエクスポート)
-- [課題以外（WikiとDocuments）をエクスポート](#課題以外wikiとdocumentsをエクスポート)
-- [データの更新](#データの更新)
-- [カレントディレクトリとそのサブディレクトリのデータを更新](#カレントディレクトリとそのサブディレクトリのデータを更新)
-- [指定したディレクトリとそのサブディレクトリのデータを更新](#指定したディレクトリとそのサブディレクトリのデータを更新)
-- [確認プロンプトをスキップして更新](#確認プロンプトをスキップして更新)
-- [課題のみを更新](#課題のみを更新)
-- [Wikiのみを更新](#wikiのみを更新)
-- [ドキュメントのみを更新](#ドキュメントのみを更新)
-- [APIキーを指定して更新](#apiキーを指定して更新)
-- [コマンド](#コマンド)
-- [出力形式](#出力形式)
-- [課題のタイトル](#課題のタイトル)
-- [Wiki のタイトル](#wiki-のタイトル)
-- [ドキュメントのタイトル](#ドキュメントのタイトル)
-- [その他の特徴](#その他の特徴)
+* [backlog-exporter](#backlog-exporter)
+* [概要](#概要)
+* [インストール](#インストール)
+* [使用方法](#使用方法)
+* [課題のエクスポート](#課題のエクスポート)
+* [Wikiのエクスポート](#wikiのエクスポート)
+* [ドキュメントのエクスポート](#ドキュメントのエクスポート)
+* [課題・Wiki・ドキュメントの一括エクスポート](#課題wikiドキュメントの一括エクスポート)
+* [特定のデータタイプのみをエクスポート（onlyフラグ）](#特定のデータタイプのみをエクスポートonlyフラグ)
+* [特定のデータタイプを除外してエクスポート（excludeフラグ）](#特定のデータタイプを除外してエクスポートexcludeフラグ)
+* [データの更新](#データの更新)
+* [npxを使った課題のエクスポート](#npxを使った課題のエクスポート)
+* [npxを使ったデータの更新](#npxを使ったデータの更新)
+* [課題のエクスポート](#課題のエクスポート)
+* [基本的な使用方法](#基本的な使用方法)
+* [出力先を指定](#出力先を指定)
+* [Markdownファイル名を課題キーにする](#markdownファイル名を課題キーにする)
+* [課題キーでフォルダを作成する](#課題キーでフォルダを作成する)
+* [課題キーでフォルダを作成し、Markdownファイル名も課題キーにする](#課題キーでフォルダを作成しmarkdownファイル名も課題キーにする)
+* [Wiki のエクスポート](#wiki-のエクスポート)
+* [基本的な使用方法](#基本的な使用方法)
+* [出力先を指定](#出力先を指定)
+* [ドキュメント のエクスポート](#ドキュメント-のエクスポート)
+* [基本的な使用方法](#基本的な使用方法)
+* [出力先を指定](#出力先を指定)
+* [キーワード検索](#キーワード検索)
+* [課題・Wiki・ドキュメント の一括エクスポート](#課題wikiドキュメント-の一括エクスポート)
+* [基本的な使用方法](#基本的な使用方法)
+* [出力先を指定](#出力先を指定)
+* [特定のデータタイプのみをエクスポート（onlyフラグ）](#特定のデータタイプのみをエクスポートonlyフラグ)
+* [特定のデータタイプを除外してエクスポート（excludeフラグ）](#特定のデータタイプを除外してエクスポートexcludeフラグ)
+* [課題とWikiのみをエクスポート](#課題とwikiのみをエクスポート)
+* [ドキュメントのみをエクスポート](#ドキュメントのみをエクスポート)
+* [ドキュメント以外（課題とWiki）をエクスポート](#ドキュメント以外課題とwikiをエクスポート)
+* [課題以外（WikiとDocuments）をエクスポート](#課題以外wikiとdocumentsをエクスポート)
+* [データの更新](#データの更新)
+* [カレントディレクトリとそのサブディレクトリのデータを更新](#カレントディレクトリとそのサブディレクトリのデータを更新)
+* [指定したディレクトリとそのサブディレクトリのデータを更新](#指定したディレクトリとそのサブディレクトリのデータを更新)
+* [確認プロンプトをスキップして更新](#確認プロンプトをスキップして更新)
+* [課題のみを更新](#課題のみを更新)
+* [Wikiのみを更新](#wikiのみを更新)
+* [ドキュメントのみを更新](#ドキュメントのみを更新)
+* [APIキーを指定して更新](#apiキーを指定して更新)
+* [コマンド](#コマンド)
+* [出力形式](#出力形式)
+* [課題のタイトル](#課題のタイトル)
+* [Wiki のタイトル](#wiki-のタイトル)
+* [ドキュメントのタイトル](#ドキュメントのタイトル)
+* [その他の特徴](#その他の特徴)
 <!-- tocstop -->
 
 # 概要
@@ -70,19 +72,17 @@ backlog-exporter は、Backlog のデータをローカルにエクスポート�
 # インストール
 
 <!-- usage -->
-
 ```sh-session
 $ npm install -g backlog-exporter
 $ backlog-exporter COMMAND
 running command...
 $ backlog-exporter (--version)
-backlog-exporter/0.6.1 linux-x64 node-v20.19.2
+backlog-exporter/0.6.1 darwin-arm64 node-v22.17.0
 $ backlog-exporter --help [COMMAND]
 USAGE
   $ backlog-exporter COMMAND
 ...
 ```
-
 <!-- usagestop -->
 
 # 使用方法
@@ -323,18 +323,133 @@ $ backlog-exporter update --apiKey YOUR_API_KEY
 # コマンド
 
 <!-- commands -->
+- [backlog-exporter](#backlog-exporter)
+- [概要](#概要)
+- [インストール](#インストール)
+- [使用方法](#使用方法)
+  - [基本的な使用例](#基本的な使用例)
+- [課題のエクスポート](#課題のエクスポート)
+  - [カスタム属性の対応](#カスタム属性の対応)
+    - [対応している値の型](#対応している値の型)
+    - [表示形式](#表示形式)
+- [Wiki のエクスポート](#wiki-のエクスポート)
+- [ドキュメント のエクスポート](#ドキュメント-のエクスポート)
+  - [ドキュメントの出力方法](#ドキュメントの出力方法)
+    - [ディレクトリ構造の保持](#ディレクトリ構造の保持)
+    - [出力例](#出力例)
+    - [特徴](#特徴)
+- [課題・Wiki・ドキュメント の一括エクスポート](#課題wikiドキュメント-の一括エクスポート)
+  - [エクスポート対象の制御](#エクスポート対象の制御)
+    - [--only フラグ](#--only-フラグ)
+    - [--exclude フラグ](#--exclude-フラグ)
+- [データの更新](#データの更新)
+- [コマンド](#コマンド)
+  - [`backlog-exporter all`](#backlog-exporter-all)
+  - [`backlog-exporter document`](#backlog-exporter-document)
+  - [`backlog-exporter help [COMMAND]`](#backlog-exporter-help-command)
+  - [`backlog-exporter issue`](#backlog-exporter-issue)
+  - [`backlog-exporter plugins`](#backlog-exporter-plugins)
+  - [`backlog-exporter plugins add PLUGIN`](#backlog-exporter-plugins-add-plugin)
+  - [`backlog-exporter plugins:inspect PLUGIN...`](#backlog-exporter-pluginsinspect-plugin)
+  - [`backlog-exporter plugins install PLUGIN`](#backlog-exporter-plugins-install-plugin)
+  - [`backlog-exporter plugins link PATH`](#backlog-exporter-plugins-link-path)
+  - [`backlog-exporter plugins remove [PLUGIN]`](#backlog-exporter-plugins-remove-plugin)
+  - [`backlog-exporter plugins reset`](#backlog-exporter-plugins-reset)
+  - [`backlog-exporter plugins uninstall [PLUGIN]`](#backlog-exporter-plugins-uninstall-plugin)
+  - [`backlog-exporter plugins unlink [PLUGIN]`](#backlog-exporter-plugins-unlink-plugin)
+  - [`backlog-exporter plugins update`](#backlog-exporter-plugins-update)
+  - [`backlog-exporter update [DIRECTORY]`](#backlog-exporter-update-directory)
+  - [`backlog-exporter wiki`](#backlog-exporter-wiki)
+- [出力形式](#出力形式)
+  - [課題の出力形式](#課題の出力形式)
+  - [Wiki の出力形式](#wiki-の出力形式)
+  - [ドキュメント の出力形式](#ドキュメント-の出力形式)
+- [その他の特徴](#その他の特徴)
+  - [開発への貢献](#開発への貢献)
+  - [ライセンス](#ライセンス)
 
-- [`backlog-exporter help [COMMAND]`](#backlog-exporter-help-command)
-- [`backlog-exporter plugins`](#backlog-exporter-plugins)
-- [`backlog-exporter plugins add PLUGIN`](#backlog-exporter-plugins-add-plugin)
-- [`backlog-exporter plugins:inspect PLUGIN...`](#backlog-exporter-pluginsinspect-plugin)
-- [`backlog-exporter plugins install PLUGIN`](#backlog-exporter-plugins-install-plugin)
-- [`backlog-exporter plugins link PATH`](#backlog-exporter-plugins-link-path)
-- [`backlog-exporter plugins remove [PLUGIN]`](#backlog-exporter-plugins-remove-plugin)
-- [`backlog-exporter plugins reset`](#backlog-exporter-plugins-reset)
-- [`backlog-exporter plugins uninstall [PLUGIN]`](#backlog-exporter-plugins-uninstall-plugin)
-- [`backlog-exporter plugins unlink [PLUGIN]`](#backlog-exporter-plugins-unlink-plugin)
-- [`backlog-exporter plugins update`](#backlog-exporter-plugins-update)
+## `backlog-exporter all`
+
+Backlogから課題・Wiki・ドキュメントを取得してMarkdownファイルとして保存する
+
+```
+USAGE
+  $ backlog-exporter all --domain <value> --projectIdOrKey <value> [--apiKey <value>] [--exclude <value>]
+    [--issueKeyFileName] [--issueKeyFolder] [-m <value>] [--only <value>] [-o <value>]
+
+FLAGS
+  -m, --maxCount=<value>        [default: 5000] 一度に取得する課題の最大数（デフォルト: 5000）
+  -o, --output=<value>          出力ディレクトリパス
+      --apiKey=<value>          Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能)
+      --domain=<value>          (required) Backlog domain (e.g. example.backlog.jp)
+      --exclude=<value>         Exclude the specified types, separated by commas (e.g., 'documents,wiki')
+      --issueKeyFileName        ファイル名を課題キーにする
+      --issueKeyFolder          課題キーでフォルダを作成する
+      --only=<value>            Export only the specified types, separated by commas (e.g., 'issues,wiki')
+      --projectIdOrKey=<value>  (required) Backlog project ID or key
+
+DESCRIPTION
+  Backlogから課題・Wiki・ドキュメントを取得してMarkdownファイルとして保存する
+
+EXAMPLES
+  $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY
+  課題・Wiki・ドキュメントをMarkdownファイルとして保存する
+
+  $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./my-project
+  指定したディレクトリに課題・Wiki・ドキュメントを保存する
+
+  $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --only issues,wiki
+  課題とWikiのみを取得する
+
+  $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --exclude documents
+  ドキュメント以外（課題とWiki）を取得する
+
+  $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --maxCount 1000
+  最大1000件の課題を取得する（デフォルトは5000件）
+
+  $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFileName
+  ファイル名を課題キーにする
+
+  $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFolder
+  課題キーでフォルダを作成する
+
+  $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFileName --issueKeyFolder
+  課題キーでフォルダを作成し、ファイル名も課題キーにする
+```
+
+_See code: [src/commands/all/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.6.1/src/commands/all/index.ts)_
+
+## `backlog-exporter document`
+
+Backlogからドキュメントを取得してMarkdownファイルとして保存する
+
+```
+USAGE
+  $ backlog-exporter document --domain <value> --projectIdOrKey <value> [--apiKey <value>] [--keyword <value>]
+    [-o <value>]
+
+FLAGS
+  -o, --output=<value>          出力ディレクトリパス
+      --apiKey=<value>          Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能)
+      --domain=<value>          (required) Backlog domain (e.g. example.backlog.jp)
+      --keyword=<value>         検索キーワード
+      --projectIdOrKey=<value>  (required) Backlog project ID or key
+
+DESCRIPTION
+  Backlogからドキュメントを取得してMarkdownファイルとして保存する
+
+EXAMPLES
+  $ backlog-exporter document --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY
+  ドキュメントをMarkdownファイルとして保存する
+
+  $ backlog-exporter document --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./my-documents
+  指定したディレクトリにドキュメントを保存する
+
+  $ backlog-exporter document --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --keyword 仕様書
+  キーワード「仕様書」を含むドキュメントのみを取得する
+```
+
+_See code: [src/commands/document/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.6.1/src/commands/document/index.ts)_
 
 ## `backlog-exporter help [COMMAND]`
 
@@ -355,6 +470,53 @@ DESCRIPTION
 ```
 
 _See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v6.2.26/src/commands/help.ts)_
+
+## `backlog-exporter issue`
+
+Backlogから課題を取得してMarkdownファイルとして保存する
+
+```
+USAGE
+  $ backlog-exporter issue --domain <value> --projectIdOrKey <value> [--apiKey <value>]
+    [--issueKeyFileName] [--issueKeyFolder] [-m <value>] [-o <value>] [--statusId <value>]
+
+FLAGS
+  -m, --maxCount=<value>        [default: 5000] 一度に取得する課題の最大数（デフォルト: 5000）
+  -o, --output=<value>          出力ディレクトリパス
+      --apiKey=<value>          Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能)
+      --domain=<value>          (required) Backlog domain (e.g. example.backlog.jp)
+      --issueKeyFileName        ファイル名を課題キーにする
+      --issueKeyFolder          課題キーでフォルダを作成する
+      --projectIdOrKey=<value>  (required) Backlog project ID or key
+      --statusId=<value>        ステータスID（カンマ区切りで複数指定可能）
+
+DESCRIPTION
+  Backlogから課題を取得してMarkdownファイルとして保存する
+
+EXAMPLES
+  $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY
+  課題をMarkdownファイルとして保存する
+
+  $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./my-issues
+  指定したディレクトリに課題を保存する
+
+  $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --statusId 1,2,3
+  指定したステータスIDの課題のみを取得する
+
+  $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --maxCount 10000
+  最大10000件の課題を取得する（デフォルトは5000件）
+
+  $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFileName
+  ファイル名を課題キーにする
+
+  $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFolder
+  課題キーでフォルダを作成する
+
+  $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFileName --issueKeyFolder
+  課題キーでフォルダを作成し、ファイル名も課題キーにする
+```
+
+_See code: [src/commands/issue/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.6.1/src/commands/issue/index.ts)_
 
 ## `backlog-exporter plugins`
 
@@ -646,6 +808,83 @@ DESCRIPTION
 
 _See code: [@oclif/plugin-plugins](https://github.com/oclif/plugin-plugins/blob/v5.4.34/src/commands/plugins/update.ts)_
 
+## `backlog-exporter update [DIRECTORY]`
+
+Backlogから最新データを取得して更新する
+
+```
+USAGE
+  $ backlog-exporter update [DIRECTORY] [--apiKey <value>] [--documentsOnly] [--domain <value>] [-f]
+    [--issueKeyFileName] [--issueKeyFolder] [--issuesOnly] [--projectIdOrKey <value>] [--wikisOnly]
+
+ARGUMENTS
+  DIRECTORY  更新対象のディレクトリ（設定ファイルが保存されている場所）
+
+FLAGS
+  -f, --force                   確認プロンプトをスキップする
+      --apiKey=<value>          Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能)
+      --documentsOnly           ドキュメントのみを更新する
+      --domain=<value>          Backlog domain (e.g. example.backlog.jp)
+      --issueKeyFileName        ファイル名を課題キーにする
+      --issueKeyFolder          課題キーでフォルダを作成する
+      --issuesOnly              課題のみを更新する
+      --projectIdOrKey=<value>  Backlog project ID or key
+      --wikisOnly               Wikiのみを更新する
+
+DESCRIPTION
+  Backlogから最新データを取得して更新する
+
+EXAMPLES
+  $ backlog-exporter update
+  カレントディレクトリの設定を使用して更新する
+
+  $ backlog-exporter update --force
+  確認プロンプトをスキップする
+
+  $ backlog-exporter update --apiKey YOUR_API_KEY --domain example.backlog.jp --projectIdOrKey PROJECT_KEY
+  指定したパラメータで更新する（設定ファイルが存在する場合は上書きされます）
+
+  $ backlog-exporter update ./my-project
+  指定したディレクトリの設定を使用して更新する
+
+  $ backlog-exporter update --issueKeyFileName
+  ファイル名を課題キーにする
+
+  $ backlog-exporter update --issueKeyFolder
+  課題キーでフォルダを作成する
+
+  $ backlog-exporter update --issueKeyFileName --issueKeyFolder
+  課題キーでフォルダを作成し、ファイル名も課題キーにする
+```
+
+_See code: [src/commands/update/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.6.1/src/commands/update/index.ts)_
+
+## `backlog-exporter wiki`
+
+Backlogから Wiki を取得してMarkdownファイルとして保存する
+
+```
+USAGE
+  $ backlog-exporter wiki --domain <value> --projectIdOrKey <value> [--apiKey <value>] [-o <value>]
+
+FLAGS
+  -o, --output=<value>          出力ディレクトリパス
+      --apiKey=<value>          Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能)
+      --domain=<value>          (required) Backlog domain (e.g. example.backlog.jp)
+      --projectIdOrKey=<value>  (required) Backlog project ID or key
+
+DESCRIPTION
+  Backlogから Wiki を取得してMarkdownファイルとして保存する
+
+EXAMPLES
+  $ backlog-exporter wiki --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY
+  Wikiをダウンロードする
+
+  $ backlog-exporter wiki --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./my-project
+  指定したディレクトリにWikiを保存する
+```
+
+_See code: [src/commands/wiki/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.6.1/src/commands/wiki/index.ts)_
 <!-- commandsstop -->
 
 # 出力形式
@@ -753,3 +992,13 @@ Backlog の書式がそのまま保持されます。
 - **キーワード検索**: ドキュメントの検索キーワード対応
 - **差分更新**: 前回の更新以降に変更されたデータのみを更新
 - **カスタム属性対応**: 課題のカスタム属性をテーブル形式で表示（配列・オブジェクト・プリミティブ値に対応）
+
+## 開発への貢献
+
+backlog-exporterはオープンソースプロジェクトです。バグ報告、機能提案、プルリクエストなど、あらゆる形での貢献を歓迎しています。
+
+詳しくは [CONTRIBUTING.md](docs/CONTRIBUTING.md) をご覧ください。
+
+## ライセンス
+
+このプロジェクトは[MIT License](LICENSE)の下で公開されています。
