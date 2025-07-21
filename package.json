@@ -28,6 +28,7 @@
     "mocha": "^10",
     "nock": "^14.0.1",
     "oclif": "^4",
+    "prettier": "^3.6.2",
     "shx": "^0.3.3",
     "ts-node": "^10",
     "typescript": "^5"
@@ -68,6 +69,8 @@
   },
   "scripts": {
     "build": "shx rm -rf dist && tsc -b",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "lint": "eslint",
     "postpack": "shx rm -f oclif.manifest.json",
     "posttest": "npm run lint",

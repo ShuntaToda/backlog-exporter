@@ -21,7 +21,7 @@ describe('Allコマンド - excludeフラグ機能', () => {
       const excludeValue = 'documents,wiki'
       const excludeTargets = excludeValue.split(',')
       const allTargets = ['issues', 'wiki', 'documents']
-      const targets = allTargets.filter(target => !excludeTargets.includes(target))
+      const targets = allTargets.filter((target) => !excludeTargets.includes(target))
 
       expect(targets).to.deep.equal(['issues'])
       expect(targets).to.have.lengthOf(1)
@@ -31,7 +31,7 @@ describe('Allコマンド - excludeフラグ機能', () => {
       const excludeValue = 'documents'
       const excludeTargets = excludeValue.split(',')
       const allTargets = ['issues', 'wiki', 'documents']
-      const targets = allTargets.filter(target => !excludeTargets.includes(target))
+      const targets = allTargets.filter((target) => !excludeTargets.includes(target))
 
       expect(targets).to.deep.equal(['issues', 'wiki'])
       expect(targets).to.have.lengthOf(2)
@@ -41,7 +41,7 @@ describe('Allコマンド - excludeフラグ機能', () => {
       const excludeValue = 'issues,documents'
       const excludeTargets = excludeValue.split(',')
       const allTargets = ['issues', 'wiki', 'documents']
-      const targets = allTargets.filter(target => !excludeTargets.includes(target))
+      const targets = allTargets.filter((target) => !excludeTargets.includes(target))
 
       expect(targets).to.deep.equal(['wiki'])
       expect(targets).to.have.lengthOf(1)
@@ -51,7 +51,7 @@ describe('Allコマンド - excludeフラグ機能', () => {
       const excludeValue = 'invalid,unknown'
       const excludeTargets = excludeValue.split(',')
       const allTargets = ['issues', 'wiki', 'documents']
-      const targets = allTargets.filter(target => !excludeTargets.includes(target))
+      const targets = allTargets.filter((target) => !excludeTargets.includes(target))
 
       expect(targets).to.deep.equal(['issues', 'wiki', 'documents'])
       expect(targets).to.have.lengthOf(3)
@@ -61,7 +61,7 @@ describe('Allコマンド - excludeフラグ機能', () => {
       const excludeValue = 'issues,wiki,documents'
       const excludeTargets = excludeValue.split(',')
       const allTargets = ['issues', 'wiki', 'documents']
-      const targets = allTargets.filter(target => !excludeTargets.includes(target))
+      const targets = allTargets.filter((target) => !excludeTargets.includes(target))
 
       expect(targets).to.deep.equal([])
       expect(targets).to.have.lengthOf(0)
@@ -107,7 +107,7 @@ describe('Allコマンド - excludeフラグ機能', () => {
       const exclude = 'documents'
       const excludeTargets = exclude.split(',')
       const allTargets = ['issues', 'wiki', 'documents']
-      const targets = allTargets.filter(target => !excludeTargets.includes(target))
+      const targets = allTargets.filter((target) => !excludeTargets.includes(target))
 
       expect(targets).to.deep.equal(['issues', 'wiki'])
     })
@@ -117,7 +117,7 @@ describe('Allコマンド - excludeフラグ機能', () => {
       const excludeValue = 'documents'
       const excludeTargets = excludeValue.split(',')
       const allTargets = ['issues', 'wiki', 'documents']
-      const remainingTargets = allTargets.filter(target => !excludeTargets.includes(target))
+      const remainingTargets = allTargets.filter((target) => !excludeTargets.includes(target))
       expect(remainingTargets).to.deep.equal(['issues', 'wiki'])
     })
   })

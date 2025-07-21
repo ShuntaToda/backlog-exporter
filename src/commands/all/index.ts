@@ -100,7 +100,7 @@ export default class All extends Command {
       } else if (exclude) {
         const excludeTargets = exclude.split(',')
         const allTargets = ['issues', 'wiki', 'documents']
-        targets = allTargets.filter(target => !excludeTargets.includes(target))
+        targets = allTargets.filter((target) => !excludeTargets.includes(target))
       } else {
         targets = ['issues', 'wiki', 'documents']
       }

@@ -64,16 +64,13 @@ describe('backlog-api utility functions', () => {
         {
           id: 1,
           name: '担当チーム',
-          value: [
-            {name: 'フロントエンド'},
-            {name: 'バックエンド'},
-            {name: 'インフラ'},
-          ],
+          value: [{name: 'フロントエンド'}, {name: 'バックエンド'}, {name: 'インフラ'}],
         },
       ]
 
       const result = createCustomFieldsSection(customFields)
-      const expected = '\n\n## カスタム属性\n\n| 属性名 | 値 |\n|--------|----|\n| 担当チーム | フロントエンド, バックエンド, インフラ |\n'
+      const expected =
+        '\n\n## カスタム属性\n\n| 属性名 | 値 |\n|--------|----|\n| 担当チーム | フロントエンド, バックエンド, インフラ |\n'
 
       expect(result).to.equal(expected)
     })
@@ -103,7 +100,8 @@ describe('backlog-api utility functions', () => {
       ]
 
       const result = createCustomFieldsSection(customFields)
-      const expected = '\n\n## カスタム属性\n\n| 属性名 | 値 |\n|--------|----|\n| 工数詳細 | 段階的リリース<br>6/25 STGリリース<br>7/9 本番リリース |\n'
+      const expected =
+        '\n\n## カスタム属性\n\n| 属性名 | 値 |\n|--------|----|\n| 工数詳細 | 段階的リリース<br>6/25 STGリリース<br>7/9 本番リリース |\n'
 
       expect(result).to.equal(expected)
     })
@@ -118,7 +116,8 @@ describe('backlog-api utility functions', () => {
       ]
 
       const result = createCustomFieldsSection(customFields)
-      const expected = '\n\n## カスタム属性\n\n| 属性名 | 値 |\n|--------|----|\n| テストケース | test1 \\| test2 \\| test3 |\n'
+      const expected =
+        '\n\n## カスタム属性\n\n| 属性名 | 値 |\n|--------|----|\n| テストケース | test1 \\| test2 \\| test3 |\n'
 
       expect(result).to.equal(expected)
     })
@@ -148,7 +147,8 @@ describe('backlog-api utility functions', () => {
       ]
 
       const result = createCustomFieldsSection(customFields)
-      const expected = '\n\n## カスタム属性\n\n| 属性名 | 値 |\n|--------|----|\n| 工数（エンジニア） | 3 |\n| 工数（PPO） | なし |\n| 担当チーム | フロントエンド, バックエンド |\n| 詳細 | 実装内容<br>- 機能A<br>- 機能B |\n'
+      const expected =
+        '\n\n## カスタム属性\n\n| 属性名 | 値 |\n|--------|----|\n| 工数（エンジニア） | 3 |\n| 工数（PPO） | なし |\n| 担当チーム | フロントエンド, バックエンド |\n| 詳細 | 実装内容<br>- 機能A<br>- 機能B |\n'
 
       expect(result).to.equal(expected)
     })

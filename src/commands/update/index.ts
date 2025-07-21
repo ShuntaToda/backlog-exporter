@@ -244,7 +244,7 @@ export default class Update extends Command {
     const projectIdOrKey = flags.projectIdOrKey || settings.projectIdOrKey
     const {folderType} = settings
     const {documentsOnly, force, issuesOnly, wikisOnly} = flags
-    
+
     // 設定ファイルからオプションを読み込み、コマンドライン引数で上書き
     const issueKeyFileName = flags.issueKeyFileName ?? settings.issueKeyFileName
     const issueKeyFolder = flags.issueKeyFolder ?? settings.issueKeyFolder

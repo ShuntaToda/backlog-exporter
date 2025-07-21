@@ -26,9 +26,7 @@ describe('issueKeyFileName/issueKeyFolderフラグ', () => {
     it('issueKeyFileNameの使用例が存在すること', () => {
       const {examples} = Issue
 
-      const hasIssueKeyFileNameExample = examples.some((ex) => 
-        ex.includes('--issueKeyFileName')
-      )
+      const hasIssueKeyFileNameExample = examples.some((ex) => ex.includes('--issueKeyFileName'))
 
       expect(hasIssueKeyFileNameExample).to.be.true
     })
@@ -36,9 +34,7 @@ describe('issueKeyFileName/issueKeyFolderフラグ', () => {
     it('issueKeyFolderの使用例が存在すること', () => {
       const {examples} = Issue
 
-      const hasIssueKeyFolderExample = examples.some((ex) => 
-        ex.includes('--issueKeyFolder')
-      )
+      const hasIssueKeyFolderExample = examples.some((ex) => ex.includes('--issueKeyFolder'))
 
       expect(hasIssueKeyFolderExample).to.be.true
     })
@@ -64,9 +60,7 @@ describe('issueKeyFileName/issueKeyFolderフラグ', () => {
     it('issueKeyFileNameの使用例が存在すること', () => {
       const {examples} = All
 
-      const hasIssueKeyFileNameExample = examples.some((ex) => 
-        ex.includes('--issueKeyFileName')
-      )
+      const hasIssueKeyFileNameExample = examples.some((ex) => ex.includes('--issueKeyFileName'))
 
       expect(hasIssueKeyFileNameExample).to.be.true
     })
@@ -74,9 +68,7 @@ describe('issueKeyFileName/issueKeyFolderフラグ', () => {
     it('issueKeyFolderの使用例が存在すること', () => {
       const {examples} = All
 
-      const hasIssueKeyFolderExample = examples.some((ex) => 
-        ex.includes('--issueKeyFolder')
-      )
+      const hasIssueKeyFolderExample = examples.some((ex) => ex.includes('--issueKeyFolder'))
 
       expect(hasIssueKeyFolderExample).to.be.true
     })
@@ -102,9 +94,7 @@ describe('issueKeyFileName/issueKeyFolderフラグ', () => {
     it('issueKeyFileNameの使用例が存在すること', () => {
       const {examples} = Update
 
-      const hasIssueKeyFileNameExample = examples.some((ex) => 
-        ex.includes('--issueKeyFileName')
-      )
+      const hasIssueKeyFileNameExample = examples.some((ex) => ex.includes('--issueKeyFileName'))
 
       expect(hasIssueKeyFileNameExample).to.be.true
     })
@@ -112,11 +102,9 @@ describe('issueKeyFileName/issueKeyFolderフラグ', () => {
     it('issueKeyFolderの使用例が存在すること', () => {
       const {examples} = Update
 
-      const hasIssueKeyFolderExample = examples.some((ex) => 
-        ex.includes('--issueKeyFolder')
-      )
+      const hasIssueKeyFolderExample = examples.some((ex) => ex.includes('--issueKeyFolder'))
 
       expect(hasIssueKeyFolderExample).to.be.true
     })
   })
-}) 
+})
