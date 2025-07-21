@@ -64,7 +64,8 @@ export function createCustomFieldsSection(customFields?: Array<{
  * @param options.outputDir 出力ディレクトリ
  * @param options.projectId プロジェクトID
  * @param options.statusId ステータスID
- * @param options.useIssueKeyFolder 課題キーでフォルダを作成するかどうか
+ * @param options.issueKeyFileName ファイル名を課題キーにするかどうか
+ * @param options.issueKeyFolder 課題キーでフォルダを作成するかどうか
  */
 export async function downloadIssues(
   command: Command,
@@ -72,11 +73,12 @@ export async function downloadIssues(
     apiKey: string
     count?: number
     domain: string
+    issueKeyFileName?: boolean
+    issueKeyFolder?: boolean
     lastUpdated?: string
     outputDir: string
     projectId: number
     statusId?: string
-    useIssueKeyFolder?: boolean
   },
 ): Promise<void> {
   const baseUrl = `https://${options.domain}/api/v2`
@@ -260,16 +262,18 @@ export async function downloadIssues(
       let issueFilePath: string
       let issueFileName: string
 
-      if (options.useIssueKeyFolder) {
-        // 年ごとのフォルダ内に、課題キーでフォルダを作成し、その中に課題キー名のMarkdownファイルを保存
+      if (options.issueKeyFolder) {
+        // 年ごとのフォルダ内に、課題キーでフォルダを作成
         const issueKeyDirPath = path.join(yearDirPath, issue.issueKey)
+        // eslint-disable-next-line no-await-in-loop
         await fs.mkdir(issueKeyDirPath, {recursive: true})
         
-        issueFileName = `${issue.issueKey}.md`
+        // ファイル名を課題名（標準）にするか課題キーにするかを決定
+        issueFileName = options.issueKeyFileName ? `${issue.issueKey}.md` : `${sanitizeFileName(issue.summary)}.md`;
         issueFilePath = path.join(issueKeyDirPath, issueFileName)
       } else {
-        // 年ごとのフォルダ内にMarkdownファイルを保存
-        issueFileName = `${sanitizeFileName(issue.summary)}.md`
+        // 年ごとのフォルダ内に、Markdownファイルを作成
+        issueFileName = options.issueKeyFileName ? `${issue.issueKey}.md` : `${sanitizeFileName(issue.summary)}.md`;
         issueFilePath = path.join(yearDirPath, issueFileName)
       }
 

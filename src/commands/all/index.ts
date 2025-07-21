@@ -28,8 +28,14 @@ export default class All extends Command {
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --maxCount 1000
 最大1000件の課題を取得する（デフォルトは5000件）
 `,
-    `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --useIssueKeyFolder
-課題キーでフォルダを作成し、その中に課題キー名のMarkdownファイルを出力する
+    `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFileName
+ファイル名を課題キーにする
+`,
+    `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFolder
+課題キーでフォルダを作成する
+`,
+    `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFileName --issueKeyFolder
+課題キーでフォルダを作成し、ファイル名も課題キーにする
 `,
   ]
   static flags = {
@@ -43,6 +49,14 @@ export default class All extends Command {
     }),
     exclude: Flags.string({
       description: "Exclude the specified types, separated by commas (e.g., 'documents,wiki')",
+      required: false,
+    }),
+    issueKeyFileName: Flags.boolean({
+      description: 'ファイル名を課題キーにする',
+      required: false,
+    }),
+    issueKeyFolder: Flags.boolean({
+      description: '課題キーでフォルダを作成する',
       required: false,
     }),
     maxCount: Flags.integer({
@@ -64,17 +78,13 @@ export default class All extends Command {
       description: 'Backlog project ID or key',
       required: true,
     }),
-    useIssueKeyFolder: Flags.boolean({
-      description: '課題キーでフォルダを作成し、その中に課題キー名のMarkdownファイルを出力する',
-      required: false,
-    }),
   }
 
   async run(): Promise<void> {
     const {flags} = await this.parse(All)
 
     try {
-      const {domain, exclude, maxCount, only, projectIdOrKey, useIssueKeyFolder} = flags
+      const {domain, exclude, issueKeyFileName, issueKeyFolder, maxCount, only, projectIdOrKey} = flags
       const apiKey = flags.apiKey || getApiKey(this)
       const outputRoot = flags.output || './backlog-data'
 
@@ -126,6 +136,8 @@ export default class All extends Command {
           apiKey,
           domain,
           folderType: FolderType.ISSUE,
+          issueKeyFileName,
+          issueKeyFolder,
           outputDir: issueOutput,
           projectIdOrKey,
         })
@@ -136,9 +148,10 @@ export default class All extends Command {
           apiKey,
           count: maxCount,
           domain,
+          issueKeyFileName,
+          issueKeyFolder,
           outputDir: issueOutput,
           projectId,
-          useIssueKeyFolder,
         })
 
         // 課題フォルダの最終更新日時を更新

@@ -17,10 +17,11 @@ interface UpdateFlags {
   documentsOnly?: boolean
   domain?: string
   force?: boolean
+  issueKeyFileName?: boolean
+  issueKeyFolder?: boolean
   issuesOnly?: boolean
   projectIdOrKey?: string
   wikisOnly?: boolean
-  useIssueKeyFolder?: boolean
 }
 
 export default class Update extends Command {
@@ -44,8 +45,14 @@ export default class Update extends Command {
     `<%= config.bin %> <%= command.id %> ./my-project
 指定したディレクトリの設定を使用して更新する
 `,
-    `<%= config.bin %> <%= command.id %> --useIssueKeyFolder
-課題キーでフォルダを作成し、その中に課題キー名のMarkdownファイルを出力する
+    `<%= config.bin %> <%= command.id %> --issueKeyFileName
+ファイル名を課題キーにする
+`,
+    `<%= config.bin %> <%= command.id %> --issueKeyFolder
+課題キーでフォルダを作成する
+`,
+    `<%= config.bin %> <%= command.id %> --issueKeyFileName --issueKeyFolder
+課題キーでフォルダを作成し、ファイル名も課題キーにする
 `,
   ]
   static flags = {
@@ -66,6 +73,14 @@ export default class Update extends Command {
       description: '確認プロンプトをスキップする',
       required: false,
     }),
+    issueKeyFileName: Flags.boolean({
+      description: 'ファイル名を課題キーにする',
+      required: false,
+    }),
+    issueKeyFolder: Flags.boolean({
+      description: '課題キーでフォルダを作成する',
+      required: false,
+    }),
     issuesOnly: Flags.boolean({
       description: '課題のみを更新する',
       required: false,
@@ -76,10 +91,6 @@ export default class Update extends Command {
     }),
     wikisOnly: Flags.boolean({
       description: 'Wikiのみを更新する',
-      required: false,
-    }),
-    useIssueKeyFolder: Flags.boolean({
-      description: '課題キーでフォルダを作成し、その中に課題キー名のMarkdownファイルを出力する',
       required: false,
     }),
   }
@@ -232,7 +243,11 @@ export default class Update extends Command {
     const domain = flags.domain || settings.domain
     const projectIdOrKey = flags.projectIdOrKey || settings.projectIdOrKey
     const {folderType} = settings
-    const {documentsOnly, force, issuesOnly, wikisOnly, useIssueKeyFolder} = flags
+    const {documentsOnly, force, issuesOnly, wikisOnly} = flags
+    
+    // 設定ファイルからオプションを読み込み、コマンドライン引数で上書き
+    const issueKeyFileName = flags.issueKeyFileName ?? settings.issueKeyFileName
+    const issueKeyFolder = flags.issueKeyFolder ?? settings.issueKeyFolder
 
     // 必須パラメータの検証
     if (!domain) {
@@ -289,10 +304,11 @@ export default class Update extends Command {
       await this.updateIssues({
         apiKey,
         domain,
+        issueKeyFileName,
+        issueKeyFolder,
         projectId,
         projectIdOrKey,
         targetDir,
-        useIssueKeyFolder,
       })
     }
 
@@ -359,10 +375,11 @@ export default class Update extends Command {
   private async updateIssues(options: {
     apiKey: string
     domain: string
+    issueKeyFileName?: boolean
+    issueKeyFolder?: boolean
     projectId: number
     projectIdOrKey: string
     targetDir: string
-    useIssueKeyFolder?: boolean
   }): Promise<void> {
     this.log('課題の更新を開始します...')
 
@@ -373,10 +390,11 @@ export default class Update extends Command {
       apiKey: options.apiKey,
       count: 100,
       domain: options.domain,
+      issueKeyFileName: options.issueKeyFileName,
+      issueKeyFolder: options.issueKeyFolder,
       lastUpdated,
       outputDir: options.targetDir,
       projectId: options.projectId,
-      useIssueKeyFolder: options.useIssueKeyFolder,
     })
 
     // 設定ファイルを更新
