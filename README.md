@@ -77,7 +77,7 @@ $ npm install -g backlog-exporter
 $ backlog-exporter COMMAND
 running command...
 $ backlog-exporter (--version)
-backlog-exporter/0.6.1 darwin-arm64 node-v22.17.0
+backlog-exporter/0.7.0 darwin-arm64 node-v22.17.0
 $ backlog-exporter --help [COMMAND]
 USAGE
   $ backlog-exporter COMMAND
@@ -323,50 +323,22 @@ $ backlog-exporter update --apiKey YOUR_API_KEY
 # コマンド
 
 <!-- commands -->
-- [backlog-exporter](#backlog-exporter)
-- [概要](#概要)
-- [インストール](#インストール)
-- [使用方法](#使用方法)
-  - [基本的な使用例](#基本的な使用例)
-- [課題のエクスポート](#課題のエクスポート)
-  - [カスタム属性の対応](#カスタム属性の対応)
-    - [対応している値の型](#対応している値の型)
-    - [表示形式](#表示形式)
-- [Wiki のエクスポート](#wiki-のエクスポート)
-- [ドキュメント のエクスポート](#ドキュメント-のエクスポート)
-  - [ドキュメントの出力方法](#ドキュメントの出力方法)
-    - [ディレクトリ構造の保持](#ディレクトリ構造の保持)
-    - [出力例](#出力例)
-    - [特徴](#特徴)
-- [課題・Wiki・ドキュメント の一括エクスポート](#課題wikiドキュメント-の一括エクスポート)
-  - [エクスポート対象の制御](#エクスポート対象の制御)
-    - [--only フラグ](#--only-フラグ)
-    - [--exclude フラグ](#--exclude-フラグ)
-- [データの更新](#データの更新)
-- [コマンド](#コマンド)
-  - [`backlog-exporter all`](#backlog-exporter-all)
-  - [`backlog-exporter document`](#backlog-exporter-document)
-  - [`backlog-exporter help [COMMAND]`](#backlog-exporter-help-command)
-  - [`backlog-exporter issue`](#backlog-exporter-issue)
-  - [`backlog-exporter plugins`](#backlog-exporter-plugins)
-  - [`backlog-exporter plugins add PLUGIN`](#backlog-exporter-plugins-add-plugin)
-  - [`backlog-exporter plugins:inspect PLUGIN...`](#backlog-exporter-pluginsinspect-plugin)
-  - [`backlog-exporter plugins install PLUGIN`](#backlog-exporter-plugins-install-plugin)
-  - [`backlog-exporter plugins link PATH`](#backlog-exporter-plugins-link-path)
-  - [`backlog-exporter plugins remove [PLUGIN]`](#backlog-exporter-plugins-remove-plugin)
-  - [`backlog-exporter plugins reset`](#backlog-exporter-plugins-reset)
-  - [`backlog-exporter plugins uninstall [PLUGIN]`](#backlog-exporter-plugins-uninstall-plugin)
-  - [`backlog-exporter plugins unlink [PLUGIN]`](#backlog-exporter-plugins-unlink-plugin)
-  - [`backlog-exporter plugins update`](#backlog-exporter-plugins-update)
-  - [`backlog-exporter update [DIRECTORY]`](#backlog-exporter-update-directory)
-  - [`backlog-exporter wiki`](#backlog-exporter-wiki)
-- [出力形式](#出力形式)
-  - [課題の出力形式](#課題の出力形式)
-  - [Wiki の出力形式](#wiki-の出力形式)
-  - [ドキュメント の出力形式](#ドキュメント-の出力形式)
-- [その他の特徴](#その他の特徴)
-  - [開発への貢献](#開発への貢献)
-  - [ライセンス](#ライセンス)
+* [`backlog-exporter all`](#backlog-exporter-all)
+* [`backlog-exporter document`](#backlog-exporter-document)
+* [`backlog-exporter help [COMMAND]`](#backlog-exporter-help-command)
+* [`backlog-exporter issue`](#backlog-exporter-issue)
+* [`backlog-exporter plugins`](#backlog-exporter-plugins)
+* [`backlog-exporter plugins add PLUGIN`](#backlog-exporter-plugins-add-plugin)
+* [`backlog-exporter plugins:inspect PLUGIN...`](#backlog-exporter-pluginsinspect-plugin)
+* [`backlog-exporter plugins install PLUGIN`](#backlog-exporter-plugins-install-plugin)
+* [`backlog-exporter plugins link PATH`](#backlog-exporter-plugins-link-path)
+* [`backlog-exporter plugins remove [PLUGIN]`](#backlog-exporter-plugins-remove-plugin)
+* [`backlog-exporter plugins reset`](#backlog-exporter-plugins-reset)
+* [`backlog-exporter plugins uninstall [PLUGIN]`](#backlog-exporter-plugins-uninstall-plugin)
+* [`backlog-exporter plugins unlink [PLUGIN]`](#backlog-exporter-plugins-unlink-plugin)
+* [`backlog-exporter plugins update`](#backlog-exporter-plugins-update)
+* [`backlog-exporter update [DIRECTORY]`](#backlog-exporter-update-directory)
+* [`backlog-exporter wiki`](#backlog-exporter-wiki)
 
 ## `backlog-exporter all`
 
@@ -417,7 +389,7 @@ EXAMPLES
   課題キーでフォルダを作成し、ファイル名も課題キーにする
 ```
 
-_See code: [src/commands/all/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.6.1/src/commands/all/index.ts)_
+_See code: [src/commands/all/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.7.0/src/commands/all/index.ts)_
 
 ## `backlog-exporter document`
 
@@ -449,7 +421,7 @@ EXAMPLES
   キーワード「仕様書」を含むドキュメントのみを取得する
 ```
 
-_See code: [src/commands/document/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.6.1/src/commands/document/index.ts)_
+_See code: [src/commands/document/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.7.0/src/commands/document/index.ts)_
 
 ## `backlog-exporter help [COMMAND]`
 
@@ -516,7 +488,7 @@ EXAMPLES
   課題キーでフォルダを作成し、ファイル名も課題キーにする
 ```
 
-_See code: [src/commands/issue/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.6.1/src/commands/issue/index.ts)_
+_See code: [src/commands/issue/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.7.0/src/commands/issue/index.ts)_
 
 ## `backlog-exporter plugins`
 
@@ -857,7 +829,7 @@ EXAMPLES
   課題キーでフォルダを作成し、ファイル名も課題キーにする
 ```
 
-_See code: [src/commands/update/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.6.1/src/commands/update/index.ts)_
+_See code: [src/commands/update/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.7.0/src/commands/update/index.ts)_
 
 ## `backlog-exporter wiki`
 
@@ -884,7 +856,7 @@ EXAMPLES
   指定したディレクトリにWikiを保存する
 ```
 
-_See code: [src/commands/wiki/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.6.1/src/commands/wiki/index.ts)_
+_See code: [src/commands/wiki/index.ts](https://github.com/ShuntaToda/backlog-exporter/blob/v0.7.0/src/commands/wiki/index.ts)_
 <!-- commandsstop -->
 
 # 出力形式

@@ -1,7 +1,7 @@
 {
   "name": "backlog-exporter",
   "description": "A new CLI generated with oclif",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "author": "ShuntaToda",
   "bin": {
     "backlog-exporter": "bin/run.js"
