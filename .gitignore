@@ -14,3 +14,5 @@ pnpm-lock.yaml
 
 .env
 CLAUDE.md
+
+tsconfig.tsbuildinfo

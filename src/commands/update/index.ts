@@ -246,8 +246,8 @@ export default class Update extends Command {
     const {documentsOnly, force, issuesOnly, wikisOnly} = flags
 
     // 設定ファイルからオプションを読み込み、コマンドライン引数で上書き
-    const issueKeyFileName = flags.issueKeyFileName ?? settings.issueKeyFileName
-    const issueKeyFolder = flags.issueKeyFolder ?? settings.issueKeyFolder
+    const issueKeyFileName = flags.issueKeyFileName ?? settings.issueKeyFileName ?? false
+    const issueKeyFolder = flags.issueKeyFolder ?? settings.issueKeyFolder ?? false
 
     // 必須パラメータの検証
     if (!domain) {
