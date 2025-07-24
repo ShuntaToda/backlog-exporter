@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: '開発ドキュメント'
+    url: https://github.com/ShuntaToda/backlog-exporter/blob/main/DEVELOPMENT.md
+    about: 'プロジェクトのドキュメントを確認してください。'
+  - name: 'コントリビューションガイド'
+    url: https://github.com/ShuntaToda/backlog-exporter/blob/main/docs/CONTRIBUTING.md
+    about: 'プロジェクトへの貢献方法について確認してください。'

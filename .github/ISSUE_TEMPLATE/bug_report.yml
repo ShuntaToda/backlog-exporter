@@ -1,0 +1,113 @@
+name: バグレポート
+description: バグを報告するためのテンプレート
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        # バグレポート
+        このテンプレートを使用して、バグの詳細を報告してください。
+        できるだけ詳細な情報を提供することで、問題の解決が早くなります。
+
+  - type: textarea
+    id: description
+    attributes:
+      label: バグの説明
+      description: バグの内容を簡潔に説明してください。
+      placeholder: 例）コマンド実行時にエラーが発生する
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 再現手順
+      description: このバグを再現するための手順を詳細に記載してください。
+      placeholder: |
+        1. 次のコマンドを実行: `npx backlog-exporter ...`
+        2. 次のオプションを指定: `--option value`
+        3. エラーが表示される
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待される動作
+      description: 正常に動作した場合、どのような結果が期待されますか？
+      placeholder: 例）エラーなしでエクスポートが完了する
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 実際の動作
+      description: 実際に何が起きましたか？エラーメッセージがあれば記載してください。
+      placeholder: '例）次のエラーが表示される：`Error: ...`'
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: バージョン
+      description: 使用しているbacklog-exporterのバージョンを記載してください。
+      placeholder: 例）1.0.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: 実行環境（OS）
+      description: どのOSで問題が発生しましたか？
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - その他（詳細を環境情報に記載）
+    validations:
+      required: true
+
+  - type: input
+    id: nodejs
+    attributes:
+      label: Node.jsバージョン
+      description: 使用しているNode.jsのバージョンを記載してください。
+      placeholder: 例）16.14.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 追加の環境情報
+      description: その他の環境情報があれば記載してください。
+      placeholder: |
+        - npm/yarnのバージョン
+        - 関連するライブラリのバージョン
+        - その他の関連情報
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: ログ出力
+      description: 関連するログ出力があれば記載してください。
+      placeholder: ログ出力をここに貼り付けてください
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: 確認事項
+      description: 報告を送信する前に、以下の項目を確認してください。
+      options:
+        - label: 既存のIssueで同様の問題が報告されていないことを確認しました
+          required: true
+        - label: 最新バージョンで問題が再現することを確認しました
+          required: true
