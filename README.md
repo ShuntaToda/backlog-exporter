@@ -7,55 +7,56 @@ Backlog のデータをエクスポートするためのコマンドラインツ
 [![Downloads/week](https://img.shields.io/npm/dw/backlog-exporter.svg)](https://npmjs.org/package/backlog-exporter)
 
 <!-- toc -->
-* [backlog-exporter](#backlog-exporter)
-* [概要](#概要)
-* [インストール](#インストール)
-* [使用方法](#使用方法)
-* [課題のエクスポート](#課題のエクスポート)
-* [Wikiのエクスポート](#wikiのエクスポート)
-* [ドキュメントのエクスポート](#ドキュメントのエクスポート)
-* [課題・Wiki・ドキュメントの一括エクスポート](#課題wikiドキュメントの一括エクスポート)
-* [特定のデータタイプのみをエクスポート（onlyフラグ）](#特定のデータタイプのみをエクスポートonlyフラグ)
-* [特定のデータタイプを除外してエクスポート（excludeフラグ）](#特定のデータタイプを除外してエクスポートexcludeフラグ)
-* [データの更新](#データの更新)
-* [npxを使った課題のエクスポート](#npxを使った課題のエクスポート)
-* [npxを使ったデータの更新](#npxを使ったデータの更新)
-* [課題のエクスポート](#課題のエクスポート)
-* [基本的な使用方法](#基本的な使用方法)
-* [出力先を指定](#出力先を指定)
-* [Markdownファイル名を課題キーにする](#markdownファイル名を課題キーにする)
-* [課題キーでフォルダを作成する](#課題キーでフォルダを作成する)
-* [課題キーでフォルダを作成し、Markdownファイル名も課題キーにする](#課題キーでフォルダを作成しmarkdownファイル名も課題キーにする)
-* [Wiki のエクスポート](#wiki-のエクスポート)
-* [基本的な使用方法](#基本的な使用方法)
-* [出力先を指定](#出力先を指定)
-* [ドキュメント のエクスポート](#ドキュメント-のエクスポート)
-* [基本的な使用方法](#基本的な使用方法)
-* [出力先を指定](#出力先を指定)
-* [キーワード検索](#キーワード検索)
-* [課題・Wiki・ドキュメント の一括エクスポート](#課題wikiドキュメント-の一括エクスポート)
-* [基本的な使用方法](#基本的な使用方法)
-* [出力先を指定](#出力先を指定)
-* [特定のデータタイプのみをエクスポート（onlyフラグ）](#特定のデータタイプのみをエクスポートonlyフラグ)
-* [特定のデータタイプを除外してエクスポート（excludeフラグ）](#特定のデータタイプを除外してエクスポートexcludeフラグ)
-* [課題とWikiのみをエクスポート](#課題とwikiのみをエクスポート)
-* [ドキュメントのみをエクスポート](#ドキュメントのみをエクスポート)
-* [ドキュメント以外（課題とWiki）をエクスポート](#ドキュメント以外課題とwikiをエクスポート)
-* [課題以外（WikiとDocuments）をエクスポート](#課題以外wikiとdocumentsをエクスポート)
-* [データの更新](#データの更新)
-* [カレントディレクトリとそのサブディレクトリのデータを更新](#カレントディレクトリとそのサブディレクトリのデータを更新)
-* [指定したディレクトリとそのサブディレクトリのデータを更新](#指定したディレクトリとそのサブディレクトリのデータを更新)
-* [確認プロンプトをスキップして更新](#確認プロンプトをスキップして更新)
-* [課題のみを更新](#課題のみを更新)
-* [Wikiのみを更新](#wikiのみを更新)
-* [ドキュメントのみを更新](#ドキュメントのみを更新)
-* [APIキーを指定して更新](#apiキーを指定して更新)
-* [コマンド](#コマンド)
-* [出力形式](#出力形式)
-* [課題のタイトル](#課題のタイトル)
-* [Wiki のタイトル](#wiki-のタイトル)
-* [ドキュメントのタイトル](#ドキュメントのタイトル)
-* [その他の特徴](#その他の特徴)
+
+- [backlog-exporter](#backlog-exporter)
+- [概要](#概要)
+- [インストール](#インストール)
+- [使用方法](#使用方法)
+- [課題のエクスポート](#課題のエクスポート)
+- [Wikiのエクスポート](#wikiのエクスポート)
+- [ドキュメントのエクスポート](#ドキュメントのエクスポート)
+- [課題・Wiki・ドキュメントの一括エクスポート](#課題wikiドキュメントの一括エクスポート)
+- [特定のデータタイプのみをエクスポート（onlyフラグ）](#特定のデータタイプのみをエクスポートonlyフラグ)
+- [特定のデータタイプを除外してエクスポート（excludeフラグ）](#特定のデータタイプを除外してエクスポートexcludeフラグ)
+- [データの更新](#データの更新)
+- [npxを使った課題のエクスポート](#npxを使った課題のエクスポート)
+- [npxを使ったデータの更新](#npxを使ったデータの更新)
+- [課題のエクスポート](#課題のエクスポート)
+- [基本的な使用方法](#基本的な使用方法)
+- [出力先を指定](#出力先を指定)
+- [Markdownファイル名を課題キーにする](#markdownファイル名を課題キーにする)
+- [課題キーでフォルダを作成する](#課題キーでフォルダを作成する)
+- [課題キーでフォルダを作成し、Markdownファイル名も課題キーにする](#課題キーでフォルダを作成しmarkdownファイル名も課題キーにする)
+- [Wiki のエクスポート](#wiki-のエクスポート)
+- [基本的な使用方法](#基本的な使用方法)
+- [出力先を指定](#出力先を指定)
+- [ドキュメント のエクスポート](#ドキュメント-のエクスポート)
+- [基本的な使用方法](#基本的な使用方法)
+- [出力先を指定](#出力先を指定)
+- [キーワード検索](#キーワード検索)
+- [課題・Wiki・ドキュメント の一括エクスポート](#課題wikiドキュメント-の一括エクスポート)
+- [基本的な使用方法](#基本的な使用方法)
+- [出力先を指定](#出力先を指定)
+- [特定のデータタイプのみをエクスポート（onlyフラグ）](#特定のデータタイプのみをエクスポートonlyフラグ)
+- [特定のデータタイプを除外してエクスポート（excludeフラグ）](#特定のデータタイプを除外してエクスポートexcludeフラグ)
+- [課題とWikiのみをエクスポート](#課題とwikiのみをエクスポート)
+- [ドキュメントのみをエクスポート](#ドキュメントのみをエクスポート)
+- [ドキュメント以外（課題とWiki）をエクスポート](#ドキュメント以外課題とwikiをエクスポート)
+- [課題以外（WikiとDocuments）をエクスポート](#課題以外wikiとdocumentsをエクスポート)
+- [データの更新](#データの更新)
+- [カレントディレクトリとそのサブディレクトリのデータを更新](#カレントディレクトリとそのサブディレクトリのデータを更新)
+- [指定したディレクトリとそのサブディレクトリのデータを更新](#指定したディレクトリとそのサブディレクトリのデータを更新)
+- [確認プロンプトをスキップして更新](#確認プロンプトをスキップして更新)
+- [課題のみを更新](#課題のみを更新)
+- [Wikiのみを更新](#wikiのみを更新)
+- [ドキュメントのみを更新](#ドキュメントのみを更新)
+- [APIキーを指定して更新](#apiキーを指定して更新)
+- [コマンド](#コマンド)
+- [出力形式](#出力形式)
+- [課題のタイトル](#課題のタイトル)
+- [Wiki のタイトル](#wiki-のタイトル)
+- [ドキュメントのタイトル](#ドキュメントのタイトル)
+- [その他の特徴](#その他の特徴)
 <!-- tocstop -->
 
 # 概要
@@ -72,6 +73,7 @@ backlog-exporter は、Backlog のデータをローカルにエクスポート�
 # インストール
 
 <!-- usage -->
+
 ```sh-session
 $ npm install -g backlog-exporter
 $ backlog-exporter COMMAND
@@ -83,6 +85,7 @@ USAGE
   $ backlog-exporter COMMAND
 ...
 ```
+
 <!-- usagestop -->
 
 # 使用方法
@@ -323,17 +326,18 @@ $ backlog-exporter update --apiKey YOUR_API_KEY
 # コマンド
 
 <!-- commands -->
-* [`backlog-exporter help [COMMAND]`](#backlog-exporter-help-command)
-* [`backlog-exporter plugins`](#backlog-exporter-plugins)
-* [`backlog-exporter plugins add PLUGIN`](#backlog-exporter-plugins-add-plugin)
-* [`backlog-exporter plugins:inspect PLUGIN...`](#backlog-exporter-pluginsinspect-plugin)
-* [`backlog-exporter plugins install PLUGIN`](#backlog-exporter-plugins-install-plugin)
-* [`backlog-exporter plugins link PATH`](#backlog-exporter-plugins-link-path)
-* [`backlog-exporter plugins remove [PLUGIN]`](#backlog-exporter-plugins-remove-plugin)
-* [`backlog-exporter plugins reset`](#backlog-exporter-plugins-reset)
-* [`backlog-exporter plugins uninstall [PLUGIN]`](#backlog-exporter-plugins-uninstall-plugin)
-* [`backlog-exporter plugins unlink [PLUGIN]`](#backlog-exporter-plugins-unlink-plugin)
-* [`backlog-exporter plugins update`](#backlog-exporter-plugins-update)
+
+- [`backlog-exporter help [COMMAND]`](#backlog-exporter-help-command)
+- [`backlog-exporter plugins`](#backlog-exporter-plugins)
+- [`backlog-exporter plugins add PLUGIN`](#backlog-exporter-plugins-add-plugin)
+- [`backlog-exporter plugins:inspect PLUGIN...`](#backlog-exporter-pluginsinspect-plugin)
+- [`backlog-exporter plugins install PLUGIN`](#backlog-exporter-plugins-install-plugin)
+- [`backlog-exporter plugins link PATH`](#backlog-exporter-plugins-link-path)
+- [`backlog-exporter plugins remove [PLUGIN]`](#backlog-exporter-plugins-remove-plugin)
+- [`backlog-exporter plugins reset`](#backlog-exporter-plugins-reset)
+- [`backlog-exporter plugins uninstall [PLUGIN]`](#backlog-exporter-plugins-uninstall-plugin)
+- [`backlog-exporter plugins unlink [PLUGIN]`](#backlog-exporter-plugins-unlink-plugin)
+- [`backlog-exporter plugins update`](#backlog-exporter-plugins-update)
 
 ## `backlog-exporter help [COMMAND]`
 
@@ -644,6 +648,7 @@ DESCRIPTION
 ```
 
 _See code: [@oclif/plugin-plugins](https://github.com/oclif/plugin-plugins/blob/v5.4.34/src/commands/plugins/update.ts)_
+
 <!-- commandsstop -->
 
 # 出力形式

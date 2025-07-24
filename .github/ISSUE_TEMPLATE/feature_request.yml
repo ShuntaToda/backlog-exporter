@@ -1,6 +1,6 @@
 name: 機能要求
 description: 新機能や改善の提案を行うためのテンプレート
-labels: ["enhancement"]
+labels: ['enhancement']
 body:
   - type: markdown
     attributes:

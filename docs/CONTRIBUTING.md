@@ -114,6 +114,7 @@ graph TD
 ##### チェックが失敗した場合の詳細な対処法
 
 **1. Lintエラーの対処**
+
 ```bash
 # エラー確認
 npm run lint
@@ -125,6 +126,7 @@ npm run lint -- --fix
 ```
 
 **2. テストエラーの対処**
+
 ```bash
 # 失敗したテストを確認
 npm test
@@ -137,6 +139,7 @@ npm test -- --reporter spec
 ```
 
 **3. ビルドエラーの対処**
+
 ```bash
 # ビルドエラーの詳細確認
 npm run build
@@ -149,6 +152,7 @@ npm ls
 ```
 
 **4. フォーマットエラーの対処**
+
 ```bash
 # フォーマット問題の確認
 npm run format:check
@@ -180,6 +184,7 @@ src/
 [GitHub Issues](https://github.com/ShuntaToda/backlog-exporter/issues)でバグを報告してください。
 
 以下の情報を含めてください：
+
 - OS・Node.jsバージョン
 - 再現手順
 - 期待される動作と実際の動作
@@ -188,6 +193,7 @@ src/
 ### 機能提案
 
 新機能の提案もIssuesで受け付けています。
+
 - 機能の説明
 - 使用場面
 - 実装案（もしあれば）
@@ -198,19 +204,21 @@ src/
 
 1. **リポジトリをフォーク**
    - GitHubでリポジトリをフォークしてください
-   
 2. **ローカルにクローン**
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/backlog-exporter.git
    cd backlog-exporter
    ```
 
 3. **依存関係をインストール**
+
    ```bash
    npm install
    ```
 
 4. **上流リポジトリの追加**
+
    ```bash
    git remote add upstream https://github.com/ShuntaToda/backlog-exporter.git
    ```
@@ -225,10 +233,11 @@ src/
 #### 2. 開発作業
 
 1. **フィーチャーブランチを作成**
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
-   
+
    ブランチ名の規則：
    - `feature/機能名` - 新機能追加
    - `fix/修正内容` - バグ修正
@@ -243,12 +252,14 @@ src/
    - コードコメントを適切に追加してください
 
 3. **ローカルでの品質チェック**
+
    ```bash
    # 全ての品質チェックを実行
    npm run format:check && npm run lint && npm test && npm run build
    ```
 
 4. **定期的に変更をコミット**
+
    ```bash
    git add .
    git commit -m "feat: 機能の説明"
@@ -263,6 +274,7 @@ src/
 #### 3. Pull Request作成
 
 1. **最終的な品質チェック**
+
    ```bash
    # 最新の上流変更を取り込む
    git fetch upstream
@@ -273,11 +285,12 @@ src/
    ```
 
 2. **変更をコミット**
+
    ```bash
    git add .
    git commit -m "feat: 機能の説明"
    ```
-   
+
    コミットメッセージの規則：
    - `feat:` - 新機能
    - `fix:` - バグ修正
@@ -289,6 +302,7 @@ src/
    - `chore:` - ビルドプロセスやツール変更
 
 3. **フォークにプッシュ**
+
    ```bash
    git push origin feature/your-feature-name
    ```
@@ -304,30 +318,35 @@ src/
 ##### レビューの観点と基準
 
 **コード品質**
+
 - **可読性**: 変数名・関数名が適切で、コードの意図が明確
 - **保守性**: 適切な関数分割と責任の分離
 - **一貫性**: プロジェクトの既存コードスタイルとの整合性
 - **エラーハンドリング**: 適切な例外処理とエラーメッセージ
 
 **機能性**
+
 - **要件充足**: Issueや仕様に対する適切な実装
 - **エッジケース**: 境界値や異常系の考慮
 - **後方互換性**: 既存機能への影響の最小化
 - **パフォーマンス**: 処理効率とメモリ使用量の最適化
 
 **テスト品質**
+
 - **カバレッジ**: 新機能に対する適切なテストの存在
 - **テストケース**: 正常系・異常系の網羅
 - **テストの可読性**: テストコードの理解しやすさ
 - **モック・スタブ**: 外部依存の適切な分離
 
 **セキュリティ**
+
 - **入力検証**: ユーザー入力の適切なバリデーション
 - **機密情報**: ハードコードされた認証情報の排除
 - **依存関係**: 脆弱性のあるパッケージの使用回避
 - **権限管理**: 適切なアクセス制御
 
 **ドキュメント**
+
 - **コメント**: 複雑なロジックに対する適切な説明
 - **API文書**: 公開関数・メソッドの使用方法説明
 - **更新**: 変更に伴うREADMEなどの更新
@@ -358,6 +377,7 @@ graph TD
 ##### マージ条件の詳細
 
 **必須条件**
+
 - [ ] 全てのGitHub Actionsチェックが通過
 - [ ] 最低1名のメンテナーによる承認
 - [ ] コンフリクトが解決済み
@@ -366,6 +386,7 @@ graph TD
 - [ ] 新機能に対するテストの追加
 
 **推奨条件**
+
 - [ ] テストカバレッジの維持・向上
 - [ ] パフォーマンスの劣化なし
 - [ ] 破壊的変更の事前告知
@@ -375,24 +396,28 @@ graph TD
 ##### 特殊なケースの対応
 
 **緊急修正（Hotfix）**
+
 - 重大なバグの場合は迅速レビューを実施
 - 最小限の修正に留める
 - 修正後に包括的なテストを実施
 - `hotfix/` プレフィックスのブランチを使用
 
 **大規模な変更**
+
 - 事前にIssueで設計を議論
 - 段階的なPull Requestに分割
 - 早期のフィードバックを求める
 - 設計ドキュメントを作成
 
 **実験的機能**
+
 - フィーチャーフラグの使用を検討
 - 十分なテストとドキュメントを用意
 - 段階的なロールアウト計画を策定
 - `experimental/` プレフィックスのブランチを使用
 
 **依存関係の更新**
+
 - セキュリティ更新は優先的に対応
 - 破壊的変更を含む更新は慎重に検討
 - 更新による影響範囲を明確に記載
@@ -446,20 +471,22 @@ npm test -- --coverage
 describe('issue command', () => {
   it('正しいパラメータで実行された場合、課題をエクスポートする', async () => {
     // 前提条件
-    const mockBacklog = { /* ... */ };
-    
+    const mockBacklog = {
+      /* ... */
+    }
+
     // 実行
-    const result = await exportIssue(params);
-    
+    const result = await exportIssue(params)
+
     // 検証
-    expect(result).to.have.property('success', true);
-    expect(fs.existsSync(outputPath)).to.be.true;
-  });
-  
+    expect(result).to.have.property('success', true)
+    expect(fs.existsSync(outputPath)).to.be.true
+  })
+
   it('無効なAPIキーの場合、適切なエラーを返す', async () => {
     // テスト内容
-  });
-});
+  })
+})
 ```
 
 ## 技術仕様

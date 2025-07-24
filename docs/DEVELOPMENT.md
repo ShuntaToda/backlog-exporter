@@ -32,6 +32,7 @@ backlog-exporterの開発には以下のソフトウェアが必要です：
 - **Node.js**: バージョン18.0.0以上
   - [Node.js公式サイト](https://nodejs.org/)からダウンロードしてインストール
   - または[nvm](https://github.com/nvm-sh/nvm)を使用して管理することを推奨
+
   ```bash
   # nvmを使用してNode.jsをインストール
   nvm install 18
@@ -57,6 +58,7 @@ backlog-exporterの開発には以下のソフトウェアが必要です：
    - 右上の「Fork」ボタンをクリック
 
 2. フォークしたリポジトリをローカルにクローン
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/backlog-exporter.git
    cd backlog-exporter
@@ -80,6 +82,7 @@ npm install
 ### 環境変数の設定
 
 1. `.env.example`ファイルをコピーして`.env`ファイルを作成
+
    ```bash
    cp .env.example .env
    ```
@@ -212,6 +215,7 @@ VSCodeでデバッグするための設定ファイル`.vscode/launch.json`が�
 ```
 
 使用方法：
+
 1. VSCodeの「実行とデバッグ」パネルを開く
 2. 「Debug CLI」または「Debug Current File」を選択
 3. F5キーを押してデバッグを開始
@@ -222,36 +226,36 @@ VSCodeでデバッグするための設定ファイル`.vscode/launch.json`が�
 
 ```typescript
 // 標準的なコンソール出力
-console.log('デバッグ情報:', 変数);
+console.log('デバッグ情報:', 変数)
 
 // 詳細なオブジェクト情報
-console.dir(オブジェクト, { depth: null, colors: true });
+console.dir(オブジェクト, {depth: null, colors: true})
 
 // エラー情報
-console.error('エラー発生:', エラー);
+console.error('エラー発生:', エラー)
 
 // パフォーマンス計測
-console.time('処理名');
+console.time('処理名')
 // 処理
-console.timeEnd('処理名');
+console.timeEnd('処理名')
 ```
 
 プロジェクトには`src/utils/log.ts`にロガーが実装されています：
 
 ```typescript
-import { log } from '../utils/log';
+import {log} from '../utils/log'
 
 // 情報ログ
-log.info('情報メッセージ');
+log.info('情報メッセージ')
 
 // 警告ログ
-log.warn('警告メッセージ');
+log.warn('警告メッセージ')
 
 // エラーログ
-log.error('エラーメッセージ');
+log.error('エラーメッセージ')
 
 // デバッグログ（DEBUG環境変数が設定されている場合のみ出力）
-log.debug('デバッグ情報');
+log.debug('デバッグ情報')
 ```
 
 デバッグログを有効にするには：
@@ -287,12 +291,7 @@ VSCodeでテストをデバッグする場合は、`.vscode/launch.json`に以�
   "request": "launch",
   "name": "Debug Tests",
   "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
-  "args": [
-    "--timeout",
-    "999999",
-    "--colors",
-    "${workspaceFolder}/test/**/*.test.ts"
-  ],
+  "args": ["--timeout", "999999", "--colors", "${workspaceFolder}/test/**/*.test.ts"],
   "preLaunchTask": "npm: build",
   "sourceMaps": true,
   "outFiles": ["${workspaceFolder}/dist/**/*.js"]
@@ -308,6 +307,7 @@ VSCodeでテストをデバッグする場合は、`.vscode/launch.json`に以�
 **症状**: `npm install`実行時にエラーが発生する
 
 **解決策**:
+
 ```bash
 # npmキャッシュのクリア
 npm cache clean --force
@@ -322,6 +322,7 @@ npm install
 **症状**: `npm run build`実行時に型エラーが発生する
 
 **解決策**:
+
 ```bash
 # TypeScriptバージョンの確認
 npx tsc --version
@@ -335,6 +336,7 @@ npx tsc --noEmit
 **症状**: `npm test`実行時にテストが失敗する
 
 **解決策**:
+
 ```bash
 # 特定のテストのみ実行して詳細を確認
 npm test -- --grep "失敗するテスト名" --reporter spec
@@ -348,6 +350,7 @@ npm test -- --grep "失敗するテスト名" --reporter spec
 **症状**: `node ./bin/run.js`実行時にエラーが発生する
 
 **解決策**:
+
 ```bash
 # 環境変数が正しく設定されているか確認
 cat .env
