@@ -1,0 +1,156 @@
+name: Pull Request Checks
+
+# Pull Request作成・更新時にワークフローを実行
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  quality-checks:
+    name: 品質チェック
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリのチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.jsのセットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - name: 依存関係のインストール
+        run: npm ci
+
+      # キャッシュの設定
+      - name: npm キャッシュの設定
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      # Lintチェック
+      - name: Lintチェックの実行
+        id: lint
+        run: npm run lint
+        continue-on-error: true
+
+      # ビルド確認
+      - name: ビルドの確認
+        id: build
+        run: npm run build
+        continue-on-error: true
+
+      # フォーマットチェック
+      - name: コードフォーマットの確認
+        id: format
+        run: npm run format:check
+        continue-on-error: true
+
+      # エラー時のフィードバック
+      - name: チェック結果のフィードバック
+        if: steps.lint.outcome == 'failure' || steps.build.outcome == 'failure' || steps.format.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const errors = [];
+
+            if ('${{ steps.lint.outcome }}' === 'failure') {
+              errors.push('### ⚠️ Lintエラーが検出されました\n\n' +
+                '以下のコマンドでローカルでLintを実行して修正してください：\n```bash\nnpm run lint\n```\n\n');
+            }
+
+            if ('${{ steps.build.outcome }}' === 'failure') {
+              errors.push('### ⚠️ ビルドエラーが検出されました\n\n' +
+                '以下のコマンドでローカルでビルドを実行して修正してください：\n```bash\nnpm run build\n```\n\n');
+            }
+
+            if ('${{ steps.format.outcome }}' === 'failure') {
+              errors.push('### ⚠️ フォーマットエラーが検出されました\n\n' +
+                '以下のコマンドでコードフォーマットを修正してください：\n```bash\nnpm run format\n```\n\n');
+            }
+
+            if (errors.length > 0) {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: '## 🔍 品質チェックの結果\n\n' + errors.join('\n') +
+                  '\n\n修正後、再度プッシュすると自動的にチェックが再実行されます。'
+              });
+            }
+
+      # 全てのチェックが失敗した場合はジョブを失敗させる
+      - name: チェック結果の確認
+        if: steps.lint.outcome == 'failure' || steps.build.outcome == 'failure' || steps.format.outcome == 'failure'
+        run: exit 1
+
+  # テスト実行を別ジョブとして並列実行
+  tests:
+    name: テスト実行
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリのチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.jsのセットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - name: 依存関係のインストール
+        run: npm ci
+
+      # テスト実行
+      - name: テストの実行
+        id: test
+        run: npm test
+        continue-on-error: true
+
+      # テストエラー時のフィードバック
+      - name: テスト結果のフィードバック
+        if: steps.test.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '## ❌ テストが失敗しました\n\n' +
+                '以下のコマンドでローカルでテストを実行して修正してください：\n```bash\nnpm test\n```\n\n' +
+                'テストの詳細なログを確認し、失敗したテストケースを修正してください。\n\n' +
+                '修正後、再度プッシュすると自動的にテストが再実行されます。'
+            });
+
+      # テストが失敗した場合はジョブを失敗させる
+      - name: テスト結果の確認
+        if: steps.test.outcome == 'failure'
+        run: exit 1
+
+  # 全てのチェックが成功した場合の通知
+  success-notification:
+    name: 成功通知
+    needs: [quality-checks, tests]
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: 成功メッセージの投稿
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '## ✅ 全てのチェックが成功しました！\n\n' +
+                '品質チェックとテストが正常に完了しました。レビュー準備が整いました。\n\n' +
+                'レビュアーはこのPull Requestをレビューできます。'
+            });
