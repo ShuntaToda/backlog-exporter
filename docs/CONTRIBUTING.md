@@ -235,7 +235,7 @@ src/
 1. **フィーチャーブランチを作成**
 
    ```bash
-   git checkout -b feature/your-feature-name
+   git switch -c feature/your-feature-name
    ```
 
    ブランチ名の規則：
