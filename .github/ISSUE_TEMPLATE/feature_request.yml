@@ -1,0 +1,99 @@
+name: 機能要求
+description: 新機能や改善の提案を行うためのテンプレート
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        # 機能要求
+        このテンプレートを使用して、新機能や改善の提案を行ってください。
+        具体的な使用例や受け入れ基準を含めることで、提案の理解が深まります。
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 機能の詳細
+      description: 提案する機能について詳細に説明してください。
+      placeholder: 例）Backlogのカスタムフィールドをエクスポートする機能が欲しい
+    validations:
+      required: true
+
+  - type: textarea
+    id: usecase
+    attributes:
+      label: 使用例
+      description: この機能がどのように使用されるか、具体的な例を示してください。
+      placeholder: |
+        例）
+        ```
+        npx backlog-exporter --custom-fields --project PROJECT_KEY
+        ```
+        これにより、プロジェクトのカスタムフィールド情報も含めてエクスポートできる。
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 受け入れ基準
+      description: この機能が完成したと判断するための基準を記載してください。
+      placeholder: |
+        - カスタムフィールドの情報がJSONファイルに含まれる
+        - カスタムフィールドの型（文字列、数値、日付など）が正しく保持される
+        - コマンドラインオプションで特定のカスタムフィールドのみを選択できる
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 優先度
+      description: この機能の優先度をどのように考えていますか？
+      options:
+        - 低（あれば便利）
+        - 中（重要だが緊急ではない）
+        - 高（重要かつ早急に必要）
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: 実装案
+      description: 実装方法について何かアイデアがあれば記載してください。
+      placeholder: |
+        例）
+        - Backlog APIの`/api/v2/projects/:projectIdOrKey/customFields`エンドポイントを使用
+        - 既存のエクスポート処理に統合する方法
+        - 必要な新しいコマンドラインオプション
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 代替案
+      description: 検討した他の解決策や代替案があれば記載してください。
+      placeholder: 例）カスタムフィールドを別ファイルにエクスポートする方法も検討したが...
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 追加情報
+      description: その他、この機能要求に関連する情報があれば記載してください。
+      placeholder: スクリーンショット、参考リンクなど
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: 確認事項
+      description: 提案を送信する前に、以下の項目を確認してください。
+      options:
+        - label: 既存のIssueで同様の提案がされていないことを確認しました
+          required: true
+        - label: この機能がプロジェクトの目的と一致していることを確認しました
+          required: true
