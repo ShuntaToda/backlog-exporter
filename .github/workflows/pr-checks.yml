@@ -2,7 +2,7 @@ name: Pull Request Checks
 
 # Pull Request作成・更新時にワークフローを実行
 on:
-  pull_request:
+  pull_request_target:
     branches: [main]
     types: [opened, synchronize, reopened]
 
