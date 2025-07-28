@@ -7,6 +7,7 @@ Backlog のデータをエクスポートするためのコマンドラインツ
 [![Downloads/week](https://img.shields.io/npm/dw/backlog-exporter.svg)](https://npmjs.org/package/backlog-exporter)
 
 <!-- toc -->
+
 - [概要](#概要)
 - [インストール](#インストール)
 - [使用方法](#使用方法)
