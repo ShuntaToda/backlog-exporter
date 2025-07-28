@@ -6,6 +6,12 @@ on:
     branches: [main]
     types: [opened, synchronize, reopened]
 
+# ワークフローの権限設定
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   quality-checks:
     name: 品質チェック
