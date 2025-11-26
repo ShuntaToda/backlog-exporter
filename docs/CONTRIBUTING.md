@@ -56,6 +56,7 @@ src/
 [GitHub Issues](https://github.com/ShuntaToda/backlog-exporter/issues)でバグを報告してください。
 
 以下の情報を含めてください：
+
 - OS・Node.jsバージョン
 - 再現手順
 - 期待される動作と実際の動作
@@ -64,6 +65,7 @@ src/
 ### 機能提案
 
 新機能の提案もIssuesで受け付けています。
+
 - 機能の説明
 - 使用場面
 - 実装案（もしあれば）

@@ -7,16 +7,10 @@ Backlog のデータをエクスポートするためのコマンドラインツ
 [![Downloads/week](https://img.shields.io/npm/dw/backlog-exporter.svg)](https://npmjs.org/package/backlog-exporter)
 
 <!-- toc -->
+* [backlog-exporter](#backlog-exporter)
 * [概要](#概要)
 * [インストール](#インストール)
 * [使用方法](#使用方法)
-* [課題のエクスポート](#課題のエクスポート)
-* [Wikiのエクスポート](#wiki-のエクスポート)
-* [ドキュメントのエクスポート](#ドキュメント-のエクスポート)
-* [課題・Wiki・ドキュメントの一括エクスポート](#課題wikiドキュメント-の一括エクスポート)
-* [特定のデータタイプのみをエクスポート（onlyフラグ）](#エクスポート対象の制御)
-* [特定のデータタイプを除外してエクスポート（excludeフラグ）](#エクスポート対象の制御)
-* [データの更新](#データの更新)
 * [課題のエクスポート](#課題のエクスポート)
 * [Wiki のエクスポート](#wiki-のエクスポート)
 * [ドキュメント のエクスポート](#ドキュメント-のエクスポート)
@@ -24,6 +18,9 @@ Backlog のデータをエクスポートするためのコマンドラインツ
 * [データの更新](#データの更新)
 * [コマンド](#コマンド)
 * [出力形式](#出力形式)
+* [課題のタイトル](#課題のタイトル)
+* [Wiki のタイトル](#wiki-のタイトル)
+* [ドキュメントのタイトル](#ドキュメントのタイトル)
 * [その他の特徴](#その他の特徴)
 <!-- tocstop -->
 
@@ -46,7 +43,7 @@ $ npm install -g backlog-exporter
 $ backlog-exporter COMMAND
 running command...
 $ backlog-exporter (--version)
-backlog-exporter/0.7.1 linux-x64 node-v20.19.3
+backlog-exporter/0.7.2 darwin-arm64 node-v22.21.1
 $ backlog-exporter --help [COMMAND]
 USAGE
   $ backlog-exporter COMMAND
@@ -66,36 +63,59 @@ API キーは以下の方法で指定できます：
 
 ## 基本的な使用例
 
+**課題のエクスポート**
+
 ```sh
-# 課題のエクスポート
 $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./issues
+```
 
-# Wikiのエクスポート
+**Wikiのエクスポート**
+
+```sh
 $ backlog-exporter wiki --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./wiki
+```
 
-# ドキュメントのエクスポート
+**ドキュメントのエクスポート**
+
+```sh
 $ backlog-exporter document --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./documents
+```
 
-# 課題・Wiki・ドキュメントの一括エクスポート
+**課題・Wiki・ドキュメントの一括エクスポート**
+
+```sh
 $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./backlog-data
+```
 
-# 特定のデータタイプのみをエクスポート（onlyフラグ）
+**特定のデータタイプのみをエクスポート（onlyフラグ）**
+
+```sh
 $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --only issues,wiki
+```
 
-# 特定のデータタイプを除外してエクスポート（excludeフラグ）
+**特定のデータタイプを除外してエクスポート（excludeフラグ）**
+
+```sh
 $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --exclude documents
+```
 
-# データの更新
+**データの更新**
+
+```sh
 $ backlog-exporter update
 ```
 
 npx を使用する場合は、コマンドの前に`npx`を付けるだけです：
 
-```sh
-# npxを使った課題のエクスポート
-$ npx backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./issues
+**npxを使った課題のエクスポート**
 
-# npxを使ったデータの更新
+```sh
+$ npx backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./issues
+```
+
+**npxを使ったデータの更新**
+
+```sh
 $ npx backlog-exporter update
 ```
 
@@ -103,20 +123,33 @@ $ npx backlog-exporter update
 
 `issue`コマンドを使用すると、Backlog の課題を Markdown ファイルとしてエクスポートできます。
 
+**基本的な使用方法**
+
 ```sh
-# 基本的な使用方法
 $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY
+```
 
-# 出力先を指定
+**出力先を指定**
+
+```sh
 $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./issues
+```
 
-# Markdownファイル名を課題キーにする
+**Markdownファイル名を課題キーにする**
+
+```sh
 $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFileName
+```
 
-# 課題キーでフォルダを作成する
+**課題キーでフォルダを作成する**
+
+```sh
 $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFolder
+```
 
-# 課題キーでフォルダを作成し、Markdownファイル名も課題キーにする
+**課題キーでフォルダを作成し、Markdownファイル名も課題キーにする**
+
+```sh
 $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFileName --issueKeyFolder
 ```
 
@@ -150,11 +183,15 @@ $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KE
 
 `wiki`コマンドを使用すると、Backlog の Wiki ページを Markdown ファイルとしてエクスポートできます。
 
-```sh
-# 基本的な使用方法
-$ backlog-exporter wiki --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY
+**基本的な使用方法**
 
-# 出力先を指定
+```sh
+$ backlog-exporter wiki --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY
+```
+
+**出力先を指定**
+
+```sh
 $ backlog-exporter wiki --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./wiki
 ```
 
@@ -164,14 +201,21 @@ $ backlog-exporter wiki --domain example.backlog.jp --projectIdOrKey PROJECT_KEY
 
 `document`コマンドを使用すると、Backlog のドキュメントページを Markdown ファイルとしてエクスポートできます。
 
+**基本的な使用方法**
+
 ```sh
-# 基本的な使用方法
 $ backlog-exporter document --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY
+```
 
-# 出力先を指定
+**出力先を指定**
+
+```sh
 $ backlog-exporter document --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./documents
+```
 
-# キーワード検索
+**キーワード検索**
+
+```sh
 $ backlog-exporter document --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --keyword 仕様書
 ```
 
@@ -214,17 +258,27 @@ documents/
 
 `all`コマンドを使用すると、課題・Wiki・ドキュメントを一度に取得できます。
 
+**基本的な使用方法**
+
 ```sh
-# 基本的な使用方法
 $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY
+```
 
-# 出力先を指定
+**出力先を指定**
+
+```sh
 $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./backlog-data
+```
 
-# 特定のデータタイプのみをエクスポート（onlyフラグ）
+**特定のデータタイプのみをエクスポート（onlyフラグ）**
+
+```sh
 $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --only issues,wiki
+```
 
-# 特定のデータタイプを除外してエクスポート（excludeフラグ）
+**特定のデータタイプを除外してエクスポート（excludeフラグ）**
+
+```sh
 $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --exclude documents
 ```
 
@@ -238,11 +292,15 @@ $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY 
 
 特定のデータタイプのみをエクスポートします。カンマ区切りで複数指定可能です。
 
-```sh
-# 課題とWikiのみをエクスポート
-$ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --only issues,wiki
+**課題とWikiのみをエクスポート**
 
-# ドキュメントのみをエクスポート
+```sh
+$ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --only issues,wiki
+```
+
+**ドキュメントのみをエクスポート**
+
+```sh
 $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --only documents
 ```
 
@@ -250,11 +308,15 @@ $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY 
 
 特定のデータタイプを除外してエクスポートします。カンマ区切りで複数指定可能です。
 
-```sh
-# ドキュメント以外（課題とWiki）をエクスポート
-$ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --exclude documents
+**ドキュメント以外（課題とWiki）をエクスポート**
 
-# 課題以外（WikiとDocuments）をエクスポート
+```sh
+$ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --exclude documents
+```
+
+**課題以外（WikiとDocuments）をエクスポート**
+
+```sh
 $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --exclude issues
 ```
 
@@ -264,26 +326,45 @@ $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY 
 
 `update`コマンドを使用すると、既存のエクスポートデータを最新の状態に更新できます。このコマンドは、ディレクトリ内の`backlog-settings.json`ファイルを探索し、見つかったディレクトリでデータを更新します。
 
+**カレントディレクトリとそのサブディレクトリのデータを更新**
+
 ```sh
-# カレントディレクトリとそのサブディレクトリのデータを更新
 $ backlog-exporter update
+```
 
-# 指定したディレクトリとそのサブディレクトリのデータを更新
+**指定したディレクトリとそのサブディレクトリのデータを更新**
+
+```sh
 $ backlog-exporter update ./my-project
+```
 
-# 確認プロンプトをスキップして更新
+**確認プロンプトをスキップして更新**
+
+```sh
 $ backlog-exporter update --force
+```
 
-# 課題のみを更新
+**課題のみを更新**
+
+```sh
 $ backlog-exporter update --issuesOnly
+```
 
-# Wikiのみを更新
+**Wikiのみを更新**
+
+```sh
 $ backlog-exporter update --wikisOnly
+```
 
-# ドキュメントのみを更新
+**ドキュメントのみを更新**
+
+```sh
 $ backlog-exporter update --documentsOnly
+```
 
-# APIキーを指定して更新
+**APIキーを指定して更新**
+
+```sh
 $ backlog-exporter update --apiKey YOUR_API_KEY
 ```
 
@@ -600,6 +681,7 @@ DESCRIPTION
 ```
 
 _See code: [@oclif/plugin-plugins](https://github.com/oclif/plugin-plugins/blob/v5.4.34/src/commands/plugins/update.ts)_
+
 <!-- commandsstop -->
 
 # 出力形式
