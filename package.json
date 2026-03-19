@@ -12,6 +12,7 @@
     "@oclif/plugin-help": "^6",
     "@oclif/plugin-plugins": "^5",
     "dotenv": "^16.4.7",
+    "i18next": "^25.8.18",
     "ky": "^1.7.5"
   },
   "devDependencies": {
@@ -39,6 +40,7 @@
   "files": [
     "./bin",
     "./dist",
+    "./src/locales",
     "./oclif.manifest.json"
   ],
   "homepage": "https://github.com/ShuntaToda/backlog-exporter",

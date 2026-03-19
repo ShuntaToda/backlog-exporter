@@ -1,6 +1,8 @@
 import {Command} from '@oclif/core'
 import * as fs from 'node:fs/promises'
 
+import {t} from './i18n.js'
+
 /**
  * APIキーを取得する（優先順位: コマンドライン引数 > 環境変数）
  * @param command コマンドインスタンス
@@ -16,12 +18,12 @@ export function getApiKey(command: Command, providedApiKey?: string): string {
   // 環境変数からのAPIキー
   const envApiKey = process.env.BACKLOG_API_KEY
   if (envApiKey) {
-    command.log('環境変数 BACKLOG_API_KEY からAPIキーを使用します')
+    command.log(t('common.messages.apiKeyFromEnv'))
     return envApiKey
   }
 
   // APIキーが見つからない場合はエラー
-  command.error('APIキーが見つかりません。--apiKey フラグまたは BACKLOG_API_KEY 環境変数で提供してください')
+  command.error(t('common.messages.apiKeyNotFound'))
   return '' // この行は実行されないが、TypeScriptのエラーを回避するために必要
 }
 

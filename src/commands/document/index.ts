@@ -4,44 +4,45 @@ import * as dotenv from 'dotenv'
 import {downloadDocuments} from '../../utils/backlog-api.js'
 import {validateAndGetProjectId} from '../../utils/backlog.js'
 import {createOutputDirectory, getApiKey} from '../../utils/common.js'
+import {t} from '../../utils/i18n.js'
 import {FolderType, updateSettings} from '../../utils/settings.js'
 
 // .envファイルを読み込む
 dotenv.config()
 
 export default class Document extends Command {
-  static description = 'Backlogからドキュメントを取得してMarkdownファイルとして保存する'
+  static description = t('commands.document.description')
   static examples = [
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY
-ドキュメントをMarkdownファイルとして保存する
+${t('commands.document.examples.saveDocuments')}
 `,
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./my-documents
-指定したディレクトリにドキュメントを保存する
+${t('commands.document.examples.outputDir')}
 `,
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --keyword 仕様書
-キーワード「仕様書」を含むドキュメントのみを取得する
+${t('commands.document.examples.keyword')}
 `,
   ]
   static flags = {
     apiKey: Flags.string({
-      description: 'Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能)',
+      description: t('common.flags.apiKey'),
       required: false,
     }),
     domain: Flags.string({
-      description: 'Backlog domain (e.g. example.backlog.jp)',
+      description: t('common.flags.domain'),
       required: true,
     }),
     keyword: Flags.string({
-      description: '検索キーワード',
+      description: t('common.flags.keyword'),
       required: false,
     }),
     output: Flags.string({
       char: 'o',
-      description: '出力ディレクトリパス',
+      description: t('common.flags.output'),
       required: false,
     }),
     projectIdOrKey: Flags.string({
-      description: 'Backlog project ID or key',
+      description: t('common.flags.projectIdOrKey'),
       required: true,
     }),
   }
@@ -59,7 +60,7 @@ export default class Document extends Command {
 
       // プロジェクトキーからプロジェクトIDを取得
       const projectId = await validateAndGetProjectId(domain, projectIdOrKey, apiKey)
-      this.log(`プロジェクトID: ${projectId} を使用します`)
+      this.log(t('common.messages.usingProjectId', {projectId}))
 
       // 設定ファイルを保存
       await updateSettings(outputDir, {
@@ -85,10 +86,10 @@ export default class Document extends Command {
         lastUpdated: new Date().toISOString(),
       })
 
-      this.log('ドキュメントの取得が完了しました！')
+      this.log(t('commands.document.messages.completed'))
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      this.error(`ドキュメントの取得に失敗しました: ${errorMessage}`)
+      this.error(t('commands.document.messages.fetchFailed', {errorMessage}))
     }
   }
 }
