@@ -95,9 +95,12 @@ export async function downloadIssues(
       value: unknown
     }>
     description: string
+    dueDate: null | string
     id: number
     issueKey: string
+    issueType: {id: number; name: string}
     priority: {id: number; name: string}
+    startDate: null | string
     status: {id: number; name: string}
     summary: string
     updated: string
@@ -123,9 +126,12 @@ export async function downloadIssues(
         value: unknown
       }>
       description: string
+      dueDate: null | string
       id: number
       issueKey: string
+      issueType: {id: number; name: string}
       priority: {id: number; name: string}
+      startDate: null | string
       status: {id: number; name: string}
       summary: string
       updated: string
@@ -160,9 +166,12 @@ export async function downloadIssues(
           value: unknown
         }>
         description: string
+        dueDate: null | string
         id: number
         issueKey: string
+        issueType: {id: number; name: string}
         priority: {id: number; name: string}
+        startDate: null | string
         status: {id: number; name: string}
         summary: string
         updated: string
@@ -282,13 +291,18 @@ export async function downloadIssues(
 
       // Markdownファイルに書き込む
       const assigneeName = issue.assignee ? issue.assignee.name : '未割り当て'
+      const startDate = issue.startDate ? new Date(issue.startDate).toLocaleDateString('ja-JP') : '未設定'
+      const dueDate = issue.dueDate ? new Date(issue.dueDate).toLocaleDateString('ja-JP') : '未設定'
       const markdownContent = `# ${issue.summary}
 
 ## 基本情報
 - 課題キー: ${issue.issueKey}
+- 種別: ${issue.issueType.name}
 - ステータス: ${issue.status.name}
 - 優先度: ${issue.priority.name}
 - 担当者: ${assigneeName}
+- 開始日: ${startDate}
+- 期限日: ${dueDate}
 - 作成日時: ${new Date(issue.created).toLocaleString('ja-JP')}
 - 更新日時: ${new Date(issue.updated).toLocaleString('ja-JP')}
 - [Backlog Issue Link](${backlogIssueUrl})${customFieldsSection}
