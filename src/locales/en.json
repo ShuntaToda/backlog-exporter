@@ -67,6 +67,8 @@
       "labels": {
         "assignee": "Assignee",
         "basicInfo": "Basic Info",
+        "dueDate": "Due Date",
+        "issueType": "Issue Type",
         "comment": "Comment {{index}}",
         "comments": "Comments",
         "customFields": "Custom Fields",
@@ -77,7 +79,9 @@
         "noDetail": "No details available",
         "none": "N/A",
         "poster": "Author",
+        "notSet": "Not set",
         "priority": "Priority",
+        "startDate": "Start Date",
         "timestamp": "Date",
         "unassigned": "Unassigned"
       },

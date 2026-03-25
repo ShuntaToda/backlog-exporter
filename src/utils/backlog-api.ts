@@ -292,18 +292,18 @@ export async function downloadIssues(
 
       // Markdownファイルに書き込む
       const assigneeName = issue.assignee ? issue.assignee.name : t('commands.issue.labels.unassigned')
-      const startDate = issue.startDate ? new Date(issue.startDate).toLocaleDateString('ja-JP') : '未設定'
-      const dueDate = issue.dueDate ? new Date(issue.dueDate).toLocaleDateString('ja-JP') : '未設定'
+      const startDate = issue.startDate ? new Date(issue.startDate).toLocaleDateString('ja-JP') : t('commands.issue.labels.notSet')
+      const dueDate = issue.dueDate ? new Date(issue.dueDate).toLocaleDateString('ja-JP') : t('commands.issue.labels.notSet')
       const markdownContent = `# ${issue.summary}
 
 ## ${t('commands.issue.labels.basicInfo')}
 - ${t('commands.issue.labels.issueKey')}: ${issue.issueKey}
-- 種別: ${issue.issueType.name}
+- ${t('commands.issue.labels.issueType')}: ${issue.issueType.name}
 - ${t('common.labels.status')}: ${issue.status.name}
 - ${t('commands.issue.labels.priority')}: ${issue.priority.name}
 - ${t('commands.issue.labels.assignee')}: ${assigneeName}
-- 開始日: ${startDate}
-- 期限日: ${dueDate}
+- ${t('commands.issue.labels.startDate')}: ${startDate}
+- ${t('commands.issue.labels.dueDate')}: ${dueDate}
 - ${t('common.labels.createdAt')}: ${new Date(issue.created).toLocaleString('ja-JP')}
 - ${t('common.labels.updatedAt')}: ${new Date(issue.updated).toLocaleString('ja-JP')}
 - [Backlog Issue Link](${backlogIssueUrl})${customFieldsSection}
