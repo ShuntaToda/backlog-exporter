@@ -8,8 +8,6 @@ const __dirname = dirname(__filename)
 
 const localesDir = join(__dirname, '..', 'locales')
 
-const FALLBACK_LOCALE = 'ja'
-
 /**
  * 翻訳ファイルを同期的に読み込む
  */
@@ -39,7 +37,7 @@ function loadAllTranslations(): Record<string, {translation: Record<string, unkn
 function detectLocale(supportedLocales: string[]): string {
   const langEnv = process.env.LC_ALL || process.env.LC_MESSAGES || process.env.LANG || ''
   const lang = langEnv.split(/[._]/)[0]
-  return supportedLocales.includes(lang) ? lang : FALLBACK_LOCALE
+  return supportedLocales.includes(lang) ? lang : 'en'
 }
 
 const resources = loadAllTranslations()
@@ -47,7 +45,7 @@ const locale = detectLocale(Object.keys(resources))
 
 // eslint-disable-next-line import/no-named-as-default-member
 i18next.init({
-  fallbackLng: FALLBACK_LOCALE,
+  fallbackLng: 'ja',
   initImmediate: false,
   interpolation: {
     escapeValue: false,
