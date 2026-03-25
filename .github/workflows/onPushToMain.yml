@@ -47,6 +47,7 @@ jobs:
           if [ -n "$(git status --porcelain)" ]; then
             git add .
             git commit -am "chore: update README.md"
+            git pull --rebase origin ${{ github.ref_name }}
             git push -u origin ${{ github.ref_name }}
           fi
       - name: Create Github Release
