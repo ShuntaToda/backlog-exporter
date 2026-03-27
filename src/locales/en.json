@@ -1,0 +1,199 @@
+{
+  "commands": {
+    "all": {
+      "description": "Export issues, wikis, and documents from Backlog as Markdown files",
+      "examples": {
+        "excludeDocuments": "Export everything except documents (issues and wikis)",
+        "issueKeyFileName": "Use issue key as file name",
+        "issueKeyFolder": "Create folders by issue key",
+        "issueKeyFolderAndFileName": "Create folders by issue key and use issue key as file name",
+        "maxCount": "Export up to 1000 issues (default is 5000)",
+        "onlyIssuesAndWiki": "Export only issues and wikis",
+        "outputDir": "Save issues, wikis, and documents to the specified directory",
+        "saveAll": "Save issues, wikis, and documents as Markdown files"
+      },
+      "messages": {
+        "allCompleted": "All data export completed!",
+        "documentsCompleted": "Document export completed",
+        "documentsFetchStart": "Starting document export...",
+        "fetchFailed": "Failed to export data: {{errorMessage}}",
+        "invalidTarget": "Invalid target '{{target}}'. Available targets are: {{availableTargets}}",
+        "issuesCompleted": "Issue export completed",
+        "issuesFetchStart": "Starting issue export...",
+        "noTargetsAfterExclusion": "No targets remaining after exclusion. Please specify valid targets to export.",
+        "onlyExcludeConflict": "Cannot use both --only and --exclude flags together. Please use only one.",
+        "wikiCompleted": "Wiki export completed",
+        "wikiFetchStart": "Starting wiki export..."
+      }
+    },
+    "document": {
+      "description": "Export documents from Backlog as Markdown files",
+      "examples": {
+        "keyword": "Export only documents containing the keyword",
+        "outputDir": "Save documents to the specified directory",
+        "saveDocuments": "Save documents as Markdown files"
+      },
+      "labels": {
+        "attachmentInfo": "Creator: {{creator}}, Created: {{date}}",
+        "attachments": "Attachments",
+        "content": "Content",
+        "creator": "Creator",
+        "tags": "Tags",
+        "updater": "Updated by"
+      },
+      "messages": {
+        "completed": "Document export completed!",
+        "documentFetchFailed": "Failed to fetch document {{name}}: {{errorMessage}}",
+        "downloadCompleted": "Document download completed!",
+        "fetchFailed": "Failed to export documents: {{errorMessage}}",
+        "fetchStart": "Starting document download...",
+        "processed": "Total {{count}} documents processed.",
+        "processing": "Processing document \"{{name}}\"...",
+        "treeFetch": "Fetching document tree...",
+        "treeProcess": "Processing active document tree..."
+      }
+    },
+    "issue": {
+      "description": "Export issues from Backlog as Markdown files",
+      "examples": {
+        "issueKeyFileName": "Use issue key as file name",
+        "issueKeyFolder": "Create folders by issue key",
+        "issueKeyFolderAndFileName": "Create folders by issue key and use issue key as file name",
+        "maxCount": "Export up to 10000 issues (default is 5000)",
+        "outputDir": "Save issues to the specified directory",
+        "saveIssues": "Save issues as Markdown files",
+        "statusId": "Export only issues with the specified status IDs"
+      },
+      "labels": {
+        "assignee": "Assignee",
+        "basicInfo": "Basic Info",
+        "dueDate": "Due Date",
+        "issueType": "Issue Type",
+        "comment": "Comment {{index}}",
+        "comments": "Comments",
+        "customFields": "Custom Fields",
+        "details": "Details",
+        "fieldName": "Field Name",
+        "fieldValue": "Value",
+        "issueKey": "Issue Key",
+        "noDetail": "No details available",
+        "none": "N/A",
+        "poster": "Author",
+        "notSet": "Not set",
+        "priority": "Priority",
+        "startDate": "Start Date",
+        "timestamp": "Date",
+        "unassigned": "Unassigned"
+      },
+      "messages": {
+        "apiFetchFailed": "Failed to fetch issues: {{errorMessage}}",
+        "commentFetchFailed": "Failed to fetch comments for issue {{issueKey}}: {{errorMessage}}",
+        "completed": "Issue export completed!",
+        "downloadCompleted": "Issue download completed!",
+        "fetchFailed": "Failed to export issues: {{errorMessage}}",
+        "fetchStart": "Starting issue download...",
+        "fetching": "Fetching issues... ({{count}} fetched)",
+        "found": "Total {{count}} issues found.",
+        "noNeedUpdate": "No issues need updating.",
+        "processingSinceLastUpdate": "Processing {{count}} issues updated since last update ({{lastUpdated}}).",
+        "saveFailed": "Failed to save issue {{issueKey}}: {{errorMessage}}",
+        "saving": "Saving issues...",
+        "savingProgress": "Saving issues... ({{current}}/{{total}})"
+      }
+    },
+    "update": {
+      "args": {
+        "directory": "Target directory for update (where settings file is stored)"
+      },
+      "description": "Fetch and update the latest data from Backlog",
+      "examples": {
+        "currentDir": "Update using the settings in the current directory",
+        "force": "Skip confirmation prompt",
+        "issueKeyFileName": "Use issue key as file name",
+        "issueKeyFolder": "Create folders by issue key",
+        "issueKeyFolderAndFileName": "Create folders by issue key and use issue key as file name",
+        "specifyDir": "Update using the settings in the specified directory",
+        "specifyParams": "Update with specified parameters (overwrites settings file if it exists)"
+      },
+      "messages": {
+        "apiKeyMissing": "{{targetDir}}: API key not specified. Set it with --apiKey flag or BACKLOG_API_KEY environment variable.",
+        "cancelled": "Update cancelled",
+        "confirmPrompt": "Proceed with update? (y/n)",
+        "confirmSettings": "Update will be executed with the following settings:",
+        "directoryReadFailed": "Failed to read directory: {{targetDir}}",
+        "documentsCompleted": "Document update completed",
+        "documentsStart": "Starting document update...",
+        "domainMissing": "{{targetDir}}: Domain not specified. Skipping.",
+        "folderType": "- Folder type: {{folderType}}",
+        "issuesCompleted": "Issue update completed",
+        "issuesStart": "Starting issue update...",
+        "projectMissing": "{{targetDir}}: Project ID or key not specified. Skipping.",
+        "settingDirectory": "- Directory: {{targetDir}}",
+        "settingDomain": "- Domain: {{domain}}",
+        "settingProject": "- Project: {{projectIdOrKey}}",
+        "settingTargets": "- Update targets: {{targets}}",
+        "targetDocuments": "Documents",
+        "targetIssues": "Issues",
+        "targetWiki": "Wiki",
+        "updateCompleted": "Update completed for {{targetDir}}!",
+        "updateFailed": "Update failed: {{errorMessage}}",
+        "wikiCompleted": "Wiki update completed",
+        "wikiStart": "Starting wiki update..."
+      }
+    },
+    "wiki": {
+      "description": "Export wikis from Backlog as Markdown files",
+      "examples": {
+        "outputDir": "Save wikis to the specified directory",
+        "saveWiki": "Download wikis"
+      },
+      "messages": {
+        "apiFetchFailed": "Failed to fetch wiki {{name}}: {{errorMessage}}",
+        "completed": "Wiki export completed!",
+        "detailsFetch": "Fetching wiki details...",
+        "downloadCompleted": "Wiki download completed!",
+        "fetchFailed": "Failed to export wikis: {{errorMessage}}",
+        "fetchStart": "Starting wiki download...",
+        "fetching": "Fetching wikis... ({{current}}/{{total}})",
+        "found": "{{count}} wikis found.",
+        "listFetch": "Fetching wiki list...",
+        "noNeedUpdate": "No wikis need updating.",
+        "processingSinceLastUpdate": "Processing {{count}} wikis updated since last update ({{lastUpdated}}).",
+        "saving": "Saving wikis... ({{current}}/{{total}})"
+      }
+    }
+  },
+  "common": {
+    "flags": {
+      "apiKey": "Backlog API key (can also be read from BACKLOG_API_KEY environment variable)",
+      "documentsOnly": "Update documents only",
+      "domain": "Backlog domain (e.g. example.backlog.jp)",
+      "exclude": "Exclude the specified types, separated by commas (e.g., 'documents,wiki')",
+      "force": "Skip confirmation prompt",
+      "issueKeyFileName": "Use issue key as file name",
+      "issueKeyFolder": "Create folders by issue key",
+      "issuesOnly": "Update issues only",
+      "keyword": "Search keyword",
+      "maxCount": "Maximum number of issues to fetch at once (default: 5000)",
+      "only": "Export only the specified types, separated by commas (e.g., 'issues,wiki')",
+      "output": "Output directory path",
+      "projectIdOrKey": "Backlog project ID or key",
+      "statusId": "Status IDs (comma-separated for multiple values)",
+      "wikisOnly": "Update wikis only"
+    },
+    "labels": {
+      "createdAt": "Created",
+      "noContent": "(No content)",
+      "status": "Status",
+      "updatedAt": "Updated"
+    },
+    "messages": {
+      "apiKeyFromEnv": "Using API key from BACKLOG_API_KEY environment variable",
+      "apiKeyNotFound": "API key not found. Please provide it with --apiKey flag or BACKLOG_API_KEY environment variable",
+      "failedToGetProjectId": "Failed to get project ID from project key \"{{projectKey}}\": {{errorMessage}}",
+      "logFailed": "Failed to write log: {{errorMessage}}",
+      "rateLimitWait": "Waiting 15 seconds to avoid rate limiting...",
+      "usingProjectId": "Using project ID: {{projectId}}"
+    }
+  }
+}

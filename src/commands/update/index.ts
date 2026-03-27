@@ -6,6 +6,7 @@ import {join} from 'node:path'
 import {downloadDocuments, downloadIssues, downloadWikis} from '../../utils/backlog-api.js'
 import {validateAndGetProjectId} from '../../utils/backlog.js'
 import {createOutputDirectory, getApiKey} from '../../utils/common.js'
+import {t} from '../../utils/i18n.js'
 import {FolderType, getSettingsFilePath, loadSettings, updateSettings} from '../../utils/settings.js'
 
 // .envファイルを読み込む
@@ -27,70 +28,70 @@ interface UpdateFlags {
 export default class Update extends Command {
   static args = {
     directory: Args.string({
-      description: '更新対象のディレクトリ（設定ファイルが保存されている場所）',
+      description: t('commands.update.args.directory'),
       required: false,
     }),
   }
-  static description = 'Backlogから最新データを取得して更新する'
+  static description = t('commands.update.description')
   static examples = [
     `<%= config.bin %> <%= command.id %>
-カレントディレクトリの設定を使用して更新する
+${t('commands.update.examples.currentDir')}
 `,
     `<%= config.bin %> <%= command.id %> --force
-確認プロンプトをスキップする
+${t('commands.update.examples.force')}
 `,
     `<%= config.bin %> <%= command.id %> --apiKey YOUR_API_KEY --domain example.backlog.jp --projectIdOrKey PROJECT_KEY
-指定したパラメータで更新する（設定ファイルが存在する場合は上書きされます）
+${t('commands.update.examples.specifyParams')}
 `,
     `<%= config.bin %> <%= command.id %> ./my-project
-指定したディレクトリの設定を使用して更新する
+${t('commands.update.examples.specifyDir')}
 `,
     `<%= config.bin %> <%= command.id %> --issueKeyFileName
-ファイル名を課題キーにする
+${t('commands.update.examples.issueKeyFileName')}
 `,
     `<%= config.bin %> <%= command.id %> --issueKeyFolder
-課題キーでフォルダを作成する
+${t('commands.update.examples.issueKeyFolder')}
 `,
     `<%= config.bin %> <%= command.id %> --issueKeyFileName --issueKeyFolder
-課題キーでフォルダを作成し、ファイル名も課題キーにする
+${t('commands.update.examples.issueKeyFolderAndFileName')}
 `,
   ]
   static flags = {
     apiKey: Flags.string({
-      description: 'Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能)',
+      description: t('common.flags.apiKey'),
       required: false,
     }),
     documentsOnly: Flags.boolean({
-      description: 'ドキュメントのみを更新する',
+      description: t('common.flags.documentsOnly'),
       required: false,
     }),
     domain: Flags.string({
-      description: 'Backlog domain (e.g. example.backlog.jp)',
+      description: t('common.flags.domain'),
       required: false,
     }),
     force: Flags.boolean({
       char: 'f',
-      description: '確認プロンプトをスキップする',
+      description: t('common.flags.force'),
       required: false,
     }),
     issueKeyFileName: Flags.boolean({
-      description: 'ファイル名を課題キーにする',
+      description: t('common.flags.issueKeyFileName'),
       required: false,
     }),
     issueKeyFolder: Flags.boolean({
-      description: '課題キーでフォルダを作成する',
+      description: t('common.flags.issueKeyFolder'),
       required: false,
     }),
     issuesOnly: Flags.boolean({
-      description: '課題のみを更新する',
+      description: t('common.flags.issuesOnly'),
       required: false,
     }),
     projectIdOrKey: Flags.string({
-      description: 'Backlog project ID or key',
+      description: t('common.flags.projectIdOrKey'),
       required: false,
     }),
     wikisOnly: Flags.boolean({
-      description: 'Wikiのみを更新する',
+      description: t('common.flags.wikisOnly'),
       required: false,
     }),
   }
@@ -106,7 +107,7 @@ export default class Update extends Command {
       await this.findAndUpdateSettings(targetDir, flags as UpdateFlags)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      this.error(`更新に失敗しました: ${errorMessage}`)
+      this.error(t('commands.update.messages.updateFailed', {errorMessage}))
     }
   }
 
@@ -123,24 +124,24 @@ export default class Update extends Command {
   }): Promise<boolean> {
     if (options.force) return true
 
-    this.log(`以下の設定で更新を実行します:`)
-    this.log(`- ディレクトリ: ${options.targetDir}`)
-    this.log(`- ドメイン: ${options.domain}`)
-    this.log(`- プロジェクト: ${options.projectIdOrKey}`)
+    this.log(t('commands.update.messages.confirmSettings'))
+    this.log(t('commands.update.messages.settingDirectory', {targetDir: options.targetDir}))
+    this.log(t('commands.update.messages.settingDomain', {domain: options.domain}))
+    this.log(t('commands.update.messages.settingProject', {projectIdOrKey: options.projectIdOrKey}))
 
     if (options.folderType) {
-      this.log(`- フォルダタイプ: ${options.folderType}`)
+      this.log(t('commands.update.messages.folderType', {folderType: options.folderType}))
     }
 
     const updateTargets = []
-    if (options.updateIssues) updateTargets.push('課題')
-    if (options.updateWikis) updateTargets.push('Wiki')
-    if (options.updateDocuments) updateTargets.push('ドキュメント')
+    if (options.updateIssues) updateTargets.push(t('commands.update.messages.targetIssues'))
+    if (options.updateWikis) updateTargets.push(t('commands.update.messages.targetWiki'))
+    if (options.updateDocuments) updateTargets.push(t('commands.update.messages.targetDocuments'))
 
-    this.log(`- 更新対象: ${updateTargets.join('・')}`)
+    this.log(t('commands.update.messages.settingTargets', {targets: updateTargets.join('・')}))
 
     // 確認プロンプトを表示
-    this.log('更新を実行しますか？ (y/n)')
+    this.log(t('commands.update.messages.confirmPrompt'))
     process.stdin.resume()
     process.stdin.setEncoding('utf8')
     const response = await new Promise<boolean>((resolve) => {
@@ -152,7 +153,7 @@ export default class Update extends Command {
     })
 
     if (!response) {
-      this.log('更新をキャンセルしました')
+      this.log(t('commands.update.messages.cancelled'))
     }
 
     return response
@@ -230,7 +231,7 @@ export default class Update extends Command {
         }
       }
     } catch {
-      this.warn(`ディレクトリの読み取りに失敗しました: ${targetDir}`)
+      this.warn(t('commands.update.messages.directoryReadFailed', {targetDir}))
     }
   }
 
@@ -251,12 +252,12 @@ export default class Update extends Command {
 
     // 必須パラメータの検証
     if (!domain) {
-      this.warn(`${targetDir}: ドメインが指定されていません。スキップします。`)
+      this.warn(t('commands.update.messages.domainMissing', {targetDir}))
       return
     }
 
     if (!projectIdOrKey) {
-      this.warn(`${targetDir}: プロジェクトIDまたはキーが指定されていません。スキップします。`)
+      this.warn(t('commands.update.messages.projectMissing', {targetDir}))
       return
     }
 
@@ -265,9 +266,7 @@ export default class Update extends Command {
     try {
       apiKey = flags.apiKey || settings.apiKey || getApiKey(this)
     } catch {
-      this.warn(
-        `${targetDir}: APIキーが指定されていません。--apiKey フラグまたは BACKLOG_API_KEY 環境変数で設定してください。`,
-      )
+      this.warn(t('commands.update.messages.apiKeyMissing', {targetDir}))
       return
     }
 
@@ -297,7 +296,7 @@ export default class Update extends Command {
 
     // プロジェクトキーからプロジェクトIDを取得
     const projectId = await validateAndGetProjectId(domain, projectIdOrKey, apiKey)
-    this.log(`プロジェクトID: ${projectId} を使用します`)
+    this.log(t('common.messages.usingProjectId', {projectId}))
 
     // 課題の更新
     if (updateIssues) {
@@ -333,7 +332,7 @@ export default class Update extends Command {
       })
     }
 
-    this.log(`${targetDir} の更新が完了しました！`)
+    this.log(t('commands.update.messages.updateCompleted', {targetDir}))
   }
 
   // ドキュメントの更新
@@ -344,7 +343,7 @@ export default class Update extends Command {
     projectIdOrKey: string
     targetDir: string
   }): Promise<void> {
-    this.log('ドキュメントの更新を開始します...')
+    this.log(t('commands.update.messages.documentsStart'))
 
     // 設定ファイルから前回の更新日時を取得
     const {lastUpdated} = await loadSettings(options.targetDir)
@@ -368,7 +367,7 @@ export default class Update extends Command {
       projectIdOrKey: options.projectIdOrKey,
     })
 
-    this.log('ドキュメントの更新が完了しました')
+    this.log(t('commands.update.messages.documentsCompleted'))
   }
 
   // 課題の更新
@@ -381,7 +380,7 @@ export default class Update extends Command {
     projectIdOrKey: string
     targetDir: string
   }): Promise<void> {
-    this.log('課題の更新を開始します...')
+    this.log(t('commands.update.messages.issuesStart'))
 
     // 設定ファイルから前回の更新日時を取得
     const {lastUpdated} = await loadSettings(options.targetDir)
@@ -407,7 +406,7 @@ export default class Update extends Command {
       projectIdOrKey: options.projectIdOrKey,
     })
 
-    this.log('課題の更新が完了しました')
+    this.log(t('commands.update.messages.issuesCompleted'))
   }
 
   // Wikiの更新
@@ -417,7 +416,7 @@ export default class Update extends Command {
     projectIdOrKey: string
     targetDir: string
   }): Promise<void> {
-    this.log('Wikiの更新を開始します...')
+    this.log(t('commands.update.messages.wikiStart'))
 
     // 設定ファイルから前回の更新日時を取得
     const {lastUpdated} = await loadSettings(options.targetDir)
@@ -440,6 +439,6 @@ export default class Update extends Command {
       projectIdOrKey: options.projectIdOrKey,
     })
 
-    this.log('Wikiの更新が完了しました')
+    this.log(t('commands.update.messages.wikiCompleted'))
   }
 }

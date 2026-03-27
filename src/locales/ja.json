@@ -1,0 +1,199 @@
+{
+  "commands": {
+    "all": {
+      "description": "Backlogから課題・Wiki・ドキュメントを取得してMarkdownファイルとして保存する",
+      "examples": {
+        "excludeDocuments": "ドキュメント以外（課題とWiki）を取得する",
+        "issueKeyFileName": "ファイル名を課題キーにする",
+        "issueKeyFolder": "課題キーでフォルダを作成する",
+        "issueKeyFolderAndFileName": "課題キーでフォルダを作成し、ファイル名も課題キーにする",
+        "maxCount": "最大1000件の課題を取得する（デフォルトは5000件）",
+        "onlyIssuesAndWiki": "課題とWikiのみを取得する",
+        "outputDir": "指定したディレクトリに課題・Wiki・ドキュメントを保存する",
+        "saveAll": "課題・Wiki・ドキュメントをMarkdownファイルとして保存する"
+      },
+      "messages": {
+        "allCompleted": "すべてのデータの取得が完了しました！",
+        "documentsCompleted": "ドキュメントの取得が完了しました",
+        "documentsFetchStart": "ドキュメントの取得を開始します...",
+        "fetchFailed": "データの取得に失敗しました: {{errorMessage}}",
+        "invalidTarget": "無効なターゲット「{{target}}」です。指定できるターゲットは次のとおりです: {{availableTargets}}",
+        "issuesCompleted": "課題の取得が完了しました",
+        "issuesFetchStart": "課題の取得を開始します...",
+        "noTargetsAfterExclusion": "除外の結果、エクスポート対象がなくなりました。有効なターゲットを指定してください。",
+        "onlyExcludeConflict": "「--only」と「--exclude」は同時に指定できません。どちらか一方だけを指定してください。",
+        "wikiCompleted": "Wikiの取得が完了しました",
+        "wikiFetchStart": "Wikiの取得を開始します..."
+      }
+    },
+    "document": {
+      "description": "Backlogからドキュメントを取得してMarkdownファイルとして保存する",
+      "examples": {
+        "keyword": "キーワード「仕様書」を含むドキュメントのみを取得する",
+        "outputDir": "指定したディレクトリにドキュメントを保存する",
+        "saveDocuments": "ドキュメントをMarkdownファイルとして保存する"
+      },
+      "labels": {
+        "attachmentInfo": "作成者: {{creator}}, 作成日時: {{date}}",
+        "attachments": "添付ファイル",
+        "content": "内容",
+        "creator": "作成者",
+        "tags": "タグ",
+        "updater": "更新者"
+      },
+      "messages": {
+        "completed": "ドキュメントの取得が完了しました！",
+        "documentFetchFailed": "ドキュメント {{name}} の取得に失敗しました: {{errorMessage}}",
+        "downloadCompleted": "ドキュメントのダウンロードが完了しました！",
+        "fetchFailed": "ドキュメントの取得に失敗しました: {{errorMessage}}",
+        "fetchStart": "ドキュメントの取得を開始します...",
+        "processed": "合計 {{count}}件のドキュメントが処理されました。",
+        "processing": "ドキュメント「{{name}}」を処理中...",
+        "treeFetch": "ドキュメントツリーを取得しています...",
+        "treeProcess": "アクティブなドキュメントツリーを処理します..."
+      }
+    },
+    "issue": {
+      "description": "Backlogから課題を取得してMarkdownファイルとして保存する",
+      "examples": {
+        "issueKeyFileName": "ファイル名を課題キーにする",
+        "issueKeyFolder": "課題キーでフォルダを作成する",
+        "issueKeyFolderAndFileName": "課題キーでフォルダを作成し、ファイル名も課題キーにする",
+        "maxCount": "最大10000件の課題を取得する（デフォルトは5000件）",
+        "outputDir": "指定したディレクトリに課題を保存する",
+        "saveIssues": "課題をMarkdownファイルとして保存する",
+        "statusId": "指定したステータスIDの課題のみを取得する"
+      },
+      "labels": {
+        "assignee": "担当者",
+        "basicInfo": "基本情報",
+        "dueDate": "期限日",
+        "issueType": "種別",
+        "comment": "コメント {{index}}",
+        "comments": "コメント",
+        "customFields": "カスタム属性",
+        "details": "詳細",
+        "fieldName": "属性名",
+        "fieldValue": "値",
+        "issueKey": "課題キー",
+        "noDetail": "詳細情報なし",
+        "none": "なし",
+        "poster": "投稿者",
+        "notSet": "未設定",
+        "priority": "優先度",
+        "startDate": "開始日",
+        "timestamp": "日時",
+        "unassigned": "未割り当て"
+      },
+      "messages": {
+        "apiFetchFailed": "課題の取得に失敗しました: {{errorMessage}}",
+        "commentFetchFailed": "課題 {{issueKey}} のコメント取得に失敗しました: {{errorMessage}}",
+        "completed": "課題の取得が完了しました！",
+        "downloadCompleted": "課題のダウンロードが完了しました！",
+        "fetchFailed": "課題の取得に失敗しました: {{errorMessage}}",
+        "fetchStart": "課題の取得を開始します...",
+        "fetching": "課題を取得中... ({{count}}件取得済み)",
+        "found": "合計 {{count}}件の課題が見つかりました。",
+        "noNeedUpdate": "更新が必要な課題はありません。",
+        "processingSinceLastUpdate": "前回の更新日時({{lastUpdated}})以降に更新された{{count}}件の課題を処理します。",
+        "saveFailed": "課題 {{issueKey}} の保存に失敗しました: {{errorMessage}}",
+        "saving": "課題を保存しています...",
+        "savingProgress": "課題を保存中... ({{current}}/{{total}}件)"
+      }
+    },
+    "update": {
+      "args": {
+        "directory": "更新対象のディレクトリ（設定ファイルが保存されている場所）"
+      },
+      "description": "Backlogから最新データを取得して更新する",
+      "examples": {
+        "currentDir": "カレントディレクトリの設定を使用して更新する",
+        "force": "確認プロンプトをスキップする",
+        "issueKeyFileName": "ファイル名を課題キーにする",
+        "issueKeyFolder": "課題キーでフォルダを作成する",
+        "issueKeyFolderAndFileName": "課題キーでフォルダを作成し、ファイル名も課題キーにする",
+        "specifyDir": "指定したディレクトリの設定を使用して更新する",
+        "specifyParams": "指定したパラメータで更新する（設定ファイルが存在する場合は上書きされます）"
+      },
+      "messages": {
+        "apiKeyMissing": "{{targetDir}}: APIキーが指定されていません。--apiKey フラグまたは BACKLOG_API_KEY 環境変数で設定してください。",
+        "cancelled": "更新をキャンセルしました",
+        "confirmPrompt": "更新を実行しますか？ (y/n)",
+        "confirmSettings": "以下の設定で更新を実行します:",
+        "directoryReadFailed": "ディレクトリの読み取りに失敗しました: {{targetDir}}",
+        "documentsCompleted": "ドキュメントの更新が完了しました",
+        "documentsStart": "ドキュメントの更新を開始します...",
+        "domainMissing": "{{targetDir}}: ドメインが指定されていません。スキップします。",
+        "folderType": "- フォルダタイプ: {{folderType}}",
+        "issuesCompleted": "課題の更新が完了しました",
+        "issuesStart": "課題の更新を開始します...",
+        "projectMissing": "{{targetDir}}: プロジェクトIDまたはキーが指定されていません。スキップします。",
+        "settingDirectory": "- ディレクトリ: {{targetDir}}",
+        "settingDomain": "- ドメイン: {{domain}}",
+        "settingProject": "- プロジェクト: {{projectIdOrKey}}",
+        "settingTargets": "- 更新対象: {{targets}}",
+        "targetDocuments": "ドキュメント",
+        "targetIssues": "課題",
+        "targetWiki": "Wiki",
+        "updateCompleted": "{{targetDir}} の更新が完了しました！",
+        "updateFailed": "更新に失敗しました: {{errorMessage}}",
+        "wikiCompleted": "Wikiの更新が完了しました",
+        "wikiStart": "Wikiの更新を開始します..."
+      }
+    },
+    "wiki": {
+      "description": "Backlogから Wiki を取得してMarkdownファイルとして保存する",
+      "examples": {
+        "outputDir": "指定したディレクトリにWikiを保存する",
+        "saveWiki": "Wikiをダウンロードする"
+      },
+      "messages": {
+        "apiFetchFailed": "Wiki {{name}} の取得に失敗しました: {{errorMessage}}",
+        "completed": "Wikiの取得が完了しました！",
+        "detailsFetch": "Wiki詳細を取得しています...",
+        "downloadCompleted": "Wikiのダウンロードが完了しました！",
+        "fetchFailed": "Wikiの取得に失敗しました: {{errorMessage}}",
+        "fetchStart": "Wikiの取得を開始します...",
+        "fetching": "Wikiを取得中... ({{current}}/{{total}}件)",
+        "found": "{{count}}件のWikiが見つかりました。",
+        "listFetch": "Wiki一覧を取得しています...",
+        "noNeedUpdate": "更新が必要なWikiはありません。",
+        "processingSinceLastUpdate": "前回の更新日時({{lastUpdated}})以降に更新された{{count}}件のWikiを処理します。",
+        "saving": "Wikiを保存中... ({{current}}/{{total}}件)"
+      }
+    }
+  },
+  "common": {
+    "flags": {
+      "apiKey": "Backlog APIキー（環境変数 BACKLOG_API_KEY からも自動読み取り可能）",
+      "documentsOnly": "ドキュメントのみを更新する",
+      "domain": "Backlogドメイン（例: example.backlog.jp）",
+      "exclude": "除外するタイプをカンマ区切りで指定（例: 'documents,wiki'）",
+      "force": "確認プロンプトをスキップする",
+      "issueKeyFileName": "ファイル名を課題キーにする",
+      "issueKeyFolder": "課題キーでフォルダを作成する",
+      "issuesOnly": "課題のみを更新する",
+      "keyword": "検索キーワード",
+      "maxCount": "一度に取得する課題の最大数（デフォルト: 5000）",
+      "only": "指定したタイプのみをエクスポート、カンマ区切りで指定（例: 'issues,wiki'）",
+      "output": "出力ディレクトリパス",
+      "projectIdOrKey": "BacklogプロジェクトIDまたはキー",
+      "statusId": "ステータスID（カンマ区切りで複数指定可能）",
+      "wikisOnly": "Wikiのみを更新する"
+    },
+    "labels": {
+      "createdAt": "作成日時",
+      "noContent": "（内容なし）",
+      "status": "ステータス",
+      "updatedAt": "更新日時"
+    },
+    "messages": {
+      "apiKeyFromEnv": "環境変数 BACKLOG_API_KEY からAPIキーを使用します",
+      "apiKeyNotFound": "APIキーが見つかりません。--apiKey フラグまたは BACKLOG_API_KEY 環境変数で提供してください",
+      "failedToGetProjectId": "プロジェクトキー \"{{projectKey}}\" からプロジェクトIDの取得に失敗しました: {{errorMessage}}",
+      "logFailed": "ログの記録に失敗しました: {{errorMessage}}",
+      "rateLimitWait": "レート制限を回避するため15秒間待機します...",
+      "usingProjectId": "プロジェクトID: {{projectId}} を使用します"
+    }
+  }
+}

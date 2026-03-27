@@ -5,6 +5,7 @@ import path from 'node:path'
 import process from 'node:process'
 
 import {sanitizeFileName, sanitizeWikiFileName} from './common.js'
+import {t} from './i18n.js'
 import {appendLog} from './log.js'
 import {RateLimiter} from './sleep.js'
 
@@ -24,10 +25,10 @@ export function createCustomFieldsSection(
     return ''
   }
 
-  let customFieldsSection = '\n\n## カスタム属性\n\n| 属性名 | 値 |\n|--------|----|\n'
+  let customFieldsSection = `\n\n## ${t('commands.issue.labels.customFields')}\n\n| ${t('commands.issue.labels.fieldName')} | ${t('commands.issue.labels.fieldValue')} |\n|--------|----|\n`
 
   for (const customField of customFields) {
-    let fieldValue = 'なし'
+    let fieldValue = t('commands.issue.labels.none')
     if (customField.value !== null && customField.value !== undefined) {
       if (Array.isArray(customField.value)) {
         // 配列の場合（複数選択など）
@@ -83,7 +84,7 @@ export async function downloadIssues(
 ): Promise<void> {
   const baseUrl = `https://${options.domain}/api/v2`
 
-  command.log('課題の取得を開始します...')
+  command.log(t('commands.issue.messages.fetchStart'))
 
   // 全ての課題を格納する配列
   let allIssues: Array<{
@@ -154,7 +155,7 @@ export async function downloadIssues(
     }
 
     // 進捗状況を一行で更新
-    process.stdout.write(`\r課題を取得中... (${allIssues.length}件取得済み)`)
+    process.stdout.write(`\r${t('commands.issue.messages.fetching', {count: allIssues.length})}`)
 
     return ky.get(`${baseUrl}/issues?${params.toString()}`).json<
       Array<{
@@ -193,14 +194,14 @@ export async function downloadIssues(
         await fetchAllIssues(offset + maxCount)
       }
     } catch (error) {
-      command.error(`課題の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`)
+      command.error(t('commands.issue.messages.apiFetchFailed', {errorMessage: error instanceof Error ? error.message : String(error)}))
     }
   }
 
   // 課題取得開始
   await fetchAllIssues(0)
 
-  command.log(`\n合計 ${allIssues.length}件の課題が見つかりました。`)
+  command.log(`\n${t('commands.issue.messages.found', {count: allIssues.length})}`)
 
   // 前回の更新日時より新しい課題のみをフィルタリング
   let filteredIssues = allIssues
@@ -210,23 +211,23 @@ export async function downloadIssues(
       const issueUpdatedDate = new Date(issue.updated)
       return issueUpdatedDate > lastUpdatedDate
     })
-    command.log(`前回の更新日時(${options.lastUpdated})以降に更新された${filteredIssues.length}件の課題を処理します。`)
+    command.log(t('commands.issue.messages.processingSinceLastUpdate', {count: filteredIssues.length, lastUpdated: options.lastUpdated}))
   }
 
   if (filteredIssues.length === 0) {
-    command.log('更新が必要な課題はありません。')
+    command.log(t('commands.issue.messages.noNeedUpdate'))
     return
   }
 
   // 各課題の詳細情報を取得して保存
-  command.log('課題を保存しています...')
+  command.log(t('commands.issue.messages.saving'))
 
   // 並列処理ではなく順次処理に変更
   for (const issue of filteredIssues) {
     try {
       // 進捗状況を一行で更新
       const currentIndex = filteredIssues.indexOf(issue) + 1
-      process.stdout.write(`\r課題を保存中... (${currentIndex}/${filteredIssues.length}件)`)
+      process.stdout.write(`\r${t('commands.issue.messages.savingProgress', {current: currentIndex, total: filteredIssues.length})}`)
 
       // BacklogのIssueへのリンクを作成
       const backlogIssueUrl = `https://${options.domain}/view/${issue.issueKey}`
@@ -244,13 +245,13 @@ export async function downloadIssues(
       // コメントセクションを作成
       let commentsSection = ''
       if (allComments.length > 0) {
-        commentsSection = '\n\n## コメント\n'
+        commentsSection = `\n\n## ${t('commands.issue.labels.comments')}\n`
         let commentIndex = 1
         for (const comment of allComments) {
           const commentDate = new Date(comment.created).toLocaleString('ja-JP')
-          commentsSection += `\n### コメント ${commentIndex}\n- **投稿者**: ${
+          commentsSection += `\n### ${t('commands.issue.labels.comment', {index: commentIndex})}\n- **${t('commands.issue.labels.poster')}**: ${
             comment.createdUser.name
-          }\n- **日時**: ${commentDate}\n\n${comment.content || '(内容なし)'}\n\n---\n`
+          }\n- **${t('commands.issue.labels.timestamp')}**: ${commentDate}\n\n${comment.content || t('common.labels.noContent')}\n\n---\n`
           commentIndex++
         }
 
@@ -290,25 +291,25 @@ export async function downloadIssues(
       const customFieldsSection = createCustomFieldsSection(issue.customFields)
 
       // Markdownファイルに書き込む
-      const assigneeName = issue.assignee ? issue.assignee.name : '未割り当て'
-      const startDate = issue.startDate ? new Date(issue.startDate).toLocaleDateString('ja-JP') : '未設定'
-      const dueDate = issue.dueDate ? new Date(issue.dueDate).toLocaleDateString('ja-JP') : '未設定'
+      const assigneeName = issue.assignee ? issue.assignee.name : t('commands.issue.labels.unassigned')
+      const startDate = issue.startDate ? new Date(issue.startDate).toLocaleDateString('ja-JP') : t('commands.issue.labels.notSet')
+      const dueDate = issue.dueDate ? new Date(issue.dueDate).toLocaleDateString('ja-JP') : t('commands.issue.labels.notSet')
       const markdownContent = `# ${issue.summary}
 
-## 基本情報
-- 課題キー: ${issue.issueKey}
-- 種別: ${issue.issueType.name}
-- ステータス: ${issue.status.name}
-- 優先度: ${issue.priority.name}
-- 担当者: ${assigneeName}
-- 開始日: ${startDate}
-- 期限日: ${dueDate}
-- 作成日時: ${new Date(issue.created).toLocaleString('ja-JP')}
-- 更新日時: ${new Date(issue.updated).toLocaleString('ja-JP')}
+## ${t('commands.issue.labels.basicInfo')}
+- ${t('commands.issue.labels.issueKey')}: ${issue.issueKey}
+- ${t('commands.issue.labels.issueType')}: ${issue.issueType.name}
+- ${t('common.labels.status')}: ${issue.status.name}
+- ${t('commands.issue.labels.priority')}: ${issue.priority.name}
+- ${t('commands.issue.labels.assignee')}: ${assigneeName}
+- ${t('commands.issue.labels.startDate')}: ${startDate}
+- ${t('commands.issue.labels.dueDate')}: ${dueDate}
+- ${t('common.labels.createdAt')}: ${new Date(issue.created).toLocaleString('ja-JP')}
+- ${t('common.labels.updatedAt')}: ${new Date(issue.updated).toLocaleString('ja-JP')}
 - [Backlog Issue Link](${backlogIssueUrl})${customFieldsSection}
 
-## 詳細
-${issue.description || '詳細情報なし'}${commentsSection}`
+## ${t('commands.issue.labels.details')}
+${issue.description || t('commands.issue.labels.noDetail')}${commentsSection}`
 
       // eslint-disable-next-line no-await-in-loop
       await fs.writeFile(issueFilePath, markdownContent)
@@ -318,12 +319,12 @@ ${issue.description || '詳細情報なし'}${commentsSection}`
       await appendLog(options.outputDir, `課題「${issue.summary}」を更新しました: ${backlogIssueUrl}`)
     } catch (error) {
       command.warn(
-        `課題 ${issue.issueKey} の保存に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+        t('commands.issue.messages.saveFailed', {errorMessage: error instanceof Error ? error.message : String(error), issueKey: issue.issueKey}),
       )
     }
   }
 
-  command.log('\n課題のダウンロードが完了しました！')
+  command.log(`\n${t('commands.issue.messages.downloadCompleted')}`)
 }
 
 /**
@@ -388,7 +389,7 @@ async function fetchAllCommentsForIssue({
     return {comments: allComments}
   } catch (error) {
     command.warn(
-      `課題 ${issueKey} のコメント取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+      t('commands.issue.messages.commentFetchFailed', {errorMessage: error instanceof Error ? error.message : String(error), issueKey}),
     )
     return {comments: allComments}
   }
@@ -416,13 +417,13 @@ export async function downloadWikis(
 ): Promise<void> {
   const baseUrl = `https://${options.domain}/api/v2`
 
-  command.log('Wikiの取得を開始します...')
+  command.log(t('commands.wiki.messages.fetchStart'))
 
   // APIリクエスト数をカウントするためのRateLimiterを作成
   const rateLimiter = new RateLimiter(command)
 
   // Wiki一覧の取得
-  command.log('Wiki一覧を取得しています...')
+  command.log(t('commands.wiki.messages.listFetch'))
 
   // APIリクエスト数をインクリメント
   await rateLimiter.increment()
@@ -431,7 +432,7 @@ export async function downloadWikis(
     .get(`${baseUrl}/wikis?apiKey=${options.apiKey}&projectIdOrKey=${options.projectIdOrKey}`)
     .json<Array<{id: string; name: string; updated: string}>>()
 
-  command.log(`${wikis.length}件のWikiが見つかりました。`)
+  command.log(t('commands.wiki.messages.found', {count: wikis.length}))
 
   // 前回の更新日時より新しいWikiのみをフィルタリング
   let filteredWikis = wikis
@@ -441,16 +442,16 @@ export async function downloadWikis(
       const wikiUpdatedDate = new Date(wiki.updated)
       return wikiUpdatedDate > lastUpdatedDate
     })
-    command.log(`前回の更新日時(${options.lastUpdated})以降に更新された${filteredWikis.length}件のWikiを処理します。`)
+    command.log(t('commands.wiki.messages.processingSinceLastUpdate', {count: filteredWikis.length, lastUpdated: options.lastUpdated}))
   }
 
   if (filteredWikis.length === 0) {
-    command.log('更新が必要なWikiはありません。')
+    command.log(t('commands.wiki.messages.noNeedUpdate'))
     return
   }
 
   // 各Wikiの詳細情報を取得
-  command.log('Wiki詳細を取得しています...')
+  command.log(t('commands.wiki.messages.detailsFetch'))
 
   // 並列処理ではなく順次処理に変更
   for (const wiki of filteredWikis) {
@@ -463,7 +464,7 @@ export async function downloadWikis(
 
       // 進捗状況を一行で更新
       const currentIndex = filteredWikis.indexOf(wiki) + 1
-      process.stdout.write(`\rWikiを取得中... (${currentIndex}/${filteredWikis.length}件)`)
+      process.stdout.write(`\r${t('commands.wiki.messages.fetching', {current: currentIndex, total: filteredWikis.length})}`)
 
       // eslint-disable-next-line no-await-in-loop
       const wikiDetail = await ky
@@ -506,13 +507,13 @@ export async function downloadWikis(
 
       // 進捗状況を一行で更新
       const wikiIndex = filteredWikis.indexOf(wiki) + 1
-      process.stdout.write(`\rWikiを保存中... (${wikiIndex}/${filteredWikis.length}件)`)
+      process.stdout.write(`\r${t('commands.wiki.messages.saving', {current: wikiIndex, total: filteredWikis.length})}`)
     } catch (error) {
-      command.warn(`Wiki ${wiki.name} の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`)
+      command.warn(t('commands.wiki.messages.apiFetchFailed', {errorMessage: error instanceof Error ? error.message : String(error), name: wiki.name}))
     }
   }
 
-  command.log('\nWikiのダウンロードが完了しました！')
+  command.log(`\n${t('commands.wiki.messages.downloadCompleted')}`)
 }
 
 /**
@@ -541,13 +542,13 @@ export async function downloadDocuments(
 ): Promise<void> {
   const baseUrl = `https://${options.domain}/api/v2`
 
-  command.log('ドキュメントの取得を開始します...')
+  command.log(t('commands.document.messages.fetchStart'))
 
   // APIリクエスト数をカウントするためのRateLimiterを作成
   const rateLimiter = new RateLimiter(command)
 
   // ドキュメントツリーの取得
-  command.log('ドキュメントツリーを取得しています...')
+  command.log(t('commands.document.messages.treeFetch'))
 
   // APIリクエスト数をインクリメント
   await rateLimiter.increment()
@@ -576,7 +577,7 @@ export async function downloadDocuments(
       }
     }>()
 
-  command.log('アクティブなドキュメントツリーを処理します...')
+  command.log(t('commands.document.messages.treeProcess'))
 
   // ツリー構造をトラバースして、各ドキュメントの詳細を取得・保存
   const processedDocuments: string[] = []
@@ -610,7 +611,7 @@ export async function downloadDocuments(
         await rateLimiter.increment()
 
         // 進捗状況を表示
-        process.stdout.write(`\rドキュメント「${node.name}」を処理中...`)
+        process.stdout.write(`\r${t('commands.document.messages.processing', {name: node.name})}`)
 
         // ドキュメント詳細を取得
         const documentDetail = await ky.get(`${baseUrl}/documents/${node.id}?apiKey=${options.apiKey}`).json<{
@@ -670,18 +671,18 @@ export async function downloadDocuments(
         // 添付ファイルリストの作成
         let attachmentsSection = ''
         if (documentDetail.attachments && documentDetail.attachments.length > 0) {
-          attachmentsSection = '\n\n## 添付ファイル\n'
+          attachmentsSection = `\n\n## ${t('commands.document.labels.attachments')}\n`
           for (const attachment of documentDetail.attachments) {
             const attachmentDate = new Date(attachment.created).toLocaleString('ja-JP')
             const fileSize = (attachment.size / 1024).toFixed(1)
-            attachmentsSection += `- **${attachment.name}** (${fileSize} KB) - 作成者: ${attachment.createdUser.name}, 作成日時: ${attachmentDate}\n`
+            attachmentsSection += `- **${attachment.name}** (${fileSize} KB) - ${t('commands.document.labels.attachmentInfo', {creator: attachment.createdUser.name, date: attachmentDate})}\n`
           }
         }
 
         // タグリストの作成
         let tagsSection = ''
         if (documentDetail.tags && documentDetail.tags.length > 0) {
-          tagsSection = '\n\n## タグ\n'
+          tagsSection = `\n\n## ${t('commands.document.labels.tags')}\n`
           for (const tag of documentDetail.tags) {
             tagsSection += `- ${tag.name}\n`
           }
@@ -696,15 +697,15 @@ export async function downloadDocuments(
 
 [Backlog Document Link](${backlogDocumentUrl})
 
-**ステータス**: ${documentDetail.statusId}${documentDetail.emoji ? ` ${documentDetail.emoji}` : ''}
-**作成者**: ${documentDetail.createdUser.name}
-**作成日時**: ${createdDate}
-**更新者**: ${documentDetail.updatedUser.name}
-**更新日時**: ${updatedDate}
+**${t('common.labels.status')}**: ${documentDetail.statusId}${documentDetail.emoji ? ` ${documentDetail.emoji}` : ''}
+**${t('commands.document.labels.creator')}**: ${documentDetail.createdUser.name}
+**${t('common.labels.createdAt')}**: ${createdDate}
+**${t('commands.document.labels.updater')}**: ${documentDetail.updatedUser.name}
+**${t('common.labels.updatedAt')}**: ${updatedDate}
 
-## 内容
+## ${t('commands.document.labels.content')}
 
-${documentDetail.plain || '（内容なし）'}${attachmentsSection}${tagsSection}`
+${documentDetail.plain || t('common.labels.noContent')}${attachmentsSection}${tagsSection}`
 
         await fs.writeFile(documentFilePath, markdownContent)
 
@@ -715,7 +716,7 @@ ${documentDetail.plain || '（内容なし）'}${attachmentsSection}${tagsSectio
         )
       } catch (error) {
         command.warn(
-          `ドキュメント ${node.name} の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+          t('commands.document.messages.documentFetchFailed', {errorMessage: error instanceof Error ? error.message : String(error), name: node.name}),
         )
       }
     }
@@ -729,6 +730,6 @@ ${documentDetail.plain || '（内容なし）'}${attachmentsSection}${tagsSectio
     }
   }
 
-  command.log(`\n合計 ${processedDocuments.length}件のドキュメントが処理されました。`)
-  command.log('ドキュメントのダウンロードが完了しました！')
+  command.log(`\n${t('commands.document.messages.processed', {count: processedDocuments.length})}`)
+  command.log(t('commands.document.messages.downloadCompleted'))
 }

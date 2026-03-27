@@ -1,5 +1,7 @@
 import ky from 'ky'
 
+import {t} from './i18n.js'
+
 /**
  * プロジェクトキーからプロジェクトIDを取得する
  * @param domain Backlogドメイン (例: example.backlog.jp)
@@ -16,9 +18,10 @@ export async function getProjectIdFromKey(domain: string, projectKey: string, ap
     return projectData.id
   } catch (error) {
     throw new Error(
-      `プロジェクトキー "${projectKey}" からプロジェクトIDの取得に失敗しました: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
+      t('common.messages.failedToGetProjectId', {
+        errorMessage: error instanceof Error ? error.message : String(error),
+        projectKey,
+      }),
     )
   }
 }
