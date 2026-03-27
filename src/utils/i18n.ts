@@ -52,6 +52,7 @@ i18next.init({
   },
   lng: locale,
   resources,
+  showSupportNotice: false,
 })
 
 // eslint-disable-next-line import/no-named-as-default-member
