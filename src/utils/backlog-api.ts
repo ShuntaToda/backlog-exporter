@@ -248,9 +248,11 @@ export async function downloadIssues(
         let commentIndex = 1
         for (const comment of allComments) {
           const commentDate = new Date(comment.created).toLocaleString('ja-JP')
+          // Backlogのコメントへのリンクを作成
+          const backlogCommentUrl = `${backlogIssueUrl}#comment-${comment.id}`
           commentsSection += `\n### コメント ${commentIndex}\n- **投稿者**: ${
             comment.createdUser.name
-          }\n- **日時**: ${commentDate}\n\n${comment.content || '(内容なし)'}\n\n---\n`
+          }\n- **日時**: ${commentDate}\n- [Backlog Comment Link](${backlogCommentUrl})\n\n${comment.content || '(内容なし)'}\n\n---\n`
           commentIndex++
         }
 
