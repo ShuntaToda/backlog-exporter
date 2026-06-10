@@ -526,6 +526,7 @@ export async function downloadWikis(
  * @param options.outputDir 出力ディレクトリ
  * @param options.projectId プロジェクトID
  * @param options.projectIdOrKey プロジェクトIDまたはキー
+ * @param options.prune Backlog上に存在しないローカルのドキュメントファイルを削除するかどうか
  */
 export async function downloadDocuments(
   command: Command,
@@ -537,6 +538,7 @@ export async function downloadDocuments(
     outputDir: string
     projectId: number
     projectIdOrKey: string
+    prune?: boolean
   },
 ): Promise<void> {
   const baseUrl = `https://${options.domain}/api/v2`
@@ -727,6 +729,67 @@ ${documentDetail.plain || '（内容なし）'}${attachmentsSection}${tagsSectio
       // eslint-disable-next-line no-await-in-loop
       await processDocumentNode(rootNode, '')
     }
+  }
+
+  // Backlog上に存在しないローカルのドキュメントファイルを削除（pruneオプション指定時）
+  if (options.prune) {
+    command.log('\nBacklog上に存在しないローカルのドキュメントファイルを削除しています...')
+
+    // ドキュメントツリーから期待されるファイル・ディレクトリのパス集合を構築
+    // macOSのファイルシステム（NFD）とAPIレスポンス（NFC）のUnicode正規化差異を吸収するためNFCに揃える
+    const expectedFiles = new Set<string>()
+    const expectedDirs = new Set<string>()
+    const collectExpectedPaths = (node: DocumentNode, currentPath: string): void => {
+      const sanitizedName = sanitizeFileName(node.name)
+      expectedFiles.add(path.join(currentPath, `${sanitizedName}.md`).normalize('NFC'))
+      if (node.children && node.children.length > 0) {
+        const dirPath = path.join(currentPath, sanitizedName)
+        expectedDirs.add(dirPath.normalize('NFC'))
+        for (const child of node.children) {
+          collectExpectedPaths(child, dirPath)
+        }
+      }
+    }
+
+    for (const rootNode of documentTree.activeTree.children) {
+      collectExpectedPaths(rootNode, '')
+    }
+
+    // ローカルのディレクトリを再帰的に走査し、期待されるパス集合に含まれない.mdファイルを削除する
+    let prunedCount = 0
+    const pruneDirectory = async (dir: string): Promise<void> => {
+      const entries = await fs.readdir(dir, {withFileTypes: true})
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name)
+        const relativePath = path.relative(options.outputDir, fullPath).normalize('NFC')
+        if (entry.isDirectory()) {
+          // eslint-disable-next-line no-await-in-loop
+          await pruneDirectory(fullPath)
+
+          // 空になったディレクトリを削除（Backlog上に存在するディレクトリは残す）
+          // eslint-disable-next-line no-await-in-loop
+          const remaining = await fs.readdir(fullPath)
+          if (remaining.length === 0 && !expectedDirs.has(relativePath)) {
+            // eslint-disable-next-line no-await-in-loop
+            await fs.rmdir(fullPath)
+            command.log(`空のディレクトリを削除しました: ${relativePath}`)
+          }
+        } else if (entry.name.endsWith('.md') && !expectedFiles.has(relativePath)) {
+          // eslint-disable-next-line no-await-in-loop
+          await fs.unlink(fullPath)
+          prunedCount++
+          command.log(`Backlog上に存在しないドキュメントを削除しました: ${relativePath}`)
+          // eslint-disable-next-line no-await-in-loop
+          await appendLog(
+            options.outputDir,
+            `ドキュメント「${relativePath}」を削除しました（Backlog上に存在しないため）`,
+          )
+        }
+      }
+    }
+
+    await pruneDirectory(options.outputDir)
+    command.log(`${prunedCount}件の不要なドキュメントファイルを削除しました。`)
   }
 
   command.log(`\n合計 ${processedDocuments.length}件のドキュメントが処理されました。`)

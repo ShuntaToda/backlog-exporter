@@ -21,6 +21,7 @@ interface UpdateFlags {
   issueKeyFolder?: boolean
   issuesOnly?: boolean
   projectIdOrKey?: string
+  prune?: boolean
   wikisOnly?: boolean
 }
 
@@ -87,6 +88,10 @@ export default class Update extends Command {
     }),
     projectIdOrKey: Flags.string({
       description: 'Backlog project ID or key',
+      required: false,
+    }),
+    prune: Flags.boolean({
+      description: 'Backlog上に存在しないローカルのドキュメントファイルを削除する',
       required: false,
     }),
     wikisOnly: Flags.boolean({
@@ -243,7 +248,7 @@ export default class Update extends Command {
     const domain = flags.domain || settings.domain
     const projectIdOrKey = flags.projectIdOrKey || settings.projectIdOrKey
     const {folderType} = settings
-    const {documentsOnly, force, issuesOnly, wikisOnly} = flags
+    const {documentsOnly, force, issuesOnly, prune, wikisOnly} = flags
 
     // 設定ファイルからオプションを読み込み、コマンドライン引数で上書き
     const issueKeyFileName = flags.issueKeyFileName ?? settings.issueKeyFileName ?? false
@@ -329,6 +334,7 @@ export default class Update extends Command {
         domain,
         projectId,
         projectIdOrKey,
+        prune,
         targetDir,
       })
     }
@@ -342,6 +348,7 @@ export default class Update extends Command {
     domain: string
     projectId: number
     projectIdOrKey: string
+    prune?: boolean
     targetDir: string
   }): Promise<void> {
     this.log('ドキュメントの更新を開始します...')
@@ -356,6 +363,7 @@ export default class Update extends Command {
       outputDir: options.targetDir,
       projectId: options.projectId,
       projectIdOrKey: options.projectIdOrKey,
+      prune: options.prune,
     })
 
     // 設定ファイルを更新

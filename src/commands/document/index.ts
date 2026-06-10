@@ -21,6 +21,9 @@ export default class Document extends Command {
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --keyword 仕様書
 キーワード「仕様書」を含むドキュメントのみを取得する
 `,
+    `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --prune
+Backlog上で削除・移動されたドキュメントのローカルファイルを削除する
+`,
   ]
   static flags = {
     apiKey: Flags.string({
@@ -44,13 +47,17 @@ export default class Document extends Command {
       description: 'Backlog project ID or key',
       required: true,
     }),
+    prune: Flags.boolean({
+      description: 'Backlog上に存在しないローカルのドキュメントファイルを削除する',
+      required: false,
+    }),
   }
 
   async run(): Promise<void> {
     const {flags} = await this.parse(Document)
 
     try {
-      const {domain, keyword, projectIdOrKey} = flags
+      const {domain, keyword, projectIdOrKey, prune} = flags
       const apiKey = flags.apiKey || getApiKey(this)
       const outputDir = flags.output || './backlog-documents'
 
@@ -78,6 +85,7 @@ export default class Document extends Command {
         outputDir,
         projectId,
         projectIdOrKey,
+        prune,
       })
 
       // 最終更新日時を更新
