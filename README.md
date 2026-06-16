@@ -219,14 +219,6 @@ $ backlog-exporter document --domain example.backlog.jp --projectIdOrKey PROJECT
 $ backlog-exporter document --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --keyword 仕様書
 ```
 
-**Backlog上で削除・移動されたドキュメントのローカルファイルを削除する**
-
-```sh
-$ backlog-exporter document --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --prune
-```
-
-通常のエクスポートはファイルの追加・上書きのみを行うため、Backlog上で削除されたドキュメントや別の場所へ移動されたドキュメントのローカルファイルは残り続けます。`--prune` を指定すると、Backlogのドキュメントツリーに存在しないローカルの `.md` ファイルと、空になったディレクトリを削除してBacklogと同じ状態に揃えます（`.md` 以外のファイルには触れません）。`update` コマンドでも `--prune` を指定できます。
-
 ## ドキュメントの出力方法
 
 ドキュメントは **ツリー構造を保持** してエクスポートされます：
@@ -375,6 +367,14 @@ $ backlog-exporter update --documentsOnly
 ```sh
 $ backlog-exporter update --apiKey YOUR_API_KEY
 ```
+
+**Backlog上で削除・移動されたドキュメントのローカルファイルを削除する**
+
+```sh
+$ backlog-exporter update --prune
+```
+
+`update` は増分更新（追加・上書き）のため、Backlog上で削除されたドキュメントや別の場所へ移動されたドキュメントのローカルファイルは残り続けます。`--prune` を指定すると、Backlogのドキュメントツリーに存在しないローカルの `.md` ファイルと、空になったディレクトリを削除してBacklogと同じ状態に揃えます（`.md` 以外のファイルには触れません）。
 
 更新コマンドは、各ディレクトリの設定ファイルに基づいて、課題・Wiki・ドキュメントを自動的に更新します。設定ファイルが見つかったディレクトリでは、そのディレクトリ内のファイルが直接更新されます（サブフォルダは作成されません）。
 
