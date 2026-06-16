@@ -4,7 +4,7 @@ import * as dotenv from 'dotenv'
 import {downloadIssues} from '../../utils/backlog-api.js'
 import {validateAndGetProjectId} from '../../utils/backlog.js'
 import {createOutputDirectory, getApiKey} from '../../utils/common.js'
-import {FolderType, loadSettings, updateSettings} from '../../utils/settings.js'
+import {FolderType, updateSettings} from '../../utils/settings.js'
 
 // .envファイルを読み込む
 dotenv.config()
@@ -33,9 +33,6 @@ export default class Issue extends Command {
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFileName --issueKeyFolder
 課題キーでフォルダを作成し、ファイル名も課題キーにする
 `,
-    `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueIdOrKey PROJECT-1,PROJECT-2
-指定した課題（IDまたはキー）のみを取得する
-`,
   ]
   static flags = {
     apiKey: Flags.string({
@@ -45,10 +42,6 @@ export default class Issue extends Command {
     domain: Flags.string({
       description: 'Backlog domain (e.g. example.backlog.jp)',
       required: true,
-    }),
-    issueIdOrKey: Flags.string({
-      description: '取得する課題のIDまたはキー（カンマ区切りで複数指定可能）',
-      required: false,
     }),
     issueKeyFileName: Flags.boolean({
       description: 'ファイル名を課題キーにする',
@@ -83,23 +76,9 @@ export default class Issue extends Command {
     const {flags} = await this.parse(Issue)
 
     try {
-      const {domain, issueIdOrKey, maxCount, projectIdOrKey, statusId} = flags
+      const {domain, issueKeyFileName, issueKeyFolder, maxCount, projectIdOrKey, statusId} = flags
       const apiKey = flags.apiKey || getApiKey(this)
       const outputDir = flags.output || './backlog-issues'
-
-      // 課題IDまたはキーをカンマ区切りでパース
-      const issueIdOrKeys = issueIdOrKey
-        ? issueIdOrKey
-            .split(',')
-            .map((key) => key.trim())
-            .filter(Boolean)
-        : undefined
-
-      // 設定ファイルからオプションを読み込み、コマンドライン引数で上書き
-      // （課題キー指定時に既存のエクスポートと同じパスへ保存するため）
-      const settings = await loadSettings(outputDir)
-      const issueKeyFileName = flags.issueKeyFileName ?? settings.issueKeyFileName
-      const issueKeyFolder = flags.issueKeyFolder ?? settings.issueKeyFolder
 
       // 出力ディレクトリの作成
       await createOutputDirectory(outputDir)
@@ -124,7 +103,6 @@ export default class Issue extends Command {
         apiKey,
         count: maxCount,
         domain,
-        issueIdOrKeys,
         issueKeyFileName,
         issueKeyFolder,
         outputDir,
@@ -132,12 +110,10 @@ export default class Issue extends Command {
         statusId,
       })
 
-      // 最終更新日時を更新（課題指定時は全件取得ではないため更新しない）
-      if (!issueIdOrKeys) {
-        await updateSettings(outputDir, {
-          lastUpdated: new Date().toISOString(),
-        })
-      }
+      // 最終更新日時を更新
+      await updateSettings(outputDir, {
+        lastUpdated: new Date().toISOString(),
+      })
 
       this.log('課題の取得が完了しました！')
     } catch (error) {

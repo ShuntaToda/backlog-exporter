@@ -153,16 +153,6 @@ $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KE
 $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFileName --issueKeyFolder
 ```
 
-**指定した課題（IDまたはキー）のみを取得する**
-
-```sh
-$ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueIdOrKey PROJECT-1,PROJECT-2
-```
-
-カンマ区切りで複数の課題を指定できます。値は課題キー（`PROJECT-1`）だけでなく課題ID（数値）も指定できます。Backlog 側で特定の課題だけが更新された場合に、全件取得せずにその課題だけをピンポイントで再取得できます（指定した課題以外のローカルファイルには影響しません）。
-
-> **Note**: `--issueIdOrKey` 指定時は全件取得ではないため、設定ファイルの最終更新日時（`lastUpdated`）は更新されません。そのため、次回の `update` コマンドによる差分更新に影響を与えません。
-
 エクスポートされた課題は、指定したディレクトリ内に Markdown ファイルとして保存されます。ファイル名は課題のキーに基づいて自動的に生成されます。
 
 ## カスタム属性の対応
@@ -377,6 +367,16 @@ $ backlog-exporter update --documentsOnly
 ```sh
 $ backlog-exporter update --apiKey YOUR_API_KEY
 ```
+
+**指定した課題（IDまたはキー）のみを再取得する**
+
+```sh
+$ backlog-exporter update --issueIdOrKey PROJECT-1,PROJECT-2
+```
+
+`update` は通常、設定ファイルの最終更新日時（`lastUpdated`）以降に更新された課題を差分取得します。一方で「特定の課題だけを取り直したい」場合は `--issueIdOrKey` を使います。カンマ区切りで複数指定でき、値は課題キー（`PROJECT-1`）だけでなく課題ID（数値）も指定できます。指定した課題のみを再取得し、Wiki・ドキュメントの更新は行いません（指定した課題以外のローカルファイルには影響しません）。
+
+> **Note**: `--issueIdOrKey` 指定時は全件差分更新ではないため、設定ファイルの最終更新日時（`lastUpdated`）は更新されません。そのため、次回の通常の差分更新に影響を与えません。
 
 更新コマンドは、各ディレクトリの設定ファイルに基づいて、課題・Wiki・ドキュメントを自動的に更新します。設定ファイルが見つかったディレクトリでは、そのディレクトリ内のファイルが直接更新されます（サブフォルダは作成されません）。
 

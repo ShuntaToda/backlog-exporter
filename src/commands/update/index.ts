@@ -17,6 +17,7 @@ interface UpdateFlags {
   documentsOnly?: boolean
   domain?: string
   force?: boolean
+  issueIdOrKey?: string
   issueKeyFileName?: boolean
   issueKeyFolder?: boolean
   issuesOnly?: boolean
@@ -54,6 +55,9 @@ export default class Update extends Command {
     `<%= config.bin %> <%= command.id %> --issueKeyFileName --issueKeyFolder
 課題キーでフォルダを作成し、ファイル名も課題キーにする
 `,
+    `<%= config.bin %> <%= command.id %> --issueIdOrKey PROJECT-1,PROJECT-2
+指定した課題（IDまたはキー）のみを再取得する（全件差分更新は行わない）
+`,
   ]
   static flags = {
     apiKey: Flags.string({
@@ -71,6 +75,10 @@ export default class Update extends Command {
     force: Flags.boolean({
       char: 'f',
       description: '確認プロンプトをスキップする',
+      required: false,
+    }),
+    issueIdOrKey: Flags.string({
+      description: '指定した課題（IDまたはキー）のみを再取得する（カンマ区切りで複数指定可能）',
       required: false,
     }),
     issueKeyFileName: Flags.boolean({
@@ -249,6 +257,14 @@ export default class Update extends Command {
     const issueKeyFileName = flags.issueKeyFileName ?? settings.issueKeyFileName ?? false
     const issueKeyFolder = flags.issueKeyFolder ?? settings.issueKeyFolder ?? false
 
+    // 課題IDまたはキーをカンマ区切りでパース（指定時は該当課題のみを再取得する）
+    const issueIdOrKeys = flags.issueIdOrKey
+      ? flags.issueIdOrKey
+          .split(',')
+          .map((key) => key.trim())
+          .filter(Boolean)
+      : undefined
+
     // 必須パラメータの検証
     if (!domain) {
       this.warn(`${targetDir}: ドメインが指定されていません。スキップします。`)
@@ -272,12 +288,15 @@ export default class Update extends Command {
     }
 
     // 更新対象の決定
-    const {updateDocuments, updateIssues, updateWikis} = this.determineUpdateTargets(
-      folderType,
-      documentsOnly,
-      issuesOnly,
-      wikisOnly,
-    )
+    const targets = this.determineUpdateTargets(folderType, documentsOnly, issuesOnly, wikisOnly)
+
+    // 課題ID・キー指定時は課題のみを対象にする（Wiki・ドキュメントは更新しない）
+    if (issueIdOrKeys) {
+      targets.updateWikis = false
+      targets.updateDocuments = false
+    }
+
+    const {updateDocuments, updateIssues, updateWikis} = targets
 
     // 更新前の確認
     const confirmed = await this.confirmUpdate({
@@ -304,6 +323,7 @@ export default class Update extends Command {
       await this.updateIssues({
         apiKey,
         domain,
+        issueIdOrKeys,
         issueKeyFileName,
         issueKeyFolder,
         projectId,
@@ -375,6 +395,7 @@ export default class Update extends Command {
   private async updateIssues(options: {
     apiKey: string
     domain: string
+    issueIdOrKeys?: string[]
     issueKeyFileName?: boolean
     issueKeyFolder?: boolean
     projectId: number
@@ -384,18 +405,27 @@ export default class Update extends Command {
     this.log('課題の更新を開始します...')
 
     // 設定ファイルから前回の更新日時を取得
+    // 課題ID・キー指定時は全件差分更新ではなく該当課題のみを取得するため、lastUpdatedによる絞り込みは行わない
     const {lastUpdated} = await loadSettings(options.targetDir)
 
     await downloadIssues(this, {
       apiKey: options.apiKey,
       count: 100,
       domain: options.domain,
+      issueIdOrKeys: options.issueIdOrKeys,
       issueKeyFileName: options.issueKeyFileName,
       issueKeyFolder: options.issueKeyFolder,
-      lastUpdated,
+      lastUpdated: options.issueIdOrKeys ? undefined : lastUpdated,
       outputDir: options.targetDir,
       projectId: options.projectId,
     })
+
+    // 課題ID・キー指定時は全件取得ではないため、最終更新日時（lastUpdated）は更新しない
+    // （次回の全件差分更新に影響を与えないようにするため）
+    if (options.issueIdOrKeys) {
+      this.log('課題の更新が完了しました')
+      return
+    }
 
     // 設定ファイルを更新
     await updateSettings(options.targetDir, {
