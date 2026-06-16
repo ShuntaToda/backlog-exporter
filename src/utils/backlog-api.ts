@@ -586,8 +586,14 @@ export async function downloadDocuments(
    * @param node ドキュメントノード
    * @param currentPath 保存先の相対パス
    * @param skipIfEmpty 本文が空の場合に保存をスキップするかどうか
+   * @param fileNameOverride ファイル名を固定したい場合に指定する（拡張子込み。親ドキュメント本文を `00_index.md` として保存する用途）
    */
-  const fetchAndSaveDocument = async (node: DocumentNode, currentPath: string, skipIfEmpty = false): Promise<void> => {
+  const fetchAndSaveDocument = async (
+    node: DocumentNode,
+    currentPath: string,
+    skipIfEmpty = false,
+    fileNameOverride?: string,
+  ): Promise<void> => {
     try {
       // 既に処理済みのドキュメントはスキップ
       if (processedDocuments.includes(node.id)) {
@@ -652,7 +658,7 @@ export async function downloadDocuments(
 
       // ファイルパスを構築
       const sanitizedTitle = sanitizeFileName(documentDetail.title)
-      const documentFileName = `${sanitizedTitle}.md`
+      const documentFileName = fileNameOverride ?? `${sanitizedTitle}.md`
       const documentFilePath = path.join(options.outputDir, currentPath, documentFileName)
 
       // ディレクトリを作成（必要に応じて）
@@ -718,16 +724,19 @@ ${documentDetail.plain || '（内容なし）'}${attachmentsSection}${tagsSectio
   const processDocumentNode = async (node: DocumentNode, currentPath: string): Promise<void> => {
     if (node.children && node.children.length > 0) {
       // 子を持つ場合はフォルダを作成して子ノードを処理
-      const folderPath = path.join(options.outputDir, currentPath, sanitizeFileName(node.name))
+      const folderRelPath = path.join(currentPath, sanitizeFileName(node.name))
+      const folderPath = path.join(options.outputDir, folderRelPath)
       await fs.mkdir(folderPath, {recursive: true})
 
       for (const child of node.children) {
         // eslint-disable-next-line no-await-in-loop
-        await processDocumentNode(child, path.join(currentPath, sanitizeFileName(node.name)))
+        await processDocumentNode(child, folderRelPath)
       }
 
-      // Backlogのドキュメントは子を持ちながら自身の本文も持てるため、親自身の内容も取得する
-      await fetchAndSaveDocument(node, currentPath, true)
+      // Backlogのドキュメントは子を持ちながら自身の本文も持てるため、親自身の内容も取得する。
+      // 親本文はフォルダ「内」に `00_index.md` として保存し、フォルダとファイルが
+      // エディタのエクスプローラ上で離れて表示される問題を防ぐ（数字プレフィックスで常に先頭に表示される）。
+      await fetchAndSaveDocument(node, folderRelPath, true, '00_index.md')
     } else {
       // 子を持たない場合はドキュメントとして保存
       await fetchAndSaveDocument(node, currentPath)
