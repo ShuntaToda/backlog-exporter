@@ -431,6 +431,7 @@ async function fetchAllCommentsForIssue({
  * @param options.lastUpdated 最終更新日時
  * @param options.outputDir 出力ディレクトリ
  * @param options.projectIdOrKey プロジェクトIDまたはキー
+ * @param options.wikiIds 取得するWiki IDの配列（指定時は該当Wikiのみを取得する）
  */
 export async function downloadWikis(
   command: Command,
@@ -440,6 +441,7 @@ export async function downloadWikis(
     lastUpdated?: string
     outputDir: string
     projectIdOrKey: string
+    wikiIds?: string[]
   },
 ): Promise<void> {
   const baseUrl = `https://${options.domain}/api/v2`
@@ -461,9 +463,15 @@ export async function downloadWikis(
 
   command.log(`${wikis.length}件のWikiが見つかりました。`)
 
-  // 前回の更新日時より新しいWikiのみをフィルタリング
+  // 処理対象のWikiを絞り込む
   let filteredWikis = wikis
-  if (options.lastUpdated) {
+  if (options.wikiIds && options.wikiIds.length > 0) {
+    // Wiki ID指定時は該当Wikiのみを処理する（前回更新日時による絞り込みは行わない）
+    const wikiIdSet = new Set(options.wikiIds.map(String))
+    filteredWikis = wikis.filter((wiki) => wikiIdSet.has(String(wiki.id)))
+    command.log(`指定された${filteredWikis.length}件のWikiを処理します。`)
+  } else if (options.lastUpdated) {
+    // 前回の更新日時より新しいWikiのみをフィルタリング
     const lastUpdatedDate = new Date(options.lastUpdated)
     filteredWikis = wikis.filter((wiki) => {
       const wikiUpdatedDate = new Date(wiki.updated)
@@ -554,11 +562,13 @@ export async function downloadWikis(
  * @param options.outputDir 出力ディレクトリ
  * @param options.projectId プロジェクトID
  * @param options.projectIdOrKey プロジェクトIDまたはキー
+ * @param options.documentIds 取得するドキュメントIDの配列（指定時は該当ドキュメントのみを取得する）
  */
 export async function downloadDocuments(
   command: Command,
   options: {
     apiKey: string
+    documentIds?: string[]
     domain: string
     keyword?: string
     lastUpdated?: string
@@ -629,6 +639,11 @@ export async function downloadDocuments(
       try {
         // 既に処理済みのドキュメントはスキップ
         if (processedDocuments.includes(node.id)) {
+          return
+        }
+
+        // ドキュメントID指定時は該当ドキュメントのみを取得する（フォルダ階層はツリーをたどって維持する）
+        if (options.documentIds && options.documentIds.length > 0 && !options.documentIds.includes(node.id)) {
           return
         }
 

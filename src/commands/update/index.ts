@@ -14,6 +14,7 @@ dotenv.config()
 // フラグの型定義
 interface UpdateFlags {
   apiKey?: string
+  documentId?: string
   documentsOnly?: boolean
   domain?: string
   force?: boolean
@@ -22,6 +23,7 @@ interface UpdateFlags {
   issueKeyFolder?: boolean
   issuesOnly?: boolean
   projectIdOrKey?: string
+  wikiId?: string
   wikisOnly?: boolean
 }
 
@@ -58,10 +60,20 @@ export default class Update extends Command {
     `<%= config.bin %> <%= command.id %> --issueIdOrKey PROJECT-1,PROJECT-2
 指定した課題（IDまたはキー）のみを再取得する（全件差分更新は行わない）
 `,
+    `<%= config.bin %> <%= command.id %> --wikiId 12345,12346
+指定したWiki（ID）のみを再取得する（全件差分更新は行わない）
+`,
+    `<%= config.bin %> <%= command.id %> --documentId abc123,def456
+指定したドキュメント（ID）のみを再取得する（全件差分更新は行わない）
+`,
   ]
   static flags = {
     apiKey: Flags.string({
       description: 'Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能)',
+      required: false,
+    }),
+    documentId: Flags.string({
+      description: '指定したドキュメント（ID）のみを再取得する（カンマ区切りで複数指定可能）',
       required: false,
     }),
     documentsOnly: Flags.boolean({
@@ -95,6 +107,10 @@ export default class Update extends Command {
     }),
     projectIdOrKey: Flags.string({
       description: 'Backlog project ID or key',
+      required: false,
+    }),
+    wikiId: Flags.string({
+      description: '指定したWiki（ID）のみを再取得する（カンマ区切りで複数指定可能）',
       required: false,
     }),
     wikisOnly: Flags.boolean({
@@ -257,13 +273,19 @@ export default class Update extends Command {
     const issueKeyFileName = flags.issueKeyFileName ?? settings.issueKeyFileName ?? false
     const issueKeyFolder = flags.issueKeyFolder ?? settings.issueKeyFolder ?? false
 
-    // 課題IDまたはキーをカンマ区切りでパース（指定時は該当課題のみを再取得する）
-    const issueIdOrKeys = flags.issueIdOrKey
-      ? flags.issueIdOrKey
-          .split(',')
-          .map((key) => key.trim())
-          .filter(Boolean)
-      : undefined
+    // 課題・Wiki・ドキュメントのID指定をカンマ区切りでパース（指定時は該当項目のみを再取得する）
+    const parseIds = (value: string | undefined): string[] | undefined => {
+      if (!value) return undefined
+      const ids = value
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean)
+      return ids.length > 0 ? ids : undefined
+    }
+
+    const issueIdOrKeys = parseIds(flags.issueIdOrKey)
+    const wikiIds = parseIds(flags.wikiId)
+    const documentIds = parseIds(flags.documentId)
 
     // 必須パラメータの検証
     if (!domain) {
@@ -290,10 +312,13 @@ export default class Update extends Command {
     // 更新対象の決定
     const targets = this.determineUpdateTargets(folderType, documentsOnly, issuesOnly, wikisOnly)
 
-    // 課題ID・キー指定時は課題のみを対象にする（Wiki・ドキュメントは更新しない）
-    if (issueIdOrKeys) {
-      targets.updateWikis = false
-      targets.updateDocuments = false
+    // いずれかのID指定がある場合は「指定した項目のみ再取得」モードとし、
+    // ID指定のない種別は更新対象から外す（例: --wikiId のみ指定時は課題・ドキュメントを更新しない）
+    const hasTargetedFetch = Boolean(issueIdOrKeys || wikiIds || documentIds)
+    if (hasTargetedFetch) {
+      if (!issueIdOrKeys) targets.updateIssues = false
+      if (!wikiIds) targets.updateWikis = false
+      if (!documentIds) targets.updateDocuments = false
     }
 
     const {updateDocuments, updateIssues, updateWikis} = targets
@@ -339,6 +364,7 @@ export default class Update extends Command {
         domain,
         projectIdOrKey,
         targetDir,
+        wikiIds,
       })
     }
 
@@ -346,6 +372,7 @@ export default class Update extends Command {
     if (updateDocuments) {
       await this.updateDocuments({
         apiKey,
+        documentIds,
         domain,
         projectId,
         projectIdOrKey,
@@ -359,6 +386,7 @@ export default class Update extends Command {
   // ドキュメントの更新
   private async updateDocuments(options: {
     apiKey: string
+    documentIds?: string[]
     domain: string
     projectId: number
     projectIdOrKey: string
@@ -367,16 +395,24 @@ export default class Update extends Command {
     this.log('ドキュメントの更新を開始します...')
 
     // 設定ファイルから前回の更新日時を取得
+    // ドキュメントID指定時は全件差分更新ではなく該当ドキュメントのみを取得するため、lastUpdatedによる絞り込みは行わない
     const {lastUpdated} = await loadSettings(options.targetDir)
 
     await downloadDocuments(this, {
       apiKey: options.apiKey,
+      documentIds: options.documentIds,
       domain: options.domain,
-      lastUpdated,
+      lastUpdated: options.documentIds ? undefined : lastUpdated,
       outputDir: options.targetDir,
       projectId: options.projectId,
       projectIdOrKey: options.projectIdOrKey,
     })
+
+    // ドキュメントID指定時は全件取得ではないため、最終更新日時（lastUpdated）は更新しない
+    if (options.documentIds) {
+      this.log('ドキュメントの更新が完了しました')
+      return
+    }
 
     // 設定ファイルを更新
     await updateSettings(options.targetDir, {
@@ -446,19 +482,28 @@ export default class Update extends Command {
     domain: string
     projectIdOrKey: string
     targetDir: string
+    wikiIds?: string[]
   }): Promise<void> {
     this.log('Wikiの更新を開始します...')
 
     // 設定ファイルから前回の更新日時を取得
+    // Wiki ID指定時は全件差分更新ではなく該当Wikiのみを取得するため、lastUpdatedによる絞り込みは行わない
     const {lastUpdated} = await loadSettings(options.targetDir)
 
     await downloadWikis(this, {
       apiKey: options.apiKey,
       domain: options.domain,
-      lastUpdated,
+      lastUpdated: options.wikiIds ? undefined : lastUpdated,
       outputDir: options.targetDir,
       projectIdOrKey: options.projectIdOrKey,
+      wikiIds: options.wikiIds,
     })
+
+    // Wiki ID指定時は全件取得ではないため、最終更新日時（lastUpdated）は更新しない
+    if (options.wikiIds) {
+      this.log('Wikiの更新が完了しました')
+      return
+    }
 
     // 設定ファイルを更新
     await updateSettings(options.targetDir, {
