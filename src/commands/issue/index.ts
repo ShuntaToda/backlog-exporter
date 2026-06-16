@@ -33,8 +33,8 @@ export default class Issue extends Command {
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFileName --issueKeyFolder
 課題キーでフォルダを作成し、ファイル名も課題キーにする
 `,
-    `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKey PROJECT-1,PROJECT-2
-指定した課題キーの課題のみを取得する
+    `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueIdOrKey PROJECT-1,PROJECT-2
+指定した課題（IDまたはキー）のみを取得する
 `,
   ]
   static flags = {
@@ -46,8 +46,8 @@ export default class Issue extends Command {
       description: 'Backlog domain (e.g. example.backlog.jp)',
       required: true,
     }),
-    issueKey: Flags.string({
-      description: '取得する課題キー（カンマ区切りで複数指定可能）',
+    issueIdOrKey: Flags.string({
+      description: '取得する課題のIDまたはキー（カンマ区切りで複数指定可能）',
       required: false,
     }),
     issueKeyFileName: Flags.boolean({
@@ -83,13 +83,13 @@ export default class Issue extends Command {
     const {flags} = await this.parse(Issue)
 
     try {
-      const {domain, issueKey, maxCount, projectIdOrKey, statusId} = flags
+      const {domain, issueIdOrKey, maxCount, projectIdOrKey, statusId} = flags
       const apiKey = flags.apiKey || getApiKey(this)
       const outputDir = flags.output || './backlog-issues'
 
-      // 課題キーをカンマ区切りでパース
-      const issueKeys = issueKey
-        ? issueKey
+      // 課題IDまたはキーをカンマ区切りでパース
+      const issueIdOrKeys = issueIdOrKey
+        ? issueIdOrKey
             .split(',')
             .map((key) => key.trim())
             .filter(Boolean)
@@ -124,16 +124,16 @@ export default class Issue extends Command {
         apiKey,
         count: maxCount,
         domain,
+        issueIdOrKeys,
         issueKeyFileName,
         issueKeyFolder,
-        issueKeys,
         outputDir,
         projectId,
         statusId,
       })
 
-      // 最終更新日時を更新（課題キー指定時は全件取得ではないため更新しない）
-      if (!issueKeys) {
+      // 最終更新日時を更新（課題指定時は全件取得ではないため更新しない）
+      if (!issueIdOrKeys) {
         await updateSettings(outputDir, {
           lastUpdated: new Date().toISOString(),
         })

@@ -66,7 +66,7 @@ export function createCustomFieldsSection(
  * @param options.statusId ステータスID
  * @param options.issueKeyFileName ファイル名を課題キーにするかどうか
  * @param options.issueKeyFolder 課題キーでフォルダを作成するかどうか
- * @param options.issueKeys 取得する課題キーの配列（指定時は該当課題のみを取得する）
+ * @param options.issueIdOrKeys 取得する課題ID・キーの配列（指定時は該当課題のみを取得する）
  */
 export async function downloadIssues(
   command: Command,
@@ -74,9 +74,9 @@ export async function downloadIssues(
     apiKey: string
     count?: number
     domain: string
+    issueIdOrKeys?: string[]
     issueKeyFileName?: boolean
     issueKeyFolder?: boolean
-    issueKeys?: string[]
     lastUpdated?: string
     outputDir: string
     projectId: number
@@ -199,33 +199,33 @@ export async function downloadIssues(
     }
   }
 
-  // 課題キーを指定して個別に取得する関数
-  const fetchIssuesByKeys = async (issueKeys: string[]): Promise<void> => {
-    for (const issueKey of issueKeys) {
+  // 課題ID・キーを指定して個別に取得する関数
+  const fetchIssuesByIdOrKeys = async (issueIdOrKeys: string[]): Promise<void> => {
+    for (const issueIdOrKey of issueIdOrKeys) {
       try {
         // APIリクエスト数をインクリメント
         // eslint-disable-next-line no-await-in-loop
         await rateLimiter.increment()
 
         // 進捗状況を一行で更新
-        process.stdout.write(`\r課題を取得中... (${allIssues.length}/${issueKeys.length}件取得済み)`)
+        process.stdout.write(`\r課題を取得中... (${allIssues.length}/${issueIdOrKeys.length}件取得済み)`)
 
         // eslint-disable-next-line no-await-in-loop
         const issue = await ky
-          .get(`${baseUrl}/issues/${issueKey}?apiKey=${options.apiKey}`)
+          .get(`${baseUrl}/issues/${issueIdOrKey}?apiKey=${options.apiKey}`)
           .json<(typeof allIssues)[number]>()
         allIssues.push(issue)
       } catch (error) {
         command.warn(
-          `課題 ${issueKey} の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+          `課題 ${issueIdOrKey} の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
         )
       }
     }
   }
 
-  // 課題取得開始（課題キーが指定されている場合は該当課題のみを取得）
-  await (options.issueKeys && options.issueKeys.length > 0
-    ? fetchIssuesByKeys(options.issueKeys)
+  // 課題取得開始（課題ID・キーが指定されている場合は該当課題のみを取得）
+  await (options.issueIdOrKeys && options.issueIdOrKeys.length > 0
+    ? fetchIssuesByIdOrKeys(options.issueIdOrKeys)
     : fetchAllIssues(0))
 
   command.log(`\n合計 ${allIssues.length}件の課題が見つかりました。`)
