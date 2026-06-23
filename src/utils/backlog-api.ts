@@ -201,14 +201,14 @@ export async function downloadIssues(
 
   // 課題ID・キーを指定して個別に取得する関数
   const fetchIssuesByIdOrKeys = async (issueIdOrKeys: string[]): Promise<void> => {
-    for (const issueIdOrKey of issueIdOrKeys) {
+    for (const [index, issueIdOrKey] of issueIdOrKeys.entries()) {
       try {
         // APIリクエスト数をインクリメント
         // eslint-disable-next-line no-await-in-loop
         await rateLimiter.increment()
 
         // 進捗状況を一行で更新
-        process.stdout.write(`\r課題を取得中... (${allIssues.length}/${issueIdOrKeys.length}件取得済み)`)
+        process.stdout.write(`\r課題を取得中... (${index + 1}/${issueIdOrKeys.length}件)`)
 
         // eslint-disable-next-line no-await-in-loop
         const issue = await ky
