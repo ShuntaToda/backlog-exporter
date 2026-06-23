@@ -368,6 +368,28 @@ $ backlog-exporter update --documentsOnly
 $ backlog-exporter update --apiKey YOUR_API_KEY
 ```
 
+**指定した項目（課題・Wiki・ドキュメント）のみを再取得する**
+
+```sh
+# 特定の課題だけを再取得（課題キーまたは課題ID）
+$ backlog-exporter update --issueIdOrKey PROJECT-1,PROJECT-2
+
+# 特定のWikiだけを再取得（Wiki ID）
+$ backlog-exporter update --wikiId 12345,12346
+
+# 特定のドキュメントだけを再取得（ドキュメントID）
+$ backlog-exporter update --documentId abc123,def456
+```
+
+`update` は通常、設定ファイルの最終更新日時（`lastUpdated`）以降に更新された項目を差分取得します。一方で「特定の項目だけを取り直したい」場合は、上記のID指定フラグを使います。
+
+- `--issueIdOrKey`: 課題キー（`PROJECT-1`）または課題ID（数値）。Wiki・ドキュメントは数値IDのみのため `--wikiId` / `--documentId` を使います
+- いずれもカンマ区切りで複数指定できます
+- 指定したフラグに対応する項目のみを再取得し、それ以外の種別の更新は行いません（例: `--wikiId` のみ指定時は課題・ドキュメントを更新しません）
+- 指定した項目以外のローカルファイルには影響しません
+
+> **Note**: これらのID指定フラグは全件差分更新ではないため、設定ファイルの最終更新日時（`lastUpdated`）は更新されません。そのため、次回の通常の差分更新に影響を与えません。
+
 更新コマンドは、各ディレクトリの設定ファイルに基づいて、課題・Wiki・ドキュメントを自動的に更新します。設定ファイルが見つかったディレクトリでは、そのディレクトリ内のファイルが直接更新されます（サブフォルダは作成されません）。
 
 # コマンド

@@ -66,6 +66,7 @@ export function createCustomFieldsSection(
  * @param options.statusId ステータスID
  * @param options.issueKeyFileName ファイル名を課題キーにするかどうか
  * @param options.issueKeyFolder 課題キーでフォルダを作成するかどうか
+ * @param options.issueIdOrKeys 取得する課題ID・キーの配列（指定時は該当課題のみを取得する）
  */
 export async function downloadIssues(
   command: Command,
@@ -73,6 +74,7 @@ export async function downloadIssues(
     apiKey: string
     count?: number
     domain: string
+    issueIdOrKeys?: string[]
     issueKeyFileName?: boolean
     issueKeyFolder?: boolean
     lastUpdated?: string
@@ -197,8 +199,34 @@ export async function downloadIssues(
     }
   }
 
-  // 課題取得開始
-  await fetchAllIssues(0)
+  // 課題ID・キーを指定して個別に取得する関数
+  const fetchIssuesByIdOrKeys = async (issueIdOrKeys: string[]): Promise<void> => {
+    for (const [index, issueIdOrKey] of issueIdOrKeys.entries()) {
+      try {
+        // APIリクエスト数をインクリメント
+        // eslint-disable-next-line no-await-in-loop
+        await rateLimiter.increment()
+
+        // 進捗状況を一行で更新
+        process.stdout.write(`\r課題を取得中... (${index + 1}/${issueIdOrKeys.length}件)`)
+
+        // eslint-disable-next-line no-await-in-loop
+        const issue = await ky
+          .get(`${baseUrl}/issues/${issueIdOrKey}?apiKey=${options.apiKey}`)
+          .json<(typeof allIssues)[number]>()
+        allIssues.push(issue)
+      } catch (error) {
+        command.warn(
+          `課題 ${issueIdOrKey} の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      }
+    }
+  }
+
+  // 課題取得開始（課題ID・キーが指定されている場合は該当課題のみを取得）
+  await (options.issueIdOrKeys && options.issueIdOrKeys.length > 0
+    ? fetchIssuesByIdOrKeys(options.issueIdOrKeys)
+    : fetchAllIssues(0))
 
   command.log(`\n合計 ${allIssues.length}件の課題が見つかりました。`)
 
@@ -403,6 +431,7 @@ async function fetchAllCommentsForIssue({
  * @param options.lastUpdated 最終更新日時
  * @param options.outputDir 出力ディレクトリ
  * @param options.projectIdOrKey プロジェクトIDまたはキー
+ * @param options.wikiIds 取得するWiki IDの配列（指定時は該当Wikiのみを取得する）
  */
 export async function downloadWikis(
   command: Command,
@@ -412,6 +441,7 @@ export async function downloadWikis(
     lastUpdated?: string
     outputDir: string
     projectIdOrKey: string
+    wikiIds?: string[]
   },
 ): Promise<void> {
   const baseUrl = `https://${options.domain}/api/v2`
@@ -433,9 +463,15 @@ export async function downloadWikis(
 
   command.log(`${wikis.length}件のWikiが見つかりました。`)
 
-  // 前回の更新日時より新しいWikiのみをフィルタリング
+  // 処理対象のWikiを絞り込む
   let filteredWikis = wikis
-  if (options.lastUpdated) {
+  if (options.wikiIds && options.wikiIds.length > 0) {
+    // Wiki ID指定時は該当Wikiのみを処理する（前回更新日時による絞り込みは行わない）
+    const wikiIdSet = new Set(options.wikiIds.map(String))
+    filteredWikis = wikis.filter((wiki) => wikiIdSet.has(String(wiki.id)))
+    command.log(`指定された${filteredWikis.length}件のWikiを処理します。`)
+  } else if (options.lastUpdated) {
+    // 前回の更新日時より新しいWikiのみをフィルタリング
     const lastUpdatedDate = new Date(options.lastUpdated)
     filteredWikis = wikis.filter((wiki) => {
       const wikiUpdatedDate = new Date(wiki.updated)
@@ -526,11 +562,13 @@ export async function downloadWikis(
  * @param options.outputDir 出力ディレクトリ
  * @param options.projectId プロジェクトID
  * @param options.projectIdOrKey プロジェクトIDまたはキー
+ * @param options.documentIds 取得するドキュメントIDの配列（指定時は該当ドキュメントのみを取得する）
  */
 export async function downloadDocuments(
   command: Command,
   options: {
     apiKey: string
+    documentIds?: string[]
     domain: string
     keyword?: string
     lastUpdated?: string
@@ -601,6 +639,11 @@ export async function downloadDocuments(
       try {
         // 既に処理済みのドキュメントはスキップ
         if (processedDocuments.includes(node.id)) {
+          return
+        }
+
+        // ドキュメントID指定時は該当ドキュメントのみを取得する（フォルダ階層はツリーをたどって維持する）
+        if (options.documentIds && options.documentIds.length > 0 && !options.documentIds.includes(node.id)) {
           return
         }
 
