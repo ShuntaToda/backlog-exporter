@@ -8,6 +8,23 @@ import {sanitizeFileName, sanitizeWikiFileName} from './common.js'
 import {appendLog} from './log.js'
 import {RateLimiter} from './sleep.js'
 
+/** 本文の開始を示すマーカー（Markdownレンダリング時は不可視のHTMLコメント） */
+export const BODY_START_MARKER = '<!-- backlog-exporter:body:start -->'
+/** 本文の終了を示すマーカー（Markdownレンダリング時は不可視のHTMLコメント） */
+export const BODY_END_MARKER = '<!-- backlog-exporter:body:end -->'
+
+/**
+ * 本文を開始・終了マーカーで囲む。
+ * 課題・Wiki・ドキュメントで本文（description / content / plain）の範囲を一貫して
+ * 機械的に判定・抽出・差し替えできるようにするための共通ヘルパー。
+ * 本文自身が `##` 見出し等を含んでも、マーカー間を本文として確実に切り出せる。
+ * @param body 本文テキスト
+ * @returns マーカーで囲まれた本文ブロック
+ */
+export function wrapBody(body: string): string {
+  return `${BODY_START_MARKER}\n${body}\n${BODY_END_MARKER}`
+}
+
 /**
  * カスタム属性セクションを作成する
  * @param customFields カスタム属性の配列
@@ -338,7 +355,8 @@ export async function downloadIssues(
 - [Backlog Issue Link](${backlogIssueUrl})${customFieldsSection}
 
 ## 詳細
-${issue.description || '詳細情報なし'}${commentsSection}`
+
+${wrapBody(issue.description || '詳細情報なし')}${commentsSection}`
 
       // eslint-disable-next-line no-await-in-loop
       await fs.writeFile(issueFilePath, markdownContent)
@@ -534,7 +552,7 @@ export async function downloadWikis(
       const backlogWikiUrl = `https://${options.domain}/alias/wiki/${wikiId}`
 
       // Markdownファイルに書き込む（タイトルとBacklogリンクを追加）
-      const markdownContent = `# ${wiki.name}\n\n[Backlog Wiki Link](${backlogWikiUrl})\n\n${content}`
+      const markdownContent = `# ${wiki.name}\n\n[Backlog Wiki Link](${backlogWikiUrl})\n\n${wrapBody(content)}`
       // eslint-disable-next-line no-await-in-loop
       await fs.writeFile(wikiFilePath, markdownContent)
 
@@ -749,7 +767,7 @@ export async function downloadDocuments(
 
 ## 内容
 
-${documentDetail.plain || '（内容なし）'}${attachmentsSection}${tagsSection}`
+${wrapBody(documentDetail.plain || '（内容なし）')}${attachmentsSection}${tagsSection}`
 
         await fs.writeFile(documentFilePath, markdownContent)
 
