@@ -25,10 +25,10 @@ export function createCustomFieldsSection(
     return ''
   }
 
-  let customFieldsSection = `\n\n## ${t('commands.issue.labels.customFields')}\n\n| ${t('commands.issue.labels.fieldName')} | ${t('commands.issue.labels.fieldValue')} |\n|--------|----|\n`
+  let customFieldsSection = '\n\n## カスタム属性\n\n| 属性名 | 値 |\n|--------|----|\n'
 
   for (const customField of customFields) {
-    let fieldValue = t('commands.issue.labels.none')
+    let fieldValue = 'なし'
     if (customField.value !== null && customField.value !== undefined) {
       if (Array.isArray(customField.value)) {
         // 配列の場合（複数選択など）
@@ -209,7 +209,7 @@ export async function downloadIssues(
         await rateLimiter.increment()
 
         // 進捗状況を一行で更新
-        process.stdout.write(`\r課題を取得中... (${index + 1}/${issueIdOrKeys.length}件)`)
+        process.stdout.write(`\r${t('commands.issue.messages.fetchingByKeyProgress', {current: index + 1, total: issueIdOrKeys.length})}`)
 
         // eslint-disable-next-line no-await-in-loop
         const issue = await ky
@@ -218,7 +218,10 @@ export async function downloadIssues(
         allIssues.push(issue)
       } catch (error) {
         command.warn(
-          `課題 ${issueIdOrKey} の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+          t('commands.issue.messages.issueFetchFailed', {
+            errorMessage: error instanceof Error ? error.message : String(error),
+            issueIdOrKey,
+          }),
         )
       }
     }
@@ -273,7 +276,7 @@ export async function downloadIssues(
       // コメントセクションを作成
       let commentsSection = ''
       if (allComments.length > 0) {
-        commentsSection = `\n\n## ${t('commands.issue.labels.comments')}\n`
+        commentsSection = '\n\n## コメント\n'
         let commentIndex = 1
         for (const comment of allComments) {
           const commentDate = new Date(comment.created).toLocaleString('ja-JP')
@@ -321,25 +324,25 @@ export async function downloadIssues(
       const customFieldsSection = createCustomFieldsSection(issue.customFields)
 
       // Markdownファイルに書き込む
-      const assigneeName = issue.assignee ? issue.assignee.name : t('commands.issue.labels.unassigned')
-      const startDate = issue.startDate ? new Date(issue.startDate).toLocaleDateString('ja-JP') : t('commands.issue.labels.notSet')
-      const dueDate = issue.dueDate ? new Date(issue.dueDate).toLocaleDateString('ja-JP') : t('commands.issue.labels.notSet')
+      const assigneeName = issue.assignee ? issue.assignee.name : '未割り当て'
+      const startDate = issue.startDate ? new Date(issue.startDate).toLocaleDateString('ja-JP') : '未設定'
+      const dueDate = issue.dueDate ? new Date(issue.dueDate).toLocaleDateString('ja-JP') : '未設定'
       const markdownContent = `# ${issue.summary}
 
-## ${t('commands.issue.labels.basicInfo')}
-- ${t('commands.issue.labels.issueKey')}: ${issue.issueKey}
-- ${t('commands.issue.labels.issueType')}: ${issue.issueType.name}
-- ${t('common.labels.status')}: ${issue.status.name}
-- ${t('commands.issue.labels.priority')}: ${issue.priority.name}
-- ${t('commands.issue.labels.assignee')}: ${assigneeName}
-- ${t('commands.issue.labels.startDate')}: ${startDate}
-- ${t('commands.issue.labels.dueDate')}: ${dueDate}
-- ${t('common.labels.createdAt')}: ${new Date(issue.created).toLocaleString('ja-JP')}
-- ${t('common.labels.updatedAt')}: ${new Date(issue.updated).toLocaleString('ja-JP')}
+## 基本情報
+- 課題キー: ${issue.issueKey}
+- 種別: ${issue.issueType.name}
+- ステータス: ${issue.status.name}
+- 優先度: ${issue.priority.name}
+- 担当者: ${assigneeName}
+- 開始日: ${startDate}
+- 期限日: ${dueDate}
+- 作成日時: ${new Date(issue.created).toLocaleString('ja-JP')}
+- 更新日時: ${new Date(issue.updated).toLocaleString('ja-JP')}
 - [Backlog Issue Link](${backlogIssueUrl})${customFieldsSection}
 
-## ${t('commands.issue.labels.details')}
-${issue.description || t('commands.issue.labels.noDetail')}${commentsSection}`
+## 詳細
+${issue.description || '詳細情報なし'}${commentsSection}`
 
       // eslint-disable-next-line no-await-in-loop
       await fs.writeFile(issueFilePath, markdownContent)
@@ -472,7 +475,7 @@ export async function downloadWikis(
     // Wiki ID指定時は該当Wikiのみを処理する（前回更新日時による絞り込みは行わない）
     const wikiIdSet = new Set(options.wikiIds.map(String))
     filteredWikis = wikis.filter((wiki) => wikiIdSet.has(String(wiki.id)))
-    command.log(`指定された${filteredWikis.length}件のWikiを処理します。`)
+    command.log(t('commands.wiki.messages.processingSpecified', {count: filteredWikis.length}))
   } else if (options.lastUpdated) {
     // 前回の更新日時より新しいWikiのみをフィルタリング
     const lastUpdatedDate = new Date(options.lastUpdated)
@@ -716,18 +719,18 @@ export async function downloadDocuments(
         // 添付ファイルリストの作成
         let attachmentsSection = ''
         if (documentDetail.attachments && documentDetail.attachments.length > 0) {
-          attachmentsSection = `\n\n## ${t('commands.document.labels.attachments')}\n`
+          attachmentsSection = '\n\n## 添付ファイル\n'
           for (const attachment of documentDetail.attachments) {
             const attachmentDate = new Date(attachment.created).toLocaleString('ja-JP')
             const fileSize = (attachment.size / 1024).toFixed(1)
-            attachmentsSection += `- **${attachment.name}** (${fileSize} KB) - ${t('commands.document.labels.attachmentInfo', {creator: attachment.createdUser.name, date: attachmentDate})}\n`
+            attachmentsSection += `- **${attachment.name}** (${fileSize} KB) - 作成者: ${attachment.createdUser.name}, 作成日時: ${attachmentDate}\n`
           }
         }
 
         // タグリストの作成
         let tagsSection = ''
         if (documentDetail.tags && documentDetail.tags.length > 0) {
-          tagsSection = `\n\n## ${t('commands.document.labels.tags')}\n`
+          tagsSection = '\n\n## タグ\n'
           for (const tag of documentDetail.tags) {
             tagsSection += `- ${tag.name}\n`
           }
@@ -742,15 +745,15 @@ export async function downloadDocuments(
 
 [Backlog Document Link](${backlogDocumentUrl})
 
-**${t('common.labels.status')}**: ${documentDetail.statusId}${documentDetail.emoji ? ` ${documentDetail.emoji}` : ''}
-**${t('commands.document.labels.creator')}**: ${documentDetail.createdUser.name}
-**${t('common.labels.createdAt')}**: ${createdDate}
-**${t('commands.document.labels.updater')}**: ${documentDetail.updatedUser.name}
-**${t('common.labels.updatedAt')}**: ${updatedDate}
+**ステータス**: ${documentDetail.statusId}${documentDetail.emoji ? ` ${documentDetail.emoji}` : ''}
+**作成者**: ${documentDetail.createdUser.name}
+**作成日時**: ${createdDate}
+**更新者**: ${documentDetail.updatedUser.name}
+**更新日時**: ${updatedDate}
 
-## ${t('commands.document.labels.content')}
+## 内容
 
-${documentDetail.plain || t('common.labels.noContent')}${attachmentsSection}${tagsSection}`
+${documentDetail.plain || '（内容なし）'}${attachmentsSection}${tagsSection}`
 
         await fs.writeFile(documentFilePath, markdownContent)
 
@@ -796,7 +799,10 @@ async function pruneLocalMarkdownFiles(
   options: {
     expectedDirs: Set<string>
     expectedFiles: Set<string>
+    /** コンソール表示用のラベル（ロケールに応じて翻訳済み） */
     label: string
+    /** backlog-update.log 用のラベル（ログファイルはロケールに依存せず日本語固定） */
+    labelJa: string
     outputDir: string
   },
 ): Promise<number> {
@@ -819,21 +825,21 @@ async function pruneLocalMarkdownFiles(
         if (remaining.length === 0 && !expectedDirsComparable.has(relativePath.toLowerCase())) {
           // eslint-disable-next-line no-await-in-loop
           await fs.rmdir(fullPath)
-          command.log(`空のディレクトリを削除しました: ${relativePath}`)
+          command.log(t('commands.prune.messages.emptyDirDeleted', {path: relativePath}))
         }
       } else if (entry.name.endsWith('.md') && !expectedFilesComparable.has(relativePath.toLowerCase())) {
         // eslint-disable-next-line no-await-in-loop
         await fs.unlink(fullPath)
         prunedCount++
-        command.log(`Backlog上に存在しない${options.label}を削除しました: ${relativePath}`)
+        command.log(t('commands.prune.messages.orphanDeleted', {label: options.label, path: relativePath}))
         // eslint-disable-next-line no-await-in-loop
-        await appendLog(options.outputDir, `${options.label}「${relativePath}」を削除しました（Backlog上に存在しないため）`)
+        await appendLog(options.outputDir, `${options.labelJa}「${relativePath}」を削除しました（Backlog上に存在しないため）`)
       }
     }
   }
 
   await pruneDirectory(options.outputDir)
-  command.log(`${prunedCount}件の不要な${options.label}ファイルを削除しました。`)
+  command.log(t('commands.prune.messages.prunedCount', {count: prunedCount, label: options.label}))
   return prunedCount
 }
 
@@ -862,7 +868,7 @@ export async function pruneDocuments(
   const baseUrl = `https://${options.domain}/api/v2`
   const rateLimiter = new RateLimiter(command)
 
-  command.log('Backlogのドキュメントツリーを取得しています...')
+  command.log(t('commands.prune.messages.documentTreeFetch'))
   await rateLimiter.increment()
 
   type DocumentNode = {
@@ -908,7 +914,7 @@ export async function pruneDocuments(
   // （ドキュメントごとに詳細APIを叩くと件数分のリクエストが必要になりレートリミットを浪費するため、100件ずつページングする）
   const titlesById = new Map<string, string>()
   if (leafNodes.length > 0) {
-    command.log(`${leafNodes.length}件のドキュメントの正規ファイル名を確認しています...`)
+    command.log(t('commands.prune.messages.confirmingFileNames', {count: leafNodes.length}))
     const pageSize = 100
     let offset = 0
     for (;;) {
@@ -929,9 +935,9 @@ export async function pruneDocuments(
         // 一覧に欠けが生じると、Backlog上に実在するドキュメントのローカルファイルを
         // 誤削除してしまうため、削除を一切行わずにpruneを中止する
         throw new Error(
-          `ドキュメント一覧の取得に失敗しました。誤削除を防ぐため、何も削除せずに中止します: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
+          t('commands.prune.messages.documentListFetchFailed', {
+            errorMessage: error instanceof Error ? error.message : String(error),
+          }),
         )
       }
 
@@ -962,7 +968,13 @@ export async function pruneDocuments(
     expectedFiles.add(path.join(leaf.currentPath, `${sanitizeFileName(title)}.md`).normalize('NFC'))
   }
 
-  return pruneLocalMarkdownFiles(command, {expectedDirs, expectedFiles, label: 'ドキュメント', outputDir: options.outputDir})
+  return pruneLocalMarkdownFiles(command, {
+    expectedDirs,
+    expectedFiles,
+    label: t('commands.prune.labels.document'),
+    labelJa: 'ドキュメント',
+    outputDir: options.outputDir,
+  })
 }
 
 /**
@@ -988,7 +1000,7 @@ export async function pruneWikis(
   const baseUrl = `https://${options.domain}/api/v2`
   const rateLimiter = new RateLimiter(command)
 
-  command.log('BacklogのWiki一覧を取得しています...')
+  command.log(t('commands.prune.messages.wikiListFetch'))
   await rateLimiter.increment()
 
   const wikis = await ky
@@ -1012,5 +1024,11 @@ export async function pruneWikis(
     }
   }
 
-  return pruneLocalMarkdownFiles(command, {expectedDirs, expectedFiles, label: 'Wiki', outputDir: options.outputDir})
+  return pruneLocalMarkdownFiles(command, {
+    expectedDirs,
+    expectedFiles,
+    label: t('commands.prune.labels.wiki'),
+    labelJa: 'Wiki',
+    outputDir: options.outputDir,
+  })
 }

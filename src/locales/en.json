@@ -29,17 +29,9 @@
     "document": {
       "description": "Export documents from Backlog as Markdown files",
       "examples": {
-        "keyword": "Export only documents containing the keyword",
+        "keyword": "Export only documents containing the keyword \"仕様書\" (specification)",
         "outputDir": "Save documents to the specified directory",
         "saveDocuments": "Save documents as Markdown files"
-      },
-      "labels": {
-        "attachmentInfo": "Creator: {{creator}}, Created: {{date}}",
-        "attachments": "Attachments",
-        "content": "Content",
-        "creator": "Creator",
-        "tags": "Tags",
-        "updater": "Updated by"
       },
       "messages": {
         "completed": "Document export completed!",
@@ -64,27 +56,6 @@
         "saveIssues": "Save issues as Markdown files",
         "statusId": "Export only issues with the specified status IDs"
       },
-      "labels": {
-        "assignee": "Assignee",
-        "basicInfo": "Basic Info",
-        "dueDate": "Due Date",
-        "issueType": "Issue Type",
-        "comment": "Comment {{index}}",
-        "comments": "Comments",
-        "customFields": "Custom Fields",
-        "details": "Details",
-        "fieldName": "Field Name",
-        "fieldValue": "Value",
-        "issueKey": "Issue Key",
-        "noDetail": "No details available",
-        "none": "N/A",
-        "poster": "Author",
-        "notSet": "Not set",
-        "priority": "Priority",
-        "startDate": "Start Date",
-        "timestamp": "Date",
-        "unassigned": "Unassigned"
-      },
       "messages": {
         "apiFetchFailed": "Failed to fetch issues: {{errorMessage}}",
         "commentFetchFailed": "Failed to fetch comments for issue {{issueKey}}: {{errorMessage}}",
@@ -98,7 +69,9 @@
         "processingSinceLastUpdate": "Processing {{count}} issues updated since last update ({{lastUpdated}}).",
         "saveFailed": "Failed to save issue {{issueKey}}: {{errorMessage}}",
         "saving": "Saving issues...",
-        "savingProgress": "Saving issues... ({{current}}/{{total}})"
+        "savingProgress": "Saving issues... ({{current}}/{{total}})",
+        "fetchingByKeyProgress": "Fetching issues... ({{current}}/{{total}})",
+        "issueFetchFailed": "Failed to fetch issue {{issueIdOrKey}}: {{errorMessage}}"
       }
     },
     "update": {
@@ -139,6 +112,11 @@
         "updateFailed": "Update failed: {{errorMessage}}",
         "wikiCompleted": "Wiki update completed",
         "wikiStart": "Starting wiki update..."
+      },
+      "flags": {
+        "documentId": "Re-fetch only the specified documents by ID (comma-separated for multiple)",
+        "issueIdOrKey": "Re-fetch only the specified issues by ID or key (comma-separated for multiple)",
+        "wikiId": "Re-fetch only the specified wikis by ID (comma-separated for multiple)"
       }
     },
     "wiki": {
@@ -159,7 +137,43 @@
         "listFetch": "Fetching wiki list...",
         "noNeedUpdate": "No wikis need updating.",
         "processingSinceLastUpdate": "Processing {{count}} wikis updated since last update ({{lastUpdated}}).",
-        "saving": "Saving wikis... ({{current}}/{{total}})"
+        "saving": "Saving wikis... ({{current}}/{{total}})",
+        "processingSpecified": "Processing {{count}} specified wikis."
+      }
+    },
+    "prune": {
+      "description": "Delete local files for documents and wikis that were deleted or moved on Backlog, aligning the local copy with Backlog",
+      "args": {
+        "directory": "Target directory (where the settings file is stored)"
+      },
+      "examples": {
+        "currentDir": "Search for settings files under the current directory and delete local document files that no longer exist on Backlog",
+        "specifyDir": "Target the specified directory",
+        "force": "Skip the confirmation prompt and delete"
+      },
+      "labels": {
+        "document": "document",
+        "wiki": "wiki"
+      },
+      "messages": {
+        "failed": "Prune failed: {{errorMessage}}",
+        "nonInteractive": "Aborted because interactive confirmation is not possible (stdin is not a terminal). Use the --force flag to skip confirmation.",
+        "confirmHeader": "In the following directory, local document/wiki .md files that no longer exist on Backlog will be deleted:",
+        "confirmDirectory": "- Directory: {{dir}}",
+        "confirmPrompt": "Proceed with deletion? (y/n)",
+        "cancelled": "Prune cancelled",
+        "directoryReadFailed": "Failed to read directory: {{dir}}",
+        "folderTypeMissing": "{{dir}}: skipped because the settings file has no folderType (running the update command will save it)",
+        "domainMissing": "{{dir}}: no domain specified. Skipping.",
+        "projectMissing": "{{dir}}: no project ID/key specified. Skipping.",
+        "completed": "Prune completed for {{dir}}!",
+        "emptyDirDeleted": "Deleted empty directory: {{path}}",
+        "orphanDeleted": "Deleted a {{label}} that no longer exists on Backlog: {{path}}",
+        "prunedCount": "Deleted {{count}} unnecessary {{label}} file(s).",
+        "documentTreeFetch": "Fetching the Backlog document tree...",
+        "confirmingFileNames": "Confirming canonical file names for {{count}} documents...",
+        "wikiListFetch": "Fetching the Backlog wiki list...",
+        "documentListFetchFailed": "Failed to fetch the document list. Aborting without deleting anything to prevent accidental deletion: {{errorMessage}}"
       }
     }
   },
@@ -180,12 +194,6 @@
       "projectIdOrKey": "Backlog project ID or key",
       "statusId": "Status IDs (comma-separated for multiple values)",
       "wikisOnly": "Update wikis only"
-    },
-    "labels": {
-      "createdAt": "Created",
-      "noContent": "(No content)",
-      "status": "Status",
-      "updatedAt": "Updated"
     },
     "messages": {
       "apiKeyFromEnv": "Using API key from BACKLOG_API_KEY environment variable",

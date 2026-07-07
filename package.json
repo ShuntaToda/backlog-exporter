@@ -40,7 +40,6 @@
   "files": [
     "./bin",
     "./dist",
-    "./src/locales",
     "./oclif.manifest.json"
   ],
   "homepage": "https://github.com/ShuntaToda/backlog-exporter",

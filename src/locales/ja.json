@@ -33,14 +33,6 @@
         "outputDir": "指定したディレクトリにドキュメントを保存する",
         "saveDocuments": "ドキュメントをMarkdownファイルとして保存する"
       },
-      "labels": {
-        "attachmentInfo": "作成者: {{creator}}, 作成日時: {{date}}",
-        "attachments": "添付ファイル",
-        "content": "内容",
-        "creator": "作成者",
-        "tags": "タグ",
-        "updater": "更新者"
-      },
       "messages": {
         "completed": "ドキュメントの取得が完了しました！",
         "documentFetchFailed": "ドキュメント {{name}} の取得に失敗しました: {{errorMessage}}",
@@ -64,27 +56,6 @@
         "saveIssues": "課題をMarkdownファイルとして保存する",
         "statusId": "指定したステータスIDの課題のみを取得する"
       },
-      "labels": {
-        "assignee": "担当者",
-        "basicInfo": "基本情報",
-        "dueDate": "期限日",
-        "issueType": "種別",
-        "comment": "コメント {{index}}",
-        "comments": "コメント",
-        "customFields": "カスタム属性",
-        "details": "詳細",
-        "fieldName": "属性名",
-        "fieldValue": "値",
-        "issueKey": "課題キー",
-        "noDetail": "詳細情報なし",
-        "none": "なし",
-        "poster": "投稿者",
-        "notSet": "未設定",
-        "priority": "優先度",
-        "startDate": "開始日",
-        "timestamp": "日時",
-        "unassigned": "未割り当て"
-      },
       "messages": {
         "apiFetchFailed": "課題の取得に失敗しました: {{errorMessage}}",
         "commentFetchFailed": "課題 {{issueKey}} のコメント取得に失敗しました: {{errorMessage}}",
@@ -98,7 +69,9 @@
         "processingSinceLastUpdate": "前回の更新日時({{lastUpdated}})以降に更新された{{count}}件の課題を処理します。",
         "saveFailed": "課題 {{issueKey}} の保存に失敗しました: {{errorMessage}}",
         "saving": "課題を保存しています...",
-        "savingProgress": "課題を保存中... ({{current}}/{{total}}件)"
+        "savingProgress": "課題を保存中... ({{current}}/{{total}}件)",
+        "fetchingByKeyProgress": "課題を取得中... ({{current}}/{{total}}件)",
+        "issueFetchFailed": "課題 {{issueIdOrKey}} の取得に失敗しました: {{errorMessage}}"
       }
     },
     "update": {
@@ -139,6 +112,11 @@
         "updateFailed": "更新に失敗しました: {{errorMessage}}",
         "wikiCompleted": "Wikiの更新が完了しました",
         "wikiStart": "Wikiの更新を開始します..."
+      },
+      "flags": {
+        "documentId": "指定したドキュメント（ID）のみを再取得する（カンマ区切りで複数指定可能）",
+        "issueIdOrKey": "指定した課題（IDまたはキー）のみを再取得する（カンマ区切りで複数指定可能）",
+        "wikiId": "指定したWiki（ID）のみを再取得する（カンマ区切りで複数指定可能）"
       }
     },
     "wiki": {
@@ -159,7 +137,43 @@
         "listFetch": "Wiki一覧を取得しています...",
         "noNeedUpdate": "更新が必要なWikiはありません。",
         "processingSinceLastUpdate": "前回の更新日時({{lastUpdated}})以降に更新された{{count}}件のWikiを処理します。",
-        "saving": "Wikiを保存中... ({{current}}/{{total}}件)"
+        "saving": "Wikiを保存中... ({{current}}/{{total}}件)",
+        "processingSpecified": "指定された{{count}}件のWikiを処理します。"
+      }
+    },
+    "prune": {
+      "description": "Backlog上で削除・移動されたドキュメント・Wikiのローカルファイルを削除し、Backlogと同じ状態に揃える",
+      "args": {
+        "directory": "対象ディレクトリ（設定ファイルが保存されている場所）"
+      },
+      "examples": {
+        "currentDir": "カレントディレクトリ配下の設定ファイルを探索し、Backlog上に存在しないドキュメントファイルを削除する",
+        "specifyDir": "指定したディレクトリを対象にする",
+        "force": "確認プロンプトをスキップして削除する"
+      },
+      "labels": {
+        "document": "ドキュメント",
+        "wiki": "Wiki"
+      },
+      "messages": {
+        "failed": "pruneに失敗しました: {{errorMessage}}",
+        "nonInteractive": "対話的な確認ができない環境のため中止しました（標準入力が端末ではありません）。--force フラグを付けると確認をスキップして実行できます。",
+        "confirmHeader": "以下のディレクトリで、Backlog上に存在しないドキュメント・Wiki（.mdファイル）を削除します:",
+        "confirmDirectory": "- ディレクトリ: {{dir}}",
+        "confirmPrompt": "削除を実行しますか？ (y/n)",
+        "cancelled": "pruneをキャンセルしました",
+        "directoryReadFailed": "ディレクトリの読み取りに失敗しました: {{dir}}",
+        "folderTypeMissing": "{{dir}}: 設定ファイルに folderType がないためスキップします（update コマンドを実行すると保存されます）",
+        "domainMissing": "{{dir}}: ドメインが指定されていません。スキップします。",
+        "projectMissing": "{{dir}}: プロジェクトID/キーが指定されていません。スキップします。",
+        "completed": "{{dir}} のpruneが完了しました！",
+        "emptyDirDeleted": "空のディレクトリを削除しました: {{path}}",
+        "orphanDeleted": "Backlog上に存在しない{{label}}を削除しました: {{path}}",
+        "prunedCount": "{{count}}件の不要な{{label}}ファイルを削除しました。",
+        "documentTreeFetch": "Backlogのドキュメントツリーを取得しています...",
+        "confirmingFileNames": "{{count}}件のドキュメントの正規ファイル名を確認しています...",
+        "wikiListFetch": "BacklogのWiki一覧を取得しています...",
+        "documentListFetchFailed": "ドキュメント一覧の取得に失敗しました。誤削除を防ぐため、何も削除せずに中止します: {{errorMessage}}"
       }
     }
   },
@@ -180,12 +194,6 @@
       "projectIdOrKey": "BacklogプロジェクトIDまたはキー",
       "statusId": "ステータスID（カンマ区切りで複数指定可能）",
       "wikisOnly": "Wikiのみを更新する"
-    },
-    "labels": {
-      "createdAt": "作成日時",
-      "noContent": "（内容なし）",
-      "status": "ステータス",
-      "updatedAt": "更新日時"
     },
     "messages": {
       "apiKeyFromEnv": "環境変数 BACKLOG_API_KEY からAPIキーを使用します",

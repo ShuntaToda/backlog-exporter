@@ -33,10 +33,18 @@ function loadAllTranslations(): Record<string, {translation: Record<string, unkn
 
 /**
  * 環境変数からロケールを検出する
+ *
+ * LC_ALL / LC_MESSAGES / LANG のいずれも未設定の場合（Windowsのcmd/PowerShellは
+ * 通常LANGを設定しない）は、i18n導入前の既存動作を維持するため日本語にフォールバックする。
+ * 環境変数が設定されていて未対応のロケールだった場合のみ英語にフォールバックする。
  */
-function detectLocale(supportedLocales: string[]): string {
-  const langEnv = process.env.LC_ALL || process.env.LC_MESSAGES || process.env.LANG || ''
-  const lang = langEnv.split(/[._]/)[0]
+export function detectLocale(supportedLocales: string[], env: NodeJS.ProcessEnv = process.env): string {
+  const langEnv = env.LC_ALL || env.LC_MESSAGES || env.LANG
+  if (!langEnv) {
+    return 'ja'
+  }
+
+  const lang = langEnv.split(/[._-]/)[0]
   return supportedLocales.includes(lang) ? lang : 'en'
 }
 

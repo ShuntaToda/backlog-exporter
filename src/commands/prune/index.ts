@@ -7,6 +7,7 @@ import process from 'node:process'
 import {pruneDocuments, pruneWikis} from '../../utils/backlog-api.js'
 import {validateAndGetProjectId} from '../../utils/backlog.js'
 import {getApiKey} from '../../utils/common.js'
+import {t} from '../../utils/i18n.js'
 import {FolderType, getSettingsFilePath, loadSettings} from '../../utils/settings.js'
 
 // .envファイルを読み込む
@@ -23,39 +24,38 @@ interface PruneFlags {
 export default class Prune extends Command {
   static args = {
     directory: Args.string({
-      description: '対象ディレクトリ（設定ファイルが保存されている場所）',
+      description: t('commands.prune.args.directory'),
       required: false,
     }),
   }
-  static description =
-    'Backlog上で削除・移動されたドキュメント・Wikiのローカルファイルを削除し、Backlogと同じ状態に揃える'
+  static description = t('commands.prune.description')
   static examples = [
     `<%= config.bin %> <%= command.id %>
-カレントディレクトリ配下の設定ファイルを探索し、Backlog上に存在しないドキュメントファイルを削除する
+${t('commands.prune.examples.currentDir')}
 `,
     `<%= config.bin %> <%= command.id %> ./backlog-documents
-指定したディレクトリを対象にする
+${t('commands.prune.examples.specifyDir')}
 `,
     `<%= config.bin %> <%= command.id %> --force
-確認プロンプトをスキップして削除する
+${t('commands.prune.examples.force')}
 `,
   ]
   static flags = {
     apiKey: Flags.string({
-      description: 'Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能)',
+      description: t('common.flags.apiKey'),
       required: false,
     }),
     domain: Flags.string({
-      description: 'Backlog domain (e.g. example.backlog.jp)',
+      description: t('common.flags.domain'),
       required: false,
     }),
     force: Flags.boolean({
       char: 'f',
-      description: '確認プロンプトをスキップする',
+      description: t('common.flags.force'),
       required: false,
     }),
     projectIdOrKey: Flags.string({
-      description: 'Backlog project ID or key',
+      description: t('common.flags.projectIdOrKey'),
       required: false,
     }),
   }
@@ -68,7 +68,7 @@ export default class Prune extends Command {
       await this.findAndPrune(targetDir, flags as PruneFlags)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      this.error(`pruneに失敗しました: ${errorMessage}`)
+      this.error(t('commands.prune.messages.failed', {errorMessage}))
     }
   }
 
@@ -77,14 +77,12 @@ export default class Prune extends Command {
     // 非対話環境（CI・パイプ入力など）では 'data' イベントが発火せず永久に待機してしまうため、
     // プロンプトを出さずにエラーとして終了する
     if (!process.stdin.isTTY) {
-      this.error(
-        '対話的な確認ができない環境のため中止しました（標準入力が端末ではありません）。--force フラグを付けると確認をスキップして実行できます。',
-      )
+      this.error(t('commands.prune.messages.nonInteractive'))
     }
 
-    this.log('以下のディレクトリで、Backlog上に存在しないドキュメント・Wiki（.mdファイル）を削除します:')
-    this.log(`- ディレクトリ: ${targetDir}`)
-    this.log('削除を実行しますか？ (y/n)')
+    this.log(t('commands.prune.messages.confirmHeader'))
+    this.log(t('commands.prune.messages.confirmDirectory', {dir: targetDir}))
+    this.log(t('commands.prune.messages.confirmPrompt'))
 
     process.stdin.resume()
     process.stdin.setEncoding('utf8')
@@ -97,7 +95,7 @@ export default class Prune extends Command {
     })
 
     if (!response) {
-      this.log('pruneをキャンセルしました')
+      this.log(t('commands.prune.messages.cancelled'))
     }
 
     return response
@@ -130,7 +128,7 @@ export default class Prune extends Command {
         }
       }
     } catch {
-      this.warn(`ディレクトリの読み取りに失敗しました: ${targetDir}`)
+      this.warn(t('commands.prune.messages.directoryReadFailed', {dir: targetDir}))
     }
   }
 
@@ -142,9 +140,7 @@ export default class Prune extends Command {
     if (settings.folderType !== FolderType.DOCUMENT && settings.folderType !== FolderType.WIKI) {
       // 古いバージョンで作成された設定ファイルには folderType がないため、無言でスキップせず理由を伝える
       if (!settings.folderType) {
-        this.warn(
-          `${targetDir}: 設定ファイルに folderType がないためスキップします（update コマンドを実行すると保存されます）`,
-        )
+        this.warn(t('commands.prune.messages.folderTypeMissing', {dir: targetDir}))
       }
 
       return
@@ -154,12 +150,12 @@ export default class Prune extends Command {
     const projectIdOrKey = flags.projectIdOrKey || settings.projectIdOrKey
 
     if (!domain) {
-      this.warn(`${targetDir}: ドメインが指定されていません。スキップします。`)
+      this.warn(t('commands.prune.messages.domainMissing', {dir: targetDir}))
       return
     }
 
     if (!projectIdOrKey) {
-      this.warn(`${targetDir}: プロジェクトID/キーが指定されていません。スキップします。`)
+      this.warn(t('commands.prune.messages.projectMissing', {dir: targetDir}))
       return
     }
 
@@ -190,6 +186,6 @@ export default class Prune extends Command {
       })
     }
 
-    this.log(`${targetDir} のpruneが完了しました！`)
+    this.log(t('commands.prune.messages.completed', {dir: targetDir}))
   }
 }

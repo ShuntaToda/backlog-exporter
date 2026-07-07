@@ -74,7 +74,7 @@ ${t('commands.update.examples.issueKeyFolderAndFileName')}
       required: false,
     }),
     documentId: Flags.string({
-      description: '指定したドキュメント（ID）のみを再取得する（カンマ区切りで複数指定可能）',
+      description: t('commands.update.flags.documentId'),
       required: false,
     }),
     documentsOnly: Flags.boolean({
@@ -91,7 +91,7 @@ ${t('commands.update.examples.issueKeyFolderAndFileName')}
       required: false,
     }),
     issueIdOrKey: Flags.string({
-      description: '指定した課題（IDまたはキー）のみを再取得する（カンマ区切りで複数指定可能）',
+      description: t('commands.update.flags.issueIdOrKey'),
       required: false,
     }),
     issueKeyFileName: Flags.boolean({
@@ -111,7 +111,7 @@ ${t('commands.update.examples.issueKeyFolderAndFileName')}
       required: false,
     }),
     wikiId: Flags.string({
-      description: '指定したWiki（ID）のみを再取得する（カンマ区切りで複数指定可能）',
+      description: t('commands.update.flags.wikiId'),
       required: false,
     }),
     wikisOnly: Flags.boolean({
@@ -409,7 +409,7 @@ ${t('commands.update.examples.issueKeyFolderAndFileName')}
 
     // ドキュメントID指定時は全件取得ではないため、最終更新日時（lastUpdated）は更新しない
     if (options.documentIds) {
-      this.log('ドキュメントの更新が完了しました')
+      this.log(t('commands.update.messages.documentsCompleted'))
       return
     }
 
@@ -458,7 +458,7 @@ ${t('commands.update.examples.issueKeyFolderAndFileName')}
     // 課題ID・キー指定時は全件取得ではないため、最終更新日時（lastUpdated）は更新しない
     // （次回の全件差分更新に影響を与えないようにするため）
     if (options.issueIdOrKeys) {
-      this.log('課題の更新が完了しました')
+      this.log(t('commands.update.messages.issuesCompleted'))
       return
     }
 
@@ -500,7 +500,7 @@ ${t('commands.update.examples.issueKeyFolderAndFileName')}
 
     // Wiki ID指定時は全件取得ではないため、最終更新日時（lastUpdated）は更新しない
     if (options.wikiIds) {
-      this.log('Wikiの更新が完了しました')
+      this.log(t('commands.update.messages.wikiCompleted'))
       return
     }
 
