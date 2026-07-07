@@ -19,6 +19,9 @@ Backlog のデータをエクスポートするためのコマンドラインツ
 * [特定の課題だけを再取得（課題キーまたは課題ID）](#特定の課題だけを再取得課題キーまたは課題id)
 * [特定のWikiだけを再取得（Wiki ID）](#特定のwikiだけを再取得wiki-id)
 * [特定のドキュメントだけを再取得（ドキュメントID）](#特定のドキュメントだけを再取得ドキュメントid)
+* [カレントディレクトリ配下の設定ファイルを探索して実行](#カレントディレクトリ配下の設定ファイルを探索して実行)
+* [対象ディレクトリを指定](#対象ディレクトリを指定)
+* [確認プロンプトをスキップ](#確認プロンプトをスキップ)
 * [コマンド](#コマンド)
 * [出力形式](#出力形式)
 * [課題のタイトル](#課題のタイトル)
@@ -46,7 +49,7 @@ $ npm install -g backlog-exporter
 $ backlog-exporter COMMAND
 running command...
 $ backlog-exporter (--version)
-backlog-exporter/0.7.3 linux-x64 node-v22.22.3
+backlog-exporter/0.7.3 linux-x64 node-v22.23.1
 $ backlog-exporter --help [COMMAND]
 USAGE
   $ backlog-exporter COMMAND
