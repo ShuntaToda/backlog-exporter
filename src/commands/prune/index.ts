@@ -1,9 +1,9 @@
 import {Args, Command, Flags} from '@oclif/core'
 import process from 'node:process'
 
-import {isInteractiveStdin, readYesNo} from '../../infrastructure/console/prompt.js'
-import {loadDotenv} from '../../infrastructure/env.js'
-import {pruneDirectories} from '../../usecases/prune-directories.js'
+import {pruneDirectories} from '../../modules/prune/use-case/prune-directories.js'
+import {loadDotenv} from '../../shared/config/env.js'
+import {isInteractiveStdin, readYesNo} from '../../shared/console/prompt.js'
 
 // .envファイルを読み込む
 loadDotenv()

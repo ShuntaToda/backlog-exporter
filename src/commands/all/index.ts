@@ -1,8 +1,8 @@
 import {Command, Flags} from '@oclif/core'
 
-import {BacklogHttpClient} from '../../infrastructure/backlog/http-client.js'
-import {API_KEY_NOT_FOUND_MESSAGE, loadDotenv, resolveApiKey} from '../../infrastructure/env.js'
-import {exportAll, ExportTarget} from '../../usecases/export-all.js'
+import {exportAll, ExportTarget} from '../../modules/all/use-case/export-all.js'
+import {BacklogHttpClient} from '../../shared/backlog/http-client.js'
+import {API_KEY_NOT_FOUND_MESSAGE, loadDotenv, resolveApiKey} from '../../shared/config/env.js'
 
 // .envファイルを読み込む
 loadDotenv()
@@ -114,9 +114,6 @@ export default class All extends Command {
     }
   }
 
-  /**
-   * --only / --exclude フラグからエクスポート対象を決定する
-   */
   private determineTargets(only: string | undefined, exclude: string | undefined): ExportTarget[] {
     if (only && exclude) {
       this.error('Cannot use both --only and --exclude flags together. Please use only one.')

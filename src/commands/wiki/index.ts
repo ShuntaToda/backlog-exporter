@@ -1,11 +1,11 @@
 import {Command, Flags} from '@oclif/core'
 
-import {FolderType} from '../../domain/settings.js'
-import {BacklogHttpClient} from '../../infrastructure/backlog/http-client.js'
-import {API_KEY_NOT_FOUND_MESSAGE, loadDotenv, resolveApiKey} from '../../infrastructure/env.js'
-import {ensureDirectory} from '../../infrastructure/storage/markdown-store.js'
-import {updateSettings} from '../../infrastructure/storage/settings-store.js'
-import {exportWikis} from '../../usecases/export-wikis.js'
+import {FolderType} from '../../modules/settings/domain/settings.js'
+import {updateSettings} from '../../modules/settings/repository/settings-store.js'
+import {exportWikis} from '../../modules/wiki/use-case/export-wikis.js'
+import {BacklogHttpClient} from '../../shared/backlog/http-client.js'
+import {API_KEY_NOT_FOUND_MESSAGE, loadDotenv, resolveApiKey} from '../../shared/config/env.js'
+import {ensureDirectory} from '../../shared/storage/markdown-store.js'
 
 // .envファイルを読み込む
 loadDotenv()

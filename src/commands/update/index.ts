@@ -1,8 +1,8 @@
 import {Args, Command, Flags} from '@oclif/core'
 import process from 'node:process'
 
-import {loadDotenv} from '../../infrastructure/env.js'
-import {updateExports} from '../../usecases/update-exports.js'
+import {updateExports} from '../../modules/update/use-case/update-exports.js'
+import {loadDotenv} from '../../shared/config/env.js'
 
 // .envファイルを読み込む
 loadDotenv()
