@@ -21,6 +21,13 @@ afterEach(async () => {
 })
 
 describe('pruneコマンド', () => {
+  it('存在しないディレクトリを指定した場合は明確なエラーになること', async () => {
+    const {error} = await runCli(['prune', join(rootDir, 'nope'), '--force', '--apiKey', API_KEY])
+
+    expect(error?.message).to.include('指定されたディレクトリが存在しません')
+  })
+
+
   it('--force指定でBacklog上に存在しない.mdファイルのみ削除すること', async () => {
     const wikiDir = join(rootDir, 'wiki')
     await writeSettings(wikiDir, {

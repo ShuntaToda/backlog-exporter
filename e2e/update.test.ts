@@ -21,6 +21,20 @@ afterEach(async () => {
 })
 
 describe('updateコマンド', () => {
+  it('存在しないディレクトリを指定した場合は明確なエラーになること', async () => {
+    const {error} = await runCli(['update', join(rootDir, 'nope'), '--force', '--apiKey', API_KEY])
+
+    expect(error?.message).to.include('指定されたディレクトリが存在しません')
+  })
+
+  it('設定ファイルが見つからない場合はその旨を表示すること', async () => {
+    const {error, stderr} = await runCli(['update', rootDir, '--force', '--apiKey', API_KEY])
+
+    expect(error).to.be.undefined
+    expect(stderr).to.include('設定ファイル（backlog-settings.json）が見つかりませんでした')
+  })
+
+
   it('設定ファイルを再帰的に探索し、差分がなければ何も書き換えないこと', async () => {
     const wikiDir = join(rootDir, 'wiki')
     await writeSettings(wikiDir, {

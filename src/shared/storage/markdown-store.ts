@@ -20,3 +20,10 @@ export async function writeMarkdownFile(filePath: string, content: string): Prom
 export async function deleteFile(filePath: string): Promise<void> {
   await fs.unlink(filePath)
 }
+
+export async function assertDirectoryExists(directory: string): Promise<void> {
+  const stats = await fs.stat(directory).catch(() => {})
+  if (!stats?.isDirectory()) {
+    throw new Error(`指定されたディレクトリが存在しません: ${directory}`)
+  }
+}

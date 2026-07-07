@@ -1,6 +1,7 @@
 import {BacklogHttpClient} from '../../../shared/backlog/http-client.js'
 import {resolveApiKey} from '../../../shared/config/env.js'
 import {Logger} from '../../../shared/ports.js'
+import {assertDirectoryExists} from '../../../shared/storage/markdown-store.js'
 import {validateAndGetProjectId} from '../../project/repository/project-api.js'
 import {findSettingsDirectories, loadSettings} from '../../settings/repository/settings-store.js'
 import {classifyPruneTarget} from '../domain/prune-target.js'
@@ -20,9 +21,16 @@ export async function pruneDirectories(
     rootDir: string
   },
 ): Promise<void> {
+  await assertDirectoryExists(options.rootDir)
+
   const directories = await findSettingsDirectories(options.rootDir, (dir) => {
     logger.warn(`ディレクトリの読み取りに失敗しました: ${dir}`)
   })
+
+  if (directories.length === 0) {
+    logger.warn(`設定ファイル（backlog-settings.json）が見つかりませんでした: ${options.rootDir}`)
+    return
+  }
 
   for (const directory of directories) {
     // eslint-disable-next-line no-await-in-loop

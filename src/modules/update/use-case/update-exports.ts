@@ -2,7 +2,7 @@ import {BacklogHttpClient} from '../../../shared/backlog/http-client.js'
 import {resolveApiKey} from '../../../shared/config/env.js'
 import {readYesNo} from '../../../shared/console/prompt.js'
 import {Logger} from '../../../shared/ports.js'
-import {ensureDirectory} from '../../../shared/storage/markdown-store.js'
+import {assertDirectoryExists, ensureDirectory} from '../../../shared/storage/markdown-store.js'
 import {exportDocuments} from '../../document/use-case/export-documents.js'
 import {exportIssues} from '../../issue/use-case/export-issues.js'
 import {validateAndGetProjectId} from '../../project/repository/project-api.js'
@@ -14,9 +14,16 @@ import {buildUpdatePlan, UpdateFlags, UpdatePlan} from '../domain/update-plan.js
 export type {UpdateFlags} from '../domain/update-plan.js'
 
 export async function updateExports(logger: Logger, rootDir: string, flags: UpdateFlags): Promise<void> {
+  await assertDirectoryExists(rootDir)
+
   const directories = await findSettingsDirectories(rootDir, (dir) => {
     logger.warn(`ディレクトリの読み取りに失敗しました: ${dir}`)
   })
+
+  if (directories.length === 0) {
+    logger.warn(`設定ファイル（backlog-settings.json）が見つかりませんでした: ${rootDir}`)
+    return
+  }
 
   for (const directory of directories) {
     // eslint-disable-next-line no-await-in-loop
