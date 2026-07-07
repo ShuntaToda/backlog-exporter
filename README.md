@@ -49,7 +49,7 @@ $ npm install -g backlog-exporter
 $ backlog-exporter COMMAND
 running command...
 $ backlog-exporter (--version)
-backlog-exporter/1.0.0 darwin-arm64 node-v22.22.2
+backlog-exporter/1.0.0 linux-x64 node-v22.23.1
 $ backlog-exporter --help [COMMAND]
 USAGE
   $ backlog-exporter COMMAND
