@@ -17,7 +17,7 @@ export default class Prune extends Command {
     }),
   }
   static description =
-    'Backlog上で削除・移動されたドキュメント・Wikiのローカルファイルを削除し、Backlogと同じ状態に揃える'
+    'Backlog上で削除・移動された課題・ドキュメント・Wikiのローカルファイルを削除し、Backlogと同じ状態に揃える'
   static examples = [
     `<%= config.bin %> <%= command.id %>
 カレントディレクトリ配下の設定ファイルを探索し、Backlog上に存在しないドキュメントファイルを削除する
@@ -88,7 +88,7 @@ export default class Prune extends Command {
       )
     }
 
-    this.log('以下のディレクトリで、Backlog上に存在しないドキュメント・Wiki（.mdファイル）を削除します:')
+    this.log('以下のディレクトリで、Backlog上に存在しない課題・ドキュメント・Wiki（.mdファイル）を削除します:')
     this.log(`- ディレクトリ: ${targetDir}`)
     this.log('削除を実行しますか？ (y/n)')
 

@@ -2,11 +2,12 @@ import {resolveApiKey} from '../../../shared/config/env.js'
 import {Logger} from '../../../shared/ports.js'
 import {assertDirectoryExists} from '../../../shared/storage/markdown-store.js'
 import {DocumentRepository} from '../../document/domain/document-repository.js'
+import {IssueRepository} from '../../issue/domain/issue-repository.js'
 import {ProjectRepository} from '../../project/domain/project-repository.js'
 import {findSettingsDirectories, loadSettings} from '../../settings/repository/settings-store.js'
 import {WikiRepository} from '../../wiki/domain/wiki-repository.js'
 import {classifyPruneTarget} from '../domain/prune-target.js'
-import {pruneDocuments, pruneWikis} from './prune-exports.js'
+import {pruneDocuments, pruneIssues, pruneWikis} from './prune-exports.js'
 
 export interface PruneFlags {
   apiKey?: string
@@ -18,6 +19,7 @@ export interface PruneDeps {
   // ディレクトリごとに設定ファイルから接続情報が決まるため、repositoryはファクトリで注入する
   createRepositories: (connection: {apiKey: string; domain: string; onRateLimitWait?: () => void}) => {
     documentRepository: DocumentRepository
+    issueRepository: IssueRepository
     projectRepository: ProjectRepository
     wikiRepository: WikiRepository
   }
@@ -101,17 +103,29 @@ async function pruneDirectory(
     return
   }
 
-  const {documentRepository, projectRepository, wikiRepository} = deps.createRepositories({
+  const {documentRepository, issueRepository, projectRepository, wikiRepository} = deps.createRepositories({
     apiKey,
     domain,
     onRateLimitWait: () => logger.log('レート制限を回避するため15秒間待機します...'),
   })
 
-  await (target === 'wiki'
-    ? pruneWikis({logger, wikiRepository}, {outputDir: targetDir, projectIdOrKey})
-    : projectRepository
-        .resolveProjectId(projectIdOrKey)
-        .then((projectId) => pruneDocuments({documentRepository, logger}, {outputDir: targetDir, projectId})))
+  if (target === 'wiki') {
+    await pruneWikis({logger, wikiRepository}, {outputDir: targetDir, projectIdOrKey})
+  } else {
+    const projectId = await projectRepository.resolveProjectId(projectIdOrKey)
+    await (target === 'issue'
+      ? pruneIssues(
+          {issueRepository, logger},
+          {
+            // 保存時の命名を再現するため、エクスポート時に保存された設定を使う
+            issueKeyFileName: settings.issueKeyFileName,
+            issueKeyFolder: settings.issueKeyFolder,
+            outputDir: targetDir,
+            projectId,
+          },
+        )
+      : pruneDocuments({documentRepository, logger}, {outputDir: targetDir, projectId}))
+  }
 
   logger.log(`${targetDir} のpruneが完了しました！`)
 }

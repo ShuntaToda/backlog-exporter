@@ -49,22 +49,29 @@ describe('pruneコマンド', () => {
     expect(existsSync(join(wikiDir, '孤児.md'))).to.be.false
   })
 
-  it('課題フォルダはスキップし、何も削除しないこと', async () => {
+  it('課題フォルダもpruneの対象になり、削除済み課題のファイルのみ削除されること', async () => {
     const issueDir = join(rootDir, 'issues')
     await writeSettings(issueDir, {
       domain: server.domain,
       folderType: 'issue',
+      issueKeyFileName: true,
       projectIdOrKey: PROJECT_KEY,
     })
     await fs.mkdir(join(issueDir, '2026'), {recursive: true})
-    await fs.writeFile(join(issueDir, '2026', 'TEST-1.md'), '# 課題')
+    await fs.writeFile(join(issueDir, '2026', 'TEST-1.md'), '# 現存課題')
+    await fs.writeFile(join(issueDir, '2026', 'TEST-9.md'), '# 削除済み課題')
+
+    server.respond(`/api/v2/projects/${PROJECT_KEY}`, {body: {id: 1}})
+    server.respond('/api/v2/issues', {
+      body: [{created: '2026-01-02T00:00:00Z', issueKey: 'TEST-1', summary: '現存課題'}],
+    })
 
     const {error, stdout} = await runCli(['prune', rootDir, '--force', '--apiKey', API_KEY])
 
     expect(error).to.be.undefined
-    expect(stdout).to.not.include('pruneが完了しました')
-    expect(existsSync(join(issueDir, '2026', 'TEST-1.md'))).to.be.true
-    expect(server.requests, 'APIを呼ばないこと').to.have.length(0)
+    expect(stdout).to.include('1件の不要な課題ファイルを削除しました。')
+    expect(existsSync(join(issueDir, '2026', 'TEST-1.md')), '現存課題は残ること').to.be.true
+    expect(existsSync(join(issueDir, '2026', 'TEST-9.md')), '削除済み課題は削除されること').to.be.false
   })
 
   it('非対話環境で--forceなしの場合はエラーで中止すること', async () => {

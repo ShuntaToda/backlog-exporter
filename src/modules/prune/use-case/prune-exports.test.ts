@@ -8,8 +8,9 @@ import {BacklogHttpClient} from '../../../shared/backlog/http-client.js'
 import {BacklogMockServer} from '../../../shared/testing/backlog-mock-server.js'
 import {stubLogger} from '../../../shared/testing/stub-logger.js'
 import {newBacklogDocumentRepository} from '../../document/repository/backlog-document-repository.js'
+import {newBacklogIssueRepository} from '../../issue/repository/backlog-issue-repository.js'
 import {newBacklogWikiRepository} from '../../wiki/repository/backlog-wiki-repository.js'
-import {pruneDocuments, pruneWikis} from './prune-exports.js'
+import {pruneDocuments, pruneIssues, pruneWikis} from './prune-exports.js'
 
 const API_KEY = 'test-api-key'
 const PROJECT_ID = 12_345
@@ -277,5 +278,97 @@ describe('pruneWikis（不要なローカルWikiの削除）', () => {
     expect(existsSync(join(outputDir, 'backlog-settings.json')), '設定ファイルは保護').to.be.true
     expect(existsSync(join(outputDir, 'note.txt')), '.md以外は保護').to.be.true
     expect(existsSync(join(outputDir, 'orphan.md')), 'orphan.md は削除').to.be.false
+  })
+})
+
+const issue = (issueKey: string, summary: string, created = '2026-01-02T00:00:00Z') => ({
+  created,
+  issueKey,
+  summary,
+})
+
+const issuePruneDeps = () => ({issueRepository: newBacklogIssueRepository(client()), logger: stubLogger})
+
+describe('pruneIssues（不要なローカル課題ファイルの削除）', () => {
+  let outputDir: string
+
+  beforeEach(async () => {
+    server.reset()
+    outputDir = await fs.mkdtemp(join(tmpdir(), 'backlog-prune-issue-test-'))
+  })
+
+  afterEach(async () => {
+    await fs.rm(outputDir, {force: true, recursive: true})
+  })
+
+  it('Backlog上に存在する課題は残し、存在しない.mdファイルのみ削除すること', async () => {
+    server.respond('/api/v2/issues', {body: [issue('TEST-1', '残る課題')]})
+
+    await fs.mkdir(join(outputDir, '2026'), {recursive: true})
+    await fs.writeFile(join(outputDir, '2026', '残る課題.md'), '# 残る課題')
+    await fs.writeFile(join(outputDir, '2026', '削除された課題.md'), '# 削除された課題')
+
+    const pruned = await pruneIssues(issuePruneDeps(), {outputDir, projectId: PROJECT_ID})
+
+    expect(pruned).to.equal(1)
+    expect(existsSync(join(outputDir, '2026', '残る課題.md'))).to.be.true
+    expect(existsSync(join(outputDir, '2026', '削除された課題.md'))).to.be.false
+  })
+
+  it('issueKeyFileName/issueKeyFolder設定の命名を再現して比較すること', async () => {
+    server.respond('/api/v2/issues', {body: [issue('TEST-1', '課題A')]})
+
+    await fs.mkdir(join(outputDir, '2026', 'TEST-1'), {recursive: true})
+    await fs.writeFile(join(outputDir, '2026', 'TEST-1', 'TEST-1.md'), '# 課題A')
+    await fs.mkdir(join(outputDir, '2026', 'TEST-9'), {recursive: true})
+    await fs.writeFile(join(outputDir, '2026', 'TEST-9', 'TEST-9.md'), '# 削除済み課題')
+
+    const pruned = await pruneIssues(issuePruneDeps(), {
+      issueKeyFileName: true,
+      issueKeyFolder: true,
+      outputDir,
+      projectId: PROJECT_ID,
+    })
+
+    expect(pruned).to.equal(1)
+    expect(existsSync(join(outputDir, '2026', 'TEST-1', 'TEST-1.md')), '現存課題は残ること').to.be.true
+    expect(existsSync(join(outputDir, '2026', 'TEST-9')), '空になった課題キーフォルダは削除されること').to.be.false
+  })
+
+  it('課題が100件を超える場合はページングで全件を取得すること', async () => {
+    server.respond('/api/v2/issues', (url) => {
+      const offset = Number(url.searchParams.get('offset'))
+      return offset === 0
+        ? {body: Array.from({length: 100}, (_, i) => issue(`TEST-${i}`, `課題${i}`))}
+        : {body: [issue('TEST-100', '課題100')]}
+    })
+
+    await fs.mkdir(join(outputDir, '2026'), {recursive: true})
+    await fs.writeFile(join(outputDir, '2026', '課題100.md'), '# 課題100')
+    await fs.writeFile(join(outputDir, '2026', 'orphan.md'), '# 削除対象')
+
+    const pruned = await pruneIssues(issuePruneDeps(), {outputDir, projectId: PROJECT_ID})
+
+    expect(pruned).to.equal(1)
+    expect(existsSync(join(outputDir, '2026', '課題100.md')), '2ページ目の課題も保護されること').to.be.true
+    expect(existsSync(join(outputDir, '2026', 'orphan.md'))).to.be.false
+  })
+
+  it('課題一覧の取得に失敗した場合は、誤削除防止のため何も削除せずにエラーで中断すること', async () => {
+    server.respond('/api/v2/issues', {status: 500})
+
+    await fs.mkdir(join(outputDir, '2026'), {recursive: true})
+    await fs.writeFile(join(outputDir, '2026', 'orphan.md'), '# 本来は削除対象')
+
+    let thrown: unknown
+    try {
+      await pruneIssues(issuePruneDeps(), {outputDir, projectId: PROJECT_ID})
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).to.be.instanceOf(Error)
+    expect((thrown as Error).message).to.include('誤削除を防ぐため')
+    expect(existsSync(join(outputDir, '2026', 'orphan.md')), '中断時は何も削除しないこと').to.be.true
   })
 })
