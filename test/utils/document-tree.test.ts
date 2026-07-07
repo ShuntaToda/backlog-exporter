@@ -113,4 +113,149 @@ describe('downloadDocuments - 子を持つ親ドキュメントの本文', () =>
     expect(existsSync(join(outputDir, '空フォルダ', '00_index.md')), '空の親はindexを作らないこと').to.be.false
     expect(existsSync(join(outputDir, '空フォルダ', '子C.md'))).to.be.true
   })
+
+  it('親の本文が空に変更された場合、過去に作成した 00_index.md を削除すること', async () => {
+    nock(`https://${DOMAIN}`)
+      .get('/api/v2/documents/tree')
+      .query({apiKey: API_KEY, projectIdOrKey: String(PROJECT_ID)})
+      .reply(200, {
+        activeTree: {
+          children: [{children: [{children: [], id: 'childA', name: '子A'}], id: 'parent1', name: '親フォルダ'}],
+          id: 'root',
+        },
+        projectId: PROJECT_ID,
+        trashTree: {children: [], id: 'trash'},
+      })
+
+    nock(`https://${DOMAIN}`)
+      .get('/api/v2/documents/parent1')
+      .query({apiKey: API_KEY})
+      .reply(200, documentDetail('parent1', '親フォルダ', '')) // 本文が空に変更された
+    nock(`https://${DOMAIN}`)
+      .get('/api/v2/documents/childA')
+      .query({apiKey: API_KEY})
+      .reply(200, documentDetail('childA', '子A', 'A本文'))
+
+    // 過去の実行で作成された親index
+    await fs.mkdir(join(outputDir, '親フォルダ'), {recursive: true})
+    await fs.writeFile(join(outputDir, '親フォルダ', '00_index.md'), '# 親フォルダ\n\n古い本文')
+
+    await downloadDocuments(stubCommand, {
+      apiKey: API_KEY,
+      domain: DOMAIN,
+      outputDir,
+      projectId: PROJECT_ID,
+      projectIdOrKey: 'TEST',
+    })
+
+    expect(existsSync(join(outputDir, '親フォルダ', '00_index.md')), '空になった親のindexは削除されること').to.be.false
+    expect(existsSync(join(outputDir, '親フォルダ', '子A.md')), '子は保存されること').to.be.true
+  })
+
+  it('「00_index」というタイトルの子ドキュメントがある場合、親本文で上書きしないこと', async () => {
+    nock(`https://${DOMAIN}`)
+      .get('/api/v2/documents/tree')
+      .query({apiKey: API_KEY, projectIdOrKey: String(PROJECT_ID)})
+      .reply(200, {
+        activeTree: {
+          children: [{children: [{children: [], id: 'child00', name: '00_index'}], id: 'parent1', name: '親フォルダ'}],
+          id: 'root',
+        },
+        projectId: PROJECT_ID,
+        trashTree: {children: [], id: 'trash'},
+      })
+
+    nock(`https://${DOMAIN}`)
+      .get('/api/v2/documents/parent1')
+      .query({apiKey: API_KEY})
+      .reply(200, documentDetail('parent1', '親フォルダ', '親の本文'))
+    nock(`https://${DOMAIN}`)
+      .get('/api/v2/documents/child00')
+      .query({apiKey: API_KEY})
+      .reply(200, documentDetail('child00', '00_index', '子の本文'))
+
+    await downloadDocuments(stubCommand, {
+      apiKey: API_KEY,
+      domain: DOMAIN,
+      outputDir,
+      projectId: PROJECT_ID,
+      projectIdOrKey: 'TEST',
+    })
+
+    const content = await fs.readFile(join(outputDir, '親フォルダ', '00_index.md'), 'utf8')
+    expect(content, '先に保存された子ドキュメントの内容が残ること').to.include('子の本文')
+    expect(content, '親本文で上書きされないこと').to.not.include('親の本文')
+  })
+
+  it('増分更新でも、未作成の親indexはバックフィルとして作成すること（既存の子は再作成しない）', async () => {
+    nock(`https://${DOMAIN}`)
+      .get('/api/v2/documents/tree')
+      .query({apiKey: API_KEY, projectIdOrKey: String(PROJECT_ID)})
+      .reply(200, {
+        activeTree: {
+          children: [{children: [{children: [], id: 'childA', name: '子A'}], id: 'parent1', name: '親フォルダ'}],
+          id: 'root',
+        },
+        projectId: PROJECT_ID,
+        trashTree: {children: [], id: 'trash'},
+      })
+
+    nock(`https://${DOMAIN}`)
+      .get('/api/v2/documents/parent1')
+      .query({apiKey: API_KEY})
+      .reply(200, documentDetail('parent1', '親フォルダ', '親の本文'))
+    nock(`https://${DOMAIN}`)
+      .get('/api/v2/documents/childA')
+      .query({apiKey: API_KEY})
+      .reply(200, documentDetail('childA', '子A', 'A本文'))
+
+    // lastUpdated は全ドキュメントの updated(2026-01-02) より後 ＝ 通常は全てスキップされる
+    await downloadDocuments(stubCommand, {
+      apiKey: API_KEY,
+      domain: DOMAIN,
+      lastUpdated: '2026-06-01T00:00:00Z',
+      outputDir,
+      projectId: PROJECT_ID,
+      projectIdOrKey: 'TEST',
+    })
+
+    expect(existsSync(join(outputDir, '親フォルダ', '00_index.md')), '未作成の親indexはバックフィルされること').to.be
+      .true
+    expect(existsSync(join(outputDir, '親フォルダ', '子A.md')), '未更新の子はスキップされること').to.be.false
+  })
+
+  it('親の本文（plain）がnullでもクラッシュせず、空として扱うこと', async () => {
+    nock(`https://${DOMAIN}`)
+      .get('/api/v2/documents/tree')
+      .query({apiKey: API_KEY, projectIdOrKey: String(PROJECT_ID)})
+      .reply(200, {
+        activeTree: {
+          children: [{children: [{children: [], id: 'childA', name: '子A'}], id: 'parent1', name: '親フォルダ'}],
+          id: 'root',
+        },
+        projectId: PROJECT_ID,
+        trashTree: {children: [], id: 'trash'},
+      })
+
+    nock(`https://${DOMAIN}`)
+      .get('/api/v2/documents/parent1')
+      .query({apiKey: API_KEY})
+      .reply(200, documentDetail('parent1', '親フォルダ', null as unknown as string))
+    nock(`https://${DOMAIN}`)
+      .get('/api/v2/documents/childA')
+      .query({apiKey: API_KEY})
+      .reply(200, documentDetail('childA', '子A', 'A本文'))
+
+    await downloadDocuments(stubCommand, {
+      apiKey: API_KEY,
+      domain: DOMAIN,
+      outputDir,
+      projectId: PROJECT_ID,
+      projectIdOrKey: 'TEST',
+    })
+
+    expect(existsSync(join(outputDir, '親フォルダ', '00_index.md')), 'nullの本文は空として扱いindexを作らないこと').to
+      .be.false
+    expect(existsSync(join(outputDir, '親フォルダ', '子A.md')), '子は保存されること').to.be.true
+  })
 })
