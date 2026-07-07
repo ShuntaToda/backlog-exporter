@@ -22,9 +22,17 @@ const CHANGE_FIELD_LABELS: Record<string, string> = {
   version: '発生バージョン',
 }
 
+// 詳細やカスタム属性の変更値には複数行の長文が入ることがあり、
+// そのまま出すとリスト構造が崩れるため1行化して切り詰める
+function formatChangeValue(value: null | string): string {
+  if (!value) return '未設定'
+  const singleLine = value.replaceAll(/\s*\n\s*/g, ' ').trim()
+  return singleLine.length > 50 ? `${singleLine.slice(0, 50)}…` : singleLine
+}
+
 function formatChange(change: IssueCommentChange): string {
   const label = CHANGE_FIELD_LABELS[change.field] ?? change.field
-  return `- ${label}: ${change.originalValue || '未設定'} → ${change.newValue || '未設定'}`
+  return `- ${label}: ${formatChangeValue(change.originalValue)} → ${formatChangeValue(change.newValue)}`
 }
 
 function buildCommentBody(comment: IssueComment): string {

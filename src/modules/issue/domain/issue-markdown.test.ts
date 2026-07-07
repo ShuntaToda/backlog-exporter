@@ -237,6 +237,33 @@ describe('issue-markdown', () => {
       expect(section).to.include('- customField_123: A → B')
     })
 
+    it('カスタム属性の変更はfieldに入る属性名がそのまま記載されること', () => {
+      const section = buildCommentsSection(
+        [
+          {
+            ...baseComment,
+            changeLog: [{field: '工数（エンジニア）', newValue: '0.375 人日', originalValue: '0.5 人日'}],
+            content: null,
+          },
+        ],
+        url,
+      )
+
+      expect(section).to.include('- 工数（エンジニア）: 0.5 人日 → 0.375 人日')
+    })
+
+    it('複数行・長文の変更値は1行化して切り詰めること', () => {
+      const longValue = '1行目の説明テキスト\n2行目の説明テキスト\n' + 'あ'.repeat(60)
+      const section = buildCommentsSection(
+        [{...baseComment, changeLog: [{field: 'description', newValue: null, originalValue: longValue}], content: null}],
+        url,
+      )
+
+      expect(section).to.include('- 詳細: 1行目の説明テキスト 2行目の説明テキスト')
+      expect(section).to.include('… → 未設定')
+      expect(section, '改行がリストを崩さないこと').to.not.include('2行目の説明テキスト\n')
+    })
+
     it('本文も変更履歴もない場合は従来どおり(内容なし)と記載すること', () => {
       const section = buildCommentsSection([{...baseComment, content: ''}], url)
 
