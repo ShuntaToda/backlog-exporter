@@ -13,10 +13,12 @@ export default [
   {
     // テストは実装ファイルの兄弟（src/**/*.test.ts）にコロケーションしている。
     // chaiスタイルのアサーション（.to.be.true 等）と1ファイル複数describeを許可する
-    files: ['src/**/*.test.ts'],
+    files: ['src/**/*.test.ts', 'e2e/**/*.ts'],
     rules: {
       '@typescript-eslint/no-unused-expressions': 'off',
       'mocha/max-top-level-suites': 'off',
+      // vitestのフック/スイートをmochaプラグインが誤検知するため
+      'mocha/no-top-level-hooks': 'off',
     },
   },
 ]

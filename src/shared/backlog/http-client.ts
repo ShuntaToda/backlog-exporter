@@ -1,3 +1,4 @@
+import {backlogOrigin} from '../backlog-url.js'
 import {RateLimiter, sleep} from './rate-limiter.js'
 
 // fetchは4xx/5xxでthrowしないため、response.okでない場合にこれを投げる
@@ -24,7 +25,7 @@ export class BacklogHttpClient {
 
   constructor(options: {apiKey: string; domain: string; onRateLimitWait?: () => void}) {
     this.apiKey = options.apiKey
-    this.baseUrl = `https://${options.domain}/api/v2`
+    this.baseUrl = `${backlogOrigin(options.domain)}/api/v2`
     this.rateLimiter = new RateLimiter(options.onRateLimitWait)
   }
 

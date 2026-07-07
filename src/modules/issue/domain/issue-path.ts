@@ -1,5 +1,6 @@
 import path from 'node:path'
 
+import {backlogOrigin} from '../../../shared/backlog-url.js'
 import {sanitizeFileName} from '../../../shared/file-name.js'
 
 export function issueFileName(issue: {issueKey: string; summary: string}, useIssueKey: boolean): string {
@@ -22,5 +23,5 @@ export function issueRelativePath(
 }
 
 export function issueUrl(domain: string, issueKey: string): string {
-  return `https://${domain}/view/${issueKey}`
+  return `${backlogOrigin(domain)}/view/${issueKey}`
 }

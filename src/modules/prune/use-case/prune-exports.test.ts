@@ -1,49 +1,48 @@
-import nock from 'nock'
 import {existsSync} from 'node:fs'
 import * as fs from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
-import {afterEach, beforeEach, describe, expect, it} from 'vitest'
+import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it} from 'vitest'
 
 import {BacklogHttpClient} from '../../../shared/backlog/http-client.js'
+import {BacklogMockServer} from '../../../shared/testing/backlog-mock-server.js'
 import {stubLogger} from '../../../shared/testing/stub-logger.js'
 import {pruneDocuments, pruneWikis} from './prune-exports.js'
 
-const DOMAIN = 'example.backlog.jp'
 const API_KEY = 'test-api-key'
 const PROJECT_ID = 12_345
 const PROJECT_KEY = 'TEST'
 
-const client = () => new BacklogHttpClient({apiKey: API_KEY, domain: DOMAIN})
+const server = new BacklogMockServer()
+const client = () => new BacklogHttpClient({apiKey: API_KEY, domain: server.domain})
+
+beforeAll(() => server.start())
+afterAll(() => server.stop())
+
+const respondTree = (children: unknown[]) => {
+  server.respond('/api/v2/documents/tree', {body: {activeTree: {children, id: 'root'}}})
+}
+
+const respondDocumentList = (documents: Array<{id: string; title: string}>) => {
+  server.respond('/api/v2/documents', {body: documents})
+}
 
 describe('pruneDocuments（不要なローカルドキュメントの削除）', () => {
   let outputDir: string
 
   beforeEach(async () => {
+    server.reset()
     outputDir = await fs.mkdtemp(join(tmpdir(), 'backlog-prune-test-'))
   })
 
   afterEach(async () => {
-    nock.cleanAll()
     await fs.rm(outputDir, {force: true, recursive: true})
   })
 
   it('Backlog上に存在するファイルは残し、存在しない.mdファイルのみ削除すること', async () => {
-    // Backlogツリー: docA のみ存在（docB は削除済み想定）
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/documents/tree')
-      .query({apiKey: API_KEY, projectIdOrKey: String(PROJECT_ID)})
-      .reply(200, {
-        activeTree: {children: [{children: [], id: 'da', name: 'docA'}], id: 'root'},
-      })
+    respondTree([{children: [], id: 'da', name: 'docA'}])
+    respondDocumentList([{id: 'da', title: 'docA'}])
 
-    // ドキュメント一覧（title はツリーの name と同じ）
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/documents')
-      .query({apiKey: API_KEY, count: '100', offset: '0', 'projectId[]': String(PROJECT_ID)})
-      .reply(200, [{id: 'da', title: 'docA'}])
-
-    // ローカルに docA.md（残るべき）と docB.md（削除されるべき）を用意
     await fs.writeFile(join(outputDir, 'docA.md'), '# docA')
     await fs.writeFile(join(outputDir, 'docB.md'), '# docB(削除済み)')
 
@@ -54,35 +53,20 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
     expect(existsSync(join(outputDir, 'docB.md')), 'docB.md は削除されること').to.be.false
   })
 
-  it('ツリーのnameと詳細のtitleが異なる場合でも、title基準で保存されたファイルを誤削除しないこと', async () => {
-    // ツリー上の name は "旧タイトル" だが、一覧APIの title は "新タイトル"
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/documents/tree')
-      .query({apiKey: API_KEY, projectIdOrKey: String(PROJECT_ID)})
-      .reply(200, {
-        activeTree: {children: [{children: [], id: 'dx', name: '旧タイトル'}], id: 'root'},
-      })
+  it('ツリーのnameと一覧のtitleが異なる場合でも、title基準で保存されたファイルを誤削除しないこと', async () => {
+    respondTree([{children: [], id: 'dx', name: '旧タイトル'}])
+    respondDocumentList([{id: 'dx', title: '新タイトル'}])
 
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/documents')
-      .query({apiKey: API_KEY, count: '100', offset: '0', 'projectId[]': String(PROJECT_ID)})
-      .reply(200, [{id: 'dx', title: '新タイトル'}])
-
-    // 実際の保存時は title 由来のファイル名になるため、"新タイトル.md" がローカルにある
     await fs.writeFile(join(outputDir, '新タイトル.md'), '# 新タイトル')
 
     const pruned = await pruneDocuments(client(), stubLogger, {outputDir, projectId: PROJECT_ID})
 
-    // title 基準で期待パスを構築するため、誤って削除されない
     expect(pruned).to.equal(0)
     expect(existsSync(join(outputDir, '新タイトル.md')), '新タイトル.md は残ること').to.be.true
   })
 
   it('設定ファイルや.md以外のユーザーファイルには触れないこと', async () => {
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/documents/tree')
-      .query({apiKey: API_KEY, projectIdOrKey: String(PROJECT_ID)})
-      .reply(200, {activeTree: {children: [], id: 'root'}})
+    respondTree([])
 
     await fs.writeFile(join(outputDir, 'backlog-settings.json'), '{}')
     await fs.writeFile(join(outputDir, 'backlog-update.log'), 'log')
@@ -99,26 +83,11 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
   })
 
   it('移動されたドキュメントの旧パスを削除し、空になったディレクトリも削除すること', async () => {
-    // Backlogツリー: docM は「新フォルダ」配下に存在（旧フォルダからは消えた想定）
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/documents/tree')
-      .query({apiKey: API_KEY, projectIdOrKey: String(PROJECT_ID)})
-      .reply(200, {
-        activeTree: {
-          children: [{children: [{children: [], id: 'dm', name: 'docM'}], id: 'f-new', name: '新フォルダ'}],
-          id: 'root',
-        },
-      })
+    respondTree([{children: [{children: [], id: 'dm', name: 'docM'}], id: 'f-new', name: '新フォルダ'}])
+    respondDocumentList([{id: 'dm', title: 'docM'}])
 
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/documents')
-      .query({apiKey: API_KEY, count: '100', offset: '0', 'projectId[]': String(PROJECT_ID)})
-      .reply(200, [{id: 'dm', title: 'docM'}])
-
-    // ローカルには旧フォルダ配下にだけ docM.md が残っている
     await fs.mkdir(join(outputDir, '旧フォルダ'), {recursive: true})
     await fs.writeFile(join(outputDir, '旧フォルダ', 'docM.md'), '# docM(旧パス)')
-    // 新パスにも保存済みとする（pruneの対象外）
     await fs.mkdir(join(outputDir, '新フォルダ'), {recursive: true})
     await fs.writeFile(join(outputDir, '新フォルダ', 'docM.md'), '# docM(新パス)')
 
@@ -131,19 +100,8 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
   })
 
   it('ドキュメント一覧の取得に失敗した場合は、誤削除防止のため何も削除せずにエラーで中断すること', async () => {
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/documents/tree')
-      .query({apiKey: API_KEY, projectIdOrKey: String(PROJECT_ID)})
-      .reply(200, {
-        activeTree: {children: [{children: [], id: 'da', name: 'docA'}], id: 'root'},
-      })
-
-    // 一時的なサーバーエラーを想定（リトライ分も含めて常に500を返す）
-    nock(`https://${DOMAIN}`)
-      .persist()
-      .get('/api/v2/documents')
-      .query({apiKey: API_KEY, count: '100', offset: '0', 'projectId[]': String(PROJECT_ID)})
-      .reply(500)
+    respondTree([{children: [], id: 'da', name: 'docA'}])
+    server.respond('/api/v2/documents', {status: 500})
 
     await fs.writeFile(join(outputDir, 'docA.md'), '# docA')
     await fs.writeFile(join(outputDir, 'orphan.md'), '# 本来は削除対象')
@@ -161,18 +119,8 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
   })
 
   it('子を持たない空フォルダ（ドキュメント一覧に現れない）はフォルダとして扱い、対応する空ディレクトリを残すこと', async () => {
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/documents/tree')
-      .query({apiKey: API_KEY, projectIdOrKey: String(PROJECT_ID)})
-      .reply(200, {
-        activeTree: {children: [{children: [], id: 'f-empty', name: '空フォルダ'}], id: 'root'},
-      })
-
-    // フォルダはドキュメント一覧には含まれない
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/documents')
-      .query({apiKey: API_KEY, count: '100', offset: '0', 'projectId[]': String(PROJECT_ID)})
-      .reply(200, [])
+    respondTree([{children: [], id: 'f-empty', name: '空フォルダ'}])
+    respondDocumentList([])
 
     await fs.mkdir(join(outputDir, '空フォルダ'), {recursive: true})
 
@@ -183,19 +131,9 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
   })
 
   it('タイトルの大文字小文字のみが変わった場合に、旧表記のままのローカルファイルを誤削除しないこと', async () => {
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/documents/tree')
-      .query({apiKey: API_KEY, projectIdOrKey: String(PROJECT_ID)})
-      .reply(200, {
-        activeTree: {children: [{children: [], id: 'dr', name: 'README'}], id: 'root'},
-      })
+    respondTree([{children: [], id: 'dr', name: 'README'}])
+    respondDocumentList([{id: 'dr', title: 'README'}])
 
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/documents')
-      .query({apiKey: API_KEY, count: '100', offset: '0', 'projectId[]': String(PROJECT_ID)})
-      .reply(200, [{id: 'dr', title: 'README'}])
-
-    // 大文字小文字を区別しないファイルシステムでは、タイトル変更後もディスク上のエントリ名は旧表記のまま残る
     await fs.writeFile(join(outputDir, 'Readme.md'), '# Readme')
 
     const pruned = await pruneDocuments(client(), stubLogger, {outputDir, projectId: PROJECT_ID})
@@ -205,26 +143,17 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
   })
 
   it('ドキュメントが100件を超える場合はページングで全件のタイトルを取得すること', async () => {
-    // 101件のドキュメント（一覧APIは100件/ページなので2ページに分かれる）
     const treeChildren = Array.from({length: 101}, (_, i) => ({children: [], id: `d${i}`, name: `doc${i}`}))
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/documents/tree')
-      .query({apiKey: API_KEY, projectIdOrKey: String(PROJECT_ID)})
-      .reply(200, {activeTree: {children: treeChildren, id: 'root'}})
+    respondTree(treeChildren)
 
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/documents')
-      .query({apiKey: API_KEY, count: '100', offset: '0', 'projectId[]': String(PROJECT_ID)})
-      .reply(
-        200,
-        Array.from({length: 100}, (_, i) => ({id: `d${i}`, title: `doc${i}`})),
-      )
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/documents')
-      .query({apiKey: API_KEY, count: '100', offset: '100', 'projectId[]': String(PROJECT_ID)})
-      .reply(200, [{id: 'd100', title: 'doc100'}])
+    server.respond('/api/v2/documents', (url) => {
+      const offset = Number(url.searchParams.get('offset'))
+      expect(url.searchParams.get('projectId[]')).to.equal(String(PROJECT_ID))
+      return offset === 0
+        ? {body: Array.from({length: 100}, (_, i) => ({id: `d${i}`, title: `doc${i}`}))}
+        : {body: [{id: 'd100', title: 'doc100'}]}
+    })
 
-    // 2ページ目のドキュメントに対応するファイルと、削除対象のファイルを用意
     await fs.writeFile(join(outputDir, 'doc100.md'), '# doc100')
     await fs.writeFile(join(outputDir, 'orphan.md'), '# 削除対象')
 
@@ -236,23 +165,9 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
   })
 
   it('親ドキュメント本文（00_index.md）は削除対象から保護されること', async () => {
-    // ツリー: 親フォルダ（本文あり想定）とその子ドキュメント
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/documents/tree')
-      .query({apiKey: API_KEY, projectIdOrKey: String(PROJECT_ID)})
-      .reply(200, {
-        activeTree: {
-          children: [{children: [{children: [], id: 'childA', name: '子A'}], id: 'parent1', name: '親フォルダ'}],
-          id: 'root',
-        },
-      })
+    respondTree([{children: [{children: [], id: 'childA', name: '子A'}], id: 'parent1', name: '親フォルダ'}])
+    respondDocumentList([{id: 'childA', title: '子A'}])
 
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/documents')
-      .query({apiKey: API_KEY, count: '100', offset: '0', 'projectId[]': String(PROJECT_ID)})
-      .reply(200, [{id: 'childA', title: '子A'}])
-
-    // ダウンロード側が保存する構成: 親index・子・削除対象の孤児
     await fs.mkdir(join(outputDir, '親フォルダ'), {recursive: true})
     await fs.writeFile(join(outputDir, '親フォルダ', '00_index.md'), '# 親フォルダ\n\n親の本文')
     await fs.writeFile(join(outputDir, '親フォルダ', '子A.md'), '# 子A')
@@ -271,20 +186,16 @@ describe('pruneWikis（不要なローカルWikiの削除）', () => {
   let outputDir: string
 
   beforeEach(async () => {
+    server.reset()
     outputDir = await fs.mkdtemp(join(tmpdir(), 'backlog-prune-wiki-test-'))
   })
 
   afterEach(async () => {
-    nock.cleanAll()
     await fs.rm(outputDir, {force: true, recursive: true})
   })
 
   it('Backlog上に存在するWikiは残し、存在しない.mdファイルのみ削除すること', async () => {
-    // Backlog上には WikiA のみ存在（WikiB は削除済み想定）
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/wikis')
-      .query({apiKey: API_KEY, projectIdOrKey: PROJECT_KEY})
-      .reply(200, [{id: '1', name: 'WikiA', updated: '2026-01-01T00:00:00Z'}])
+    server.respond('/api/v2/wikis', {body: [{id: '1', name: 'WikiA', updated: '2026-01-01T00:00:00Z'}]})
 
     await fs.writeFile(join(outputDir, 'WikiA.md'), '# WikiA')
     await fs.writeFile(join(outputDir, 'WikiB.md'), '# WikiB(削除済み)')
@@ -297,11 +208,7 @@ describe('pruneWikis（不要なローカルWikiの削除）', () => {
   })
 
   it('スラッシュを含むWiki名（階層）のファイルを正しく扱い、空ディレクトリを削除すること', async () => {
-    // Backlog上には「親/子A」のみ存在。「親/子B」は削除済み想定。「旧親/旧子」フォルダごと削除済み想定。
-    nock(`https://${DOMAIN}`)
-      .get('/api/v2/wikis')
-      .query({apiKey: API_KEY, projectIdOrKey: PROJECT_KEY})
-      .reply(200, [{id: '1', name: '親/子A', updated: '2026-01-01T00:00:00Z'}])
+    server.respond('/api/v2/wikis', {body: [{id: '1', name: '親/子A', updated: '2026-01-01T00:00:00Z'}]})
 
     await fs.mkdir(join(outputDir, '親'), {recursive: true})
     await fs.writeFile(join(outputDir, '親', '子A.md'), '# 子A')
@@ -320,7 +227,7 @@ describe('pruneWikis（不要なローカルWikiの削除）', () => {
   })
 
   it('設定ファイルや.md以外のユーザーファイルには触れないこと', async () => {
-    nock(`https://${DOMAIN}`).get('/api/v2/wikis').query({apiKey: API_KEY, projectIdOrKey: PROJECT_KEY}).reply(200, [])
+    server.respond('/api/v2/wikis', {body: []})
 
     await fs.writeFile(join(outputDir, 'backlog-settings.json'), '{}')
     await fs.writeFile(join(outputDir, 'note.txt'), 'user file')

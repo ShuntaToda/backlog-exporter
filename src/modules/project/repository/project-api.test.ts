@@ -1,84 +1,61 @@
-import nock from 'nock'
-import {afterEach, beforeEach, describe, expect, it} from 'vitest'
+import {afterAll, beforeAll, beforeEach, describe, expect, it} from 'vitest'
 
 import {BacklogHttpClient} from '../../../shared/backlog/http-client.js'
+import {BacklogMockServer} from '../../../shared/testing/backlog-mock-server.js'
 import {getProjectIdFromKey, validateAndGetProjectId} from './project-api.js'
 
+const API_KEY = 'dummy-api-key'
+const PROJECT_KEY = 'TEST'
+const PROJECT_ID = 12_345
+
 describe('project-api', () => {
-  const domain = 'example.backlog.jp'
-  const apiKey = 'dummy-api-key'
-  const projectKey = 'TEST'
-  const projectId = 12_345
+  const server = new BacklogMockServer()
 
-  const client = new BacklogHttpClient({apiKey, domain})
+  beforeAll(() => server.start())
+  afterAll(() => server.stop())
 
-  beforeEach(() => {
-    nock.cleanAll()
-  })
+  beforeEach(() => server.reset())
 
-  afterEach(() => {
-    // 未使用のnockがないことを確認
-    expect(nock.isDone()).to.be.true
-  })
+  const client = () => new BacklogHttpClient({apiKey: API_KEY, domain: server.domain})
 
   describe('getProjectIdFromKey', () => {
     it('プロジェクトキーからプロジェクトIDを正しく取得できること', async () => {
-      nock(`https://${domain}`).get(`/api/v2/projects/${projectKey}`).query({apiKey}).reply(200, {
-        id: projectId,
-        name: 'テストプロジェクト',
-        projectKey: 'TEST',
+      server.respond(`/api/v2/projects/${PROJECT_KEY}`, {
+        body: {id: PROJECT_ID, name: 'テストプロジェクト', projectKey: PROJECT_KEY},
       })
 
-      const result = await getProjectIdFromKey(client, projectKey)
-      expect(result).to.equal(projectId)
+      const result = await getProjectIdFromKey(client(), PROJECT_KEY)
+      expect(result).to.equal(PROJECT_ID)
     })
 
     it('APIエラー時に適切なエラーメッセージをスローすること', async () => {
-      nock(`https://${domain}`)
-        .get(`/api/v2/projects/${projectKey}`)
-        .query({apiKey})
-        .reply(404, {
-          errors: [{message: 'プロジェクトが見つかりません'}],
-        })
-
       try {
-        await getProjectIdFromKey(client, projectKey)
+        await getProjectIdFromKey(client(), PROJECT_KEY)
         expect.fail('エラーがスローされるべきです')
       } catch (error) {
         expect(error).to.be.instanceOf(Error)
         expect((error as Error).message).to.include(
-          `プロジェクトキー "${projectKey}" からプロジェクトIDの取得に失敗しました`,
+          `プロジェクトキー "${PROJECT_KEY}" からプロジェクトIDの取得に失敗しました`,
         )
-      }
-    })
-
-    it('エラーメッセージにapiKeyが含まれないこと（マスクされること）', async () => {
-      nock(`https://${domain}`).get(`/api/v2/projects/${projectKey}`).query({apiKey}).reply(404, {})
-
-      try {
-        await getProjectIdFromKey(client, projectKey)
-        expect.fail('エラーがスローされるべきです')
-      } catch (error) {
-        expect((error as Error).message).to.not.include(apiKey)
+        expect((error as Error).message).to.not.include(API_KEY)
       }
     })
   })
 
   describe('validateAndGetProjectId', () => {
-    it('数値の文字列が渡された場合、数値に変換して返すこと', async () => {
-      const result = await validateAndGetProjectId(client, projectId.toString())
-      expect(result).to.equal(projectId)
+    it('数値の文字列が渡された場合、APIを呼ばず数値に変換して返すこと', async () => {
+      const result = await validateAndGetProjectId(client(), PROJECT_ID.toString())
+      expect(result).to.equal(PROJECT_ID)
+      expect(server.requests).to.have.length(0)
     })
 
     it('プロジェクトキーが渡された場合、APIを呼び出してIDを取得すること', async () => {
-      nock(`https://${domain}`).get(`/api/v2/projects/${projectKey}`).query({apiKey}).reply(200, {
-        id: projectId,
-        name: 'テストプロジェクト',
-        projectKey: 'TEST',
+      server.respond(`/api/v2/projects/${PROJECT_KEY}`, {
+        body: {id: PROJECT_ID, name: 'テストプロジェクト', projectKey: PROJECT_KEY},
       })
 
-      const result = await validateAndGetProjectId(client, projectKey)
-      expect(result).to.equal(projectId)
+      const result = await validateAndGetProjectId(client(), PROJECT_KEY)
+      expect(result).to.equal(PROJECT_ID)
     })
   })
 })

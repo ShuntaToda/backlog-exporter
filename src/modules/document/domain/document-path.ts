@@ -1,5 +1,6 @@
 import path from 'node:path'
 
+import {backlogOrigin} from '../../../shared/backlog-url.js'
 import {sanitizeFileName} from '../../../shared/file-name.js'
 import {ExpectedPaths} from '../../prune/domain/expected-paths.js'
 import {DocumentNode} from './document.js'
@@ -16,7 +17,7 @@ export function documentFileName(title: string, asParentIndex: boolean): string 
 }
 
 export function documentUrl(domain: string, projectIdOrKey: string, documentId: string): string {
-  return `https://${domain}/document/${projectIdOrKey}/${documentId}`
+  return `${backlogOrigin(domain)}/document/${projectIdOrKey}/${documentId}`
 }
 
 export interface DocumentTreePaths extends ExpectedPaths {
