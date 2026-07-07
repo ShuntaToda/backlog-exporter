@@ -16,6 +16,12 @@ Backlog のデータをエクスポートするためのコマンドラインツ
 * [ドキュメント のエクスポート](#ドキュメント-のエクスポート)
 * [課題・Wiki・ドキュメント の一括エクスポート](#課題wikiドキュメント-の一括エクスポート)
 * [データの更新](#データの更新)
+* [特定の課題だけを再取得（課題キーまたは課題ID）](#特定の課題だけを再取得課題キーまたは課題id)
+* [特定のWikiだけを再取得（Wiki ID）](#特定のwikiだけを再取得wiki-id)
+* [特定のドキュメントだけを再取得（ドキュメントID）](#特定のドキュメントだけを再取得ドキュメントid)
+* [カレントディレクトリ配下の設定ファイルを探索して実行](#カレントディレクトリ配下の設定ファイルを探索して実行)
+* [対象ディレクトリを指定](#対象ディレクトリを指定)
+* [確認プロンプトをスキップ](#確認プロンプトをスキップ)
 * [コマンド](#コマンド)
 * [出力形式](#出力形式)
 * [課題のタイトル](#課題のタイトル)
@@ -43,7 +49,7 @@ $ npm install -g backlog-exporter
 $ backlog-exporter COMMAND
 running command...
 $ backlog-exporter (--version)
-backlog-exporter/0.7.3 linux-x64 node-v20.20.1
+backlog-exporter/0.7.3 linux-x64 node-v22.23.1
 $ backlog-exporter --help [COMMAND]
 USAGE
   $ backlog-exporter COMMAND
@@ -368,7 +374,50 @@ $ backlog-exporter update --documentsOnly
 $ backlog-exporter update --apiKey YOUR_API_KEY
 ```
 
+**指定した項目（課題・Wiki・ドキュメント）のみを再取得する**
+
+```sh
+# 特定の課題だけを再取得（課題キーまたは課題ID）
+$ backlog-exporter update --issueIdOrKey PROJECT-1,PROJECT-2
+
+# 特定のWikiだけを再取得（Wiki ID）
+$ backlog-exporter update --wikiId 12345,12346
+
+# 特定のドキュメントだけを再取得（ドキュメントID）
+$ backlog-exporter update --documentId abc123,def456
+```
+
+`update` は通常、設定ファイルの最終更新日時（`lastUpdated`）以降に更新された項目を差分取得します。一方で「特定の項目だけを取り直したい」場合は、上記のID指定フラグを使います。
+
+- `--issueIdOrKey`: 課題キー（`PROJECT-1`）または課題ID（数値）。Wiki・ドキュメントは数値IDのみのため `--wikiId` / `--documentId` を使います
+- いずれもカンマ区切りで複数指定できます
+- 指定したフラグに対応する項目のみを再取得し、それ以外の種別の更新は行いません（例: `--wikiId` のみ指定時は課題・ドキュメントを更新しません）
+- 指定した項目以外のローカルファイルには影響しません
+
+> **Note**: これらのID指定フラグは全件差分更新ではないため、設定ファイルの最終更新日時（`lastUpdated`）は更新されません。そのため、次回の通常の差分更新に影響を与えません。
+
 更新コマンドは、各ディレクトリの設定ファイルに基づいて、課題・Wiki・ドキュメントを自動的に更新します。設定ファイルが見つかったディレクトリでは、そのディレクトリ内のファイルが直接更新されます（サブフォルダは作成されません）。
+
+**Backlog上で削除・移動されたドキュメント・Wikiのローカルファイルを削除する（prune）**
+
+```sh
+# カレントディレクトリ配下の設定ファイルを探索して実行
+$ backlog-exporter prune
+
+# 対象ディレクトリを指定
+$ backlog-exporter prune ./backlog-documents
+
+# 確認プロンプトをスキップ
+$ backlog-exporter prune --force
+```
+
+`update`（および各取得コマンド）は増分更新（追加・上書き）のため、Backlog上で削除されたドキュメント・Wikiや別の場所へ移動されたものは、ローカルにファイルが残り続けます。`prune` コマンドは、Backlogに存在しないローカルの `.md` ファイルと、空になったディレクトリを削除してBacklogと同じ状態に揃えます。
+
+- 対象は**ドキュメント・Wikiフォルダ**です（設定ファイルの `folderType` で判定。課題フォルダはスキップします）
+- ファイルを削除する破壊的な操作のため、`update` とは独立したコマンドとして分離しています（実行時に確認プロンプトを表示。`--force` でスキップ可能）
+- 削除対象は `.md` ファイルのみ。`backlog-settings.json`・`backlog-update.log`・`.md` 以外のファイルには触れません。ただし、対象フォルダ内にユーザーが独自に置いた `.md` ファイルや空のディレクトリは、Backlog上に存在しないものとして削除されるため注意してください
+- ファイル名は保存時と同じロジックで比較します（ドキュメントは一覧APIの `title` 基準）。サニタイズ差異やツリー名との差異による誤削除は起きません。ドキュメント情報の取得に失敗した場合は、誤削除を防ぐため何も削除せずに中止します
+- 削除したファイルは `backlog-update.log` に記録されます
 
 # コマンド
 
