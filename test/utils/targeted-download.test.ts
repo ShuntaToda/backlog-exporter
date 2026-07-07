@@ -1,9 +1,9 @@
-import {expect} from 'chai'
 import nock from 'nock'
 import {existsSync} from 'node:fs'
 import * as fs from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
+import {afterEach, beforeEach, describe, expect, it} from 'vitest'
 
 import {downloadDocuments, downloadWikis} from '../../src/utils/backlog-api.js'
 import {stubCommand} from '../helpers/stub-command.js'

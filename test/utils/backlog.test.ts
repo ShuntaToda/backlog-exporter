@@ -1,5 +1,5 @@
-import {expect} from 'chai'
 import nock from 'nock'
+import {afterEach, beforeEach, describe, expect, it} from 'vitest'
 
 import {getProjectIdFromKey, validateAndGetProjectId} from '../../src/utils/backlog.js'
 

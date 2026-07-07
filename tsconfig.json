@@ -9,8 +9,7 @@
     "moduleResolution": "node16",
     "composite": true
   },
-  "include": ["./src/**/*"],
-  "ts-node": {
-    "esm": true
-  }
+  "include": [
+    "./src/**/*"
+  ]
 }

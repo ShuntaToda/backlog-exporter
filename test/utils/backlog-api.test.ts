@@ -1,4 +1,4 @@
-import {expect} from 'chai'
+import {describe, expect, it} from 'vitest'
 
 import {createCustomFieldsSection} from '../../src/utils/backlog-api.js'
 

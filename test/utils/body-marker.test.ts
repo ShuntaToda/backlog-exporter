@@ -1,9 +1,9 @@
-import {expect} from 'chai'
 import nock from 'nock'
 import {existsSync} from 'node:fs'
 import * as fs from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
+import {afterEach, beforeEach, describe, expect, it} from 'vitest'
 
 import {
   BODY_END_MARKER,

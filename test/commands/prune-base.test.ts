@@ -1,5 +1,4 @@
-import {expect} from 'chai'
-import {describe, it} from 'mocha'
+import {describe, expect, it} from 'vitest'
 
 import Prune from '../../src/commands/prune/index.js'
 import Update from '../../src/commands/update/index.js'
