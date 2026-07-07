@@ -572,6 +572,70 @@ export async function downloadWikis(
 }
 
 /**
+ * 子を持つ親ドキュメント自身の本文を保存するファイル名。
+ * 数字プレフィックスによりエクスプローラ上でフォルダ内の先頭に表示される。
+ * ダウンロード側（downloadDocuments）とprune側（pruneDocuments）でレイアウトの定義を共有する。
+ */
+export const PARENT_DOCUMENT_INDEX_FILENAME = '00_index.md'
+
+/**
+ * ドキュメント詳細からMarkdownファイルの内容を組み立てる
+ */
+function buildDocumentMarkdown(
+  documentDetail: {
+    attachments: Array<{created: string; createdUser: {name: string}; name: string; size: number}>
+    created: string
+    createdUser: {name: string}
+    emoji?: string
+    plain: string
+    statusId: number
+    tags: Array<{name: string}>
+    title: string
+    updated: string
+    updatedUser: {name: string}
+  },
+  backlogDocumentUrl: string,
+): string {
+  // 添付ファイルリストの作成
+  let attachmentsSection = ''
+  if (documentDetail.attachments && documentDetail.attachments.length > 0) {
+    attachmentsSection = '\n\n## 添付ファイル\n'
+    for (const attachment of documentDetail.attachments) {
+      const attachmentDate = new Date(attachment.created).toLocaleString('ja-JP')
+      const fileSize = (attachment.size / 1024).toFixed(1)
+      attachmentsSection += `- **${attachment.name}** (${fileSize} KB) - 作成者: ${attachment.createdUser.name}, 作成日時: ${attachmentDate}\n`
+    }
+  }
+
+  // タグリストの作成
+  let tagsSection = ''
+  if (documentDetail.tags && documentDetail.tags.length > 0) {
+    tagsSection = '\n\n## タグ\n'
+    for (const tag of documentDetail.tags) {
+      tagsSection += `- ${tag.name}\n`
+    }
+  }
+
+  // 作成者・更新者情報
+  const createdDate = new Date(documentDetail.created).toLocaleString('ja-JP')
+  const updatedDate = new Date(documentDetail.updated).toLocaleString('ja-JP')
+
+  return `# ${documentDetail.title}
+
+[Backlog Document Link](${backlogDocumentUrl})
+
+**ステータス**: ${documentDetail.statusId}${documentDetail.emoji ? ` ${documentDetail.emoji}` : ''}
+**作成者**: ${documentDetail.createdUser.name}
+**作成日時**: ${createdDate}
+**更新者**: ${documentDetail.updatedUser.name}
+**更新日時**: ${updatedDate}
+
+## 内容
+
+${wrapBody(documentDetail.plain || '（内容なし）')}${attachmentsSection}${tagsSection}`
+}
+
+/**
  * Backlogからドキュメントをダウンロードする
  * @param command コマンドインスタンス
  * @param options ドキュメントダウンロードのオプション
@@ -639,148 +703,161 @@ export async function downloadDocuments(
   // ツリー構造をトラバースして、各ドキュメントの詳細を取得・保存
   const processedDocuments: string[] = []
 
+  // この実行中に書き込んだファイルパス（親indexと「00_index」というタイトルの子ドキュメントの衝突検出用）
+  const writtenFiles = new Set<string>()
+
   /**
-   * ドキュメントノードを再帰的に処理する
+   * ドキュメントの詳細を取得してMarkdownファイルとして保存する
+   * @param node ドキュメントノード
+   * @param currentPath 保存先の相対パス
+   * @param asParentIndex 子を持つ親ドキュメント自身の本文として PARENT_DOCUMENT_INDEX_FILENAME で保存する。
+   *                      本文が空の場合はファイルを作成せず、過去の実行で作成した親indexが残っていれば削除する
    */
-  const processDocumentNode = async (node: DocumentNode, currentPath: string): Promise<void> => {
-    // フォルダの場合
-    if (node.children && node.children.length > 0) {
-      // フォルダを作成
-      const folderPath = path.join(options.outputDir, currentPath, sanitizeFileName(node.name))
-      await fs.mkdir(folderPath, {recursive: true})
-
-      // 子ノードを処理
-      for (const child of node.children) {
-        // eslint-disable-next-line no-await-in-loop
-        await processDocumentNode(child, path.join(currentPath, sanitizeFileName(node.name)))
+  const fetchAndSaveDocument = async (
+    node: DocumentNode,
+    currentPath: string,
+    asParentIndex = false,
+  ): Promise<void> => {
+    try {
+      // 既に処理済みのドキュメントはスキップ
+      if (processedDocuments.includes(node.id)) {
+        return
       }
-    } else {
-      // ドキュメントファイルの場合
-      try {
-        // 既に処理済みのドキュメントはスキップ
-        if (processedDocuments.includes(node.id)) {
-          return
-        }
 
-        // ドキュメントID指定時は該当ドキュメントのみを取得する（フォルダ階層はツリーをたどって維持する）
-        if (options.documentIds && options.documentIds.length > 0 && !options.documentIds.includes(node.id)) {
-          return
-        }
+      // ドキュメントID指定時は該当ドキュメントのみを取得する（フォルダ階層はツリーをたどって維持する）
+      if (options.documentIds && options.documentIds.length > 0 && !options.documentIds.includes(node.id)) {
+        return
+      }
 
-        processedDocuments.push(node.id)
+      processedDocuments.push(node.id)
 
-        // APIリクエスト数をインクリメント
-        await rateLimiter.increment()
+      // APIリクエスト数をインクリメント
+      await rateLimiter.increment()
 
-        // 進捗状況を表示
-        process.stdout.write(`\rドキュメント「${node.name}」を処理中...`)
+      // 進捗状況を表示
+      process.stdout.write(`\rドキュメント「${node.name}」を処理中...`)
 
-        // ドキュメント詳細を取得
-        const documentDetail = await ky.get(`${baseUrl}/documents/${node.id}?apiKey=${options.apiKey}`).json<{
-          attachments: Array<{
-            created: string
-            createdUser: {
-              id: number
-              name: string
-            }
-            id: number
-            name: string
-            size: number
-          }>
+      // ドキュメント詳細を取得
+      const documentDetail = await ky.get(`${baseUrl}/documents/${node.id}?apiKey=${options.apiKey}`).json<{
+        attachments: Array<{
           created: string
           createdUser: {
             id: number
             name: string
           }
-          emoji?: string
-          id: string
-          json: string
-          plain: string
-          statusId: number
-          tags: Array<{
-            id: number
-            name: string
-          }>
-          title: string
-          updated: string
-          updatedUser: {
-            id: number
-            name: string
-          }
-        }>()
-
-        // 前回の更新日時チェック
-        if (options.lastUpdated) {
-          const lastUpdatedDate = new Date(options.lastUpdated)
-          const documentUpdatedDate = new Date(documentDetail.updated)
-          if (documentUpdatedDate <= lastUpdatedDate) {
-            return // 更新が必要ない場合はスキップ
-          }
+          id: number
+          name: string
+          size: number
+        }>
+        created: string
+        createdUser: {
+          id: number
+          name: string
         }
-
-        // ファイルパスを構築
-        const sanitizedTitle = sanitizeFileName(documentDetail.title)
-        const documentFileName = `${sanitizedTitle}.md`
-        const documentFilePath = path.join(options.outputDir, currentPath, documentFileName)
-
-        // ディレクトリを作成（必要に応じて）
-        const dirPath = path.dirname(documentFilePath)
-        await fs.mkdir(dirPath, {recursive: true})
-
-        // Backlogのドキュメントへのリンクを作成
-        const backlogDocumentUrl = `https://${options.domain}/document/${options.projectIdOrKey}/${node.id}`
-
-        // 添付ファイルリストの作成
-        let attachmentsSection = ''
-        if (documentDetail.attachments && documentDetail.attachments.length > 0) {
-          attachmentsSection = '\n\n## 添付ファイル\n'
-          for (const attachment of documentDetail.attachments) {
-            const attachmentDate = new Date(attachment.created).toLocaleString('ja-JP')
-            const fileSize = (attachment.size / 1024).toFixed(1)
-            attachmentsSection += `- **${attachment.name}** (${fileSize} KB) - 作成者: ${attachment.createdUser.name}, 作成日時: ${attachmentDate}\n`
-          }
+        emoji?: string
+        id: string
+        json: string
+        plain: string
+        statusId: number
+        tags: Array<{
+          id: number
+          name: string
+        }>
+        title: string
+        updated: string
+        updatedUser: {
+          id: number
+          name: string
         }
+      }>()
 
-        // タグリストの作成
-        let tagsSection = ''
-        if (documentDetail.tags && documentDetail.tags.length > 0) {
-          tagsSection = '\n\n## タグ\n'
-          for (const tag of documentDetail.tags) {
-            tagsSection += `- ${tag.name}\n`
-          }
-        }
+      // ファイルパスを構築（親indexは固定名、それ以外は title 基準）
+      const documentFileName = asParentIndex
+        ? PARENT_DOCUMENT_INDEX_FILENAME
+        : `${sanitizeFileName(documentDetail.title)}.md`
+      const documentFilePath = path.join(options.outputDir, currentPath, documentFileName)
 
-        // 作成者・更新者情報
-        const createdDate = new Date(documentDetail.created).toLocaleString('ja-JP')
-        const updatedDate = new Date(documentDetail.updated).toLocaleString('ja-JP')
-
-        // Markdownファイルに書き込む
-        const markdownContent = `# ${documentDetail.title}
-
-[Backlog Document Link](${backlogDocumentUrl})
-
-**ステータス**: ${documentDetail.statusId}${documentDetail.emoji ? ` ${documentDetail.emoji}` : ''}
-**作成者**: ${documentDetail.createdUser.name}
-**作成日時**: ${createdDate}
-**更新者**: ${documentDetail.updatedUser.name}
-**更新日時**: ${updatedDate}
-
-## 内容
-
-${wrapBody(documentDetail.plain || '（内容なし）')}${attachmentsSection}${tagsSection}`
-
-        await fs.writeFile(documentFilePath, markdownContent)
-
-        // ログに記録
-        await appendLog(
-          options.outputDir,
-          `ドキュメント「${documentDetail.title}」を更新しました: ${backlogDocumentUrl}`,
-        )
-      } catch (error) {
+      // 「00_index」というタイトルの子ドキュメントが同名ファイルを先に書き込んでいる場合は、上書きせずスキップする
+      if (asParentIndex && writtenFiles.has(documentFilePath)) {
         command.warn(
-          `ドキュメント ${node.name} の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+          `「${node.name}」内に「${PARENT_DOCUMENT_INDEX_FILENAME}」と同名になる子ドキュメントが存在するため、親ドキュメント本文の保存をスキップしました`,
         )
+        return
       }
+
+      const parentIndexExists = asParentIndex && (await fs.access(documentFilePath).then(
+        () => true,
+        () => false,
+      ))
+
+      // 前回の更新日時チェック
+      // （親indexがまだ存在しない場合は、未更新でも作成する＝この機能の追加前にエクスポートした親のバックフィル）
+      if (options.lastUpdated && !(asParentIndex && !parentIndexExists)) {
+        const lastUpdatedDate = new Date(options.lastUpdated)
+        const documentUpdatedDate = new Date(documentDetail.updated)
+        if (documentUpdatedDate <= lastUpdatedDate) {
+          return // 更新が必要ない場合はスキップ
+        }
+      }
+
+      // 本文が空のドキュメント（フォルダ用途の親）はファイルを作成しない。
+      // 過去の実行で作成した親indexが残っている場合は、本文が空に変更されたということなので削除する
+      if (asParentIndex && !documentDetail.plain?.trim()) {
+        if (parentIndexExists) {
+          await fs.unlink(documentFilePath)
+          await appendLog(
+            options.outputDir,
+            `ドキュメント「${documentDetail.title}」の本文が空になったため ${PARENT_DOCUMENT_INDEX_FILENAME} を削除しました`,
+          )
+        }
+
+        return
+      }
+
+      // ディレクトリを作成（必要に応じて）
+      const dirPath = path.dirname(documentFilePath)
+      await fs.mkdir(dirPath, {recursive: true})
+
+      // Backlogのドキュメントへのリンクを作成
+      const backlogDocumentUrl = `https://${options.domain}/document/${options.projectIdOrKey}/${node.id}`
+
+      // Markdownファイルに書き込む
+      const markdownContent = buildDocumentMarkdown(documentDetail, backlogDocumentUrl)
+
+      await fs.writeFile(documentFilePath, markdownContent)
+      writtenFiles.add(documentFilePath)
+
+      // ログに記録
+      await appendLog(options.outputDir, `ドキュメント「${documentDetail.title}」を更新しました: ${backlogDocumentUrl}`)
+    } catch (error) {
+      command.warn(
+        `ドキュメント ${node.name} の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  }
+
+  /**
+   * ドキュメントノードを再帰的に処理する
+   */
+  const processDocumentNode = async (node: DocumentNode, currentPath: string): Promise<void> => {
+    if (node.children && node.children.length > 0) {
+      // 子を持つ場合はフォルダを作成して子ノードを処理
+      const folderRelPath = path.join(currentPath, sanitizeFileName(node.name))
+      const folderPath = path.join(options.outputDir, folderRelPath)
+      await fs.mkdir(folderPath, {recursive: true})
+
+      for (const child of node.children) {
+        // eslint-disable-next-line no-await-in-loop
+        await processDocumentNode(child, folderRelPath)
+      }
+
+      // Backlogのドキュメントは子を持ちながら自身の本文も持てるため、親自身の内容も取得する。
+      // 親本文はフォルダ「内」に PARENT_DOCUMENT_INDEX_FILENAME として保存し、フォルダとファイルが
+      // エディタのエクスプローラ上で離れて表示される問題を防ぐ（数字プレフィックスで常に先頭に表示される）。
+      await fetchAndSaveDocument(node, folderRelPath, true)
+    } else {
+      // 子を持たない場合はドキュメントとして保存
+      await fetchAndSaveDocument(node, currentPath)
     }
   }
 
@@ -908,6 +985,10 @@ export async function pruneDocuments(
       // フォルダノード: 保存時と同じく name をサニタイズしたものをディレクトリ名にする
       const dirPath = path.join(currentPath, sanitizeFileName(node.name)).normalize('NFC')
       expectedDirs.add(dirPath)
+
+      // 子を持つ親ドキュメント自身の本文はフォルダ内の PARENT_DOCUMENT_INDEX_FILENAME に保存されるため、削除対象から保護する
+      expectedFiles.add(path.join(dirPath, PARENT_DOCUMENT_INDEX_FILENAME).normalize('NFC'))
+
       for (const child of node.children) {
         collectExpectedPaths(child, dirPath)
       }
