@@ -1,5 +1,45 @@
 import {wrapBody} from '../../../shared/markdown/body-marker.js'
-import {CustomField, Issue, IssueComment} from './issue.js'
+import {CustomField, Issue, IssueComment, IssueCommentChange} from './issue.js'
+
+// Backlogの変更履歴（changeLog）のfieldを画面表示に合わせた日本語ラベルへ変換する
+const CHANGE_FIELD_LABELS: Record<string, string> = {
+  actualHours: '実績時間',
+  assigner: '担当者',
+  attachment: '添付ファイル',
+  component: 'カテゴリー',
+  description: '詳細',
+  estimatedHours: '予定時間',
+  issueType: '種別',
+  limitDate: '期限日',
+  milestone: 'マイルストーン',
+  notification: 'お知らせ',
+  parentIssue: '親課題',
+  priority: '優先度',
+  resolution: '完了理由',
+  startDate: '開始日',
+  status: '状態',
+  summary: '件名',
+  version: '発生バージョン',
+}
+
+function formatChange(change: IssueCommentChange): string {
+  const label = CHANGE_FIELD_LABELS[change.field] ?? change.field
+  return `- ${label}: ${change.originalValue || '未設定'} → ${change.newValue || '未設定'}`
+}
+
+function buildCommentBody(comment: IssueComment): string {
+  const parts: string[] = []
+
+  if (comment.content) {
+    parts.push(comment.content)
+  }
+
+  if (comment.changeLog && comment.changeLog.length > 0) {
+    parts.push(['**変更内容**', ...comment.changeLog.map((change) => formatChange(change))].join('\n'))
+  }
+
+  return parts.length > 0 ? parts.join('\n\n') : '(内容なし)'
+}
 
 export function createCustomFieldsSection(customFields?: CustomField[]): string {
   if (!customFields || customFields.length === 0) {
@@ -47,7 +87,7 @@ export function buildCommentsSection(comments: IssueComment[], backlogIssueUrl: 
     const backlogCommentUrl = `${backlogIssueUrl}#comment-${comment.id}`
     commentsSection += `\n### コメント ${commentIndex}\n- **投稿者**: ${
       comment.createdUser.name
-    }\n- **日時**: ${commentDate}\n- [Backlog Comment Link](${backlogCommentUrl})\n\n${comment.content || '(内容なし)'}\n\n---\n`
+    }\n- **日時**: ${commentDate}\n- [Backlog Comment Link](${backlogCommentUrl})\n\n${buildCommentBody(comment)}\n\n---\n`
     commentIndex++
   }
 

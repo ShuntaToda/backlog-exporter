@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest'
 
-import {createCustomFieldsSection} from './issue-markdown.js'
+import {buildCommentsSection, createCustomFieldsSection} from './issue-markdown.js'
 
 describe('issue-markdown', () => {
   describe('createCustomFieldsSection', () => {
@@ -181,6 +181,66 @@ describe('issue-markdown', () => {
       const expected = '\n\n## カスタム属性\n\n| 属性名 | 値 |\n|--------|----|\n| 選択肢 | 選択肢1, 選択肢2 |\n'
 
       expect(result).to.equal(expected)
+    })
+  })
+
+  describe('buildCommentsSection（変更履歴の記載）', () => {
+    const baseComment = {
+      created: '2026-01-02T10:00:00Z',
+      createdUser: {id: 1, name: '山田'},
+      id: 100,
+    }
+    const url = 'https://example.backlog.jp/view/TEST-1'
+
+    it('本文なし・変更履歴ありのコメントは変更内容を記載すること', () => {
+      const section = buildCommentsSection(
+        [
+          {
+            ...baseComment,
+            changeLog: [
+              {field: 'status', newValue: '処理中', originalValue: '未対応'},
+              {field: 'assigner', newValue: '山田', originalValue: null},
+            ],
+            content: null,
+          },
+        ],
+        url,
+      )
+
+      expect(section).to.include('**変更内容**')
+      expect(section).to.include('- 状態: 未対応 → 処理中')
+      expect(section).to.include('- 担当者: 未設定 → 山田')
+      expect(section).to.not.include('(内容なし)')
+    })
+
+    it('本文と変更履歴が両方ある場合は本文の後に変更内容を記載すること', () => {
+      const section = buildCommentsSection(
+        [
+          {
+            ...baseComment,
+            changeLog: [{field: 'limitDate', newValue: '2026-07-31', originalValue: null}],
+            content: '対応します',
+          },
+        ],
+        url,
+      )
+
+      expect(section).to.include('対応します\n\n**変更内容**\n- 期限日: 未設定 → 2026-07-31')
+    })
+
+    it('未知のfieldはそのままのキー名で記載すること', () => {
+      const section = buildCommentsSection(
+        [{...baseComment, changeLog: [{field: 'customField_123', newValue: 'B', originalValue: 'A'}], content: null}],
+        url,
+      )
+
+      expect(section).to.include('- customField_123: A → B')
+    })
+
+    it('本文も変更履歴もない場合は従来どおり(内容なし)と記載すること', () => {
+      const section = buildCommentsSection([{...baseComment, content: ''}], url)
+
+      expect(section).to.include('(内容なし)')
     })
   })
 })

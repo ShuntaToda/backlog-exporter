@@ -79,6 +79,13 @@ describe('exportIssues', () => {
           createdUser: {id: 1, name: 'コメント投稿者'},
           id: 999,
         },
+        {
+          changeLog: [{field: 'assigner', newValue: '山田', originalValue: null}],
+          content: null,
+          created: '2026-01-03T10:00:00Z',
+          createdUser: {id: 2, name: '変更者'},
+          id: 1000,
+        },
       ],
     })
 
@@ -95,6 +102,7 @@ describe('exportIssues', () => {
     expect(content).to.include('## コメント')
     expect(content).to.include('コメント本文')
     expect(content).to.include(`[Backlog Comment Link](${server.domain}/view/TEST-1#comment-999)`)
+    expect(content, '担当者変更の通知が変更内容として記載されること').to.include('- 担当者: 未設定 → 山田')
   })
 
   it('issueIdOrKeys指定時は該当課題のみを取得し、一覧APIを呼ばないこと', async () => {

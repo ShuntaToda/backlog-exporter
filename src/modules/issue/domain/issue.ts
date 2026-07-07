@@ -21,11 +21,19 @@ export interface CustomField {
 }
 
 export interface IssueComment {
-  content: string
+  changeLog?: IssueCommentChange[]
+  content: null | string
   created: string
   createdUser: {
     id: number
     name: string
   }
   id: number
+}
+
+// 担当者・状態などの変更通知（本文なしコメントの正体）
+export interface IssueCommentChange {
+  field: string
+  newValue: null | string
+  originalValue: null | string
 }
