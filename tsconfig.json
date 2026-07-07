@@ -7,9 +7,10 @@
     "strict": true,
     "target": "es2022",
     "moduleResolution": "node16",
+    "resolveJsonModule": true,
     "composite": true
   },
-  "include": ["./src/**/*"],
+  "include": ["./src/**/*", "./src/locales/*.json"],
   "ts-node": {
     "esm": true
   }

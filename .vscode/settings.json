@@ -1,0 +1,20 @@
+{
+  "i18n-ally.localesPaths": [
+    "src/locales"
+  ],
+  "i18n-ally.enabledFrameworks": ["react-i18next"],
+  "i18n-ally.pathMatcher": "{locale}.json",
+  "i18n-ally.keystyle": "nested",
+  "i18n-ally.sourceLanguage": "ja",
+  "i18n-ally.keysInUse": [
+    "description.part2_whatever"
+  ],
+  "i18n-ally.sortKeys": true,
+  "i18n-ally.keepFulfilled": true,
+  // 翻訳エンジンを指定する（ユーザースコープで設定することを推奨）
+  // "i18n-ally.translate.engines": [
+    // "google",
+    // "openai",
+    // "deepl",
+  // ]
+}

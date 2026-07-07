@@ -1,5 +1,7 @@
 import {Command} from '@oclif/core'
 
+import {t} from './i18n.js'
+
 /**
  * 指定したミリ秒だけ待機する
  * @param ms 待機時間（ミリ秒）
@@ -36,7 +38,7 @@ export class RateLimiter {
     this.requestCount++
 
     if (this.requestCount > 1 && this.requestCount % 100 === 0) {
-      this.command.log('レート制限を回避するため15秒間待機します...')
+      this.command.log(t('common.messages.rateLimitWait'))
       await sleep(15_000)
     }
 

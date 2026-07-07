@@ -9,9 +9,8 @@ describe('Allコマンド - onlyフラグ機能', () => {
       const {flags} = All
 
       expect(flags.only).to.exist
-      expect(flags.only.description).to.equal(
-        "Export only the specified types, separated by commas (e.g., 'issues,wiki')",
-      )
+      // テストスイートは test/setup.ts で LANG=ja_JP.UTF-8 に固定されている
+      expect(flags.only.description).to.equal("指定したタイプのみをエクスポート、カンマ区切りで指定（例: 'issues,wiki'）")
       expect(flags.only.required).to.be.false
     })
   })

@@ -39,6 +39,8 @@ jobs:
       - name: Generate oclif README
         if: ${{ steps.version-check.outputs.skipped == 'false' }}
         id: oclif-readme
+        env:
+          LANG: ja_JP.UTF-8
         run: |
           npm install
           npm exec oclif readme

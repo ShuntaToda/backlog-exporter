@@ -9,9 +9,8 @@ describe('Allコマンド - excludeフラグ機能', () => {
       const {flags} = All
 
       expect(flags.exclude).to.exist
-      expect(flags.exclude.description).to.equal(
-        "Exclude the specified types, separated by commas (e.g., 'documents,wiki')",
-      )
+      // テストスイートは test/setup.ts で LANG=ja_JP.UTF-8 に固定されている
+      expect(flags.exclude.description).to.equal("除外するタイプをカンマ区切りで指定（例: 'documents,wiki'）")
       expect(flags.exclude.required).to.be.false
     })
   })

@@ -5,77 +5,78 @@ import path from 'node:path'
 import {downloadDocuments, downloadIssues, downloadWikis} from '../../utils/backlog-api.js'
 import {validateAndGetProjectId} from '../../utils/backlog.js'
 import {createOutputDirectory, getApiKey} from '../../utils/common.js'
+import {t} from '../../utils/i18n.js'
 import {FolderType, updateSettings} from '../../utils/settings.js'
 
 // .envファイルを読み込む
 dotenv.config()
 
 export default class All extends Command {
-  static description = 'Backlogから課題・Wiki・ドキュメントを取得してMarkdownファイルとして保存する'
+  static description = t('commands.all.description')
   static examples = [
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY
-課題・Wiki・ドキュメントをMarkdownファイルとして保存する
+${t('commands.all.examples.saveAll')}
 `,
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --output ./my-project
-指定したディレクトリに課題・Wiki・ドキュメントを保存する
+${t('commands.all.examples.outputDir')}
 `,
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --only issues,wiki
-課題とWikiのみを取得する
+${t('commands.all.examples.onlyIssuesAndWiki')}
 `,
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --exclude documents
-ドキュメント以外（課題とWiki）を取得する
+${t('commands.all.examples.excludeDocuments')}
 `,
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --maxCount 1000
-最大1000件の課題を取得する（デフォルトは5000件）
+${t('commands.all.examples.maxCount')}
 `,
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFileName
-ファイル名を課題キーにする
+${t('commands.all.examples.issueKeyFileName')}
 `,
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFolder
-課題キーでフォルダを作成する
+${t('commands.all.examples.issueKeyFolder')}
 `,
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFileName --issueKeyFolder
-課題キーでフォルダを作成し、ファイル名も課題キーにする
+${t('commands.all.examples.issueKeyFolderAndFileName')}
 `,
   ]
   static flags = {
     apiKey: Flags.string({
-      description: 'Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能)',
+      description: t('common.flags.apiKey'),
       required: false,
     }),
     domain: Flags.string({
-      description: 'Backlog domain (e.g. example.backlog.jp)',
+      description: t('common.flags.domain'),
       required: true,
     }),
     exclude: Flags.string({
-      description: "Exclude the specified types, separated by commas (e.g., 'documents,wiki')",
+      description: t('common.flags.exclude'),
       required: false,
     }),
     issueKeyFileName: Flags.boolean({
-      description: 'ファイル名を課題キーにする',
+      description: t('common.flags.issueKeyFileName'),
       required: false,
     }),
     issueKeyFolder: Flags.boolean({
-      description: '課題キーでフォルダを作成する',
+      description: t('common.flags.issueKeyFolder'),
       required: false,
     }),
     maxCount: Flags.integer({
       char: 'm',
       default: 5000,
-      description: '一度に取得する課題の最大数（デフォルト: 5000）',
+      description: t('common.flags.maxCount'),
       required: false,
     }),
     only: Flags.string({
-      description: "Export only the specified types, separated by commas (e.g., 'issues,wiki')",
+      description: t('common.flags.only'),
       required: false,
     }),
     output: Flags.string({
       char: 'o',
-      description: '出力ディレクトリパス',
+      description: t('common.flags.output'),
       required: false,
     }),
     projectIdOrKey: Flags.string({
-      description: 'Backlog project ID or key',
+      description: t('common.flags.projectIdOrKey'),
       required: true,
     }),
   }
@@ -90,7 +91,7 @@ export default class All extends Command {
 
       // Check for conflicting flags
       if (only && exclude) {
-        this.error('Cannot use both --only and --exclude flags together. Please use only one.')
+        this.error(t('commands.all.messages.onlyExcludeConflict'))
       }
 
       // Determine targets based on flags
@@ -110,13 +111,18 @@ export default class All extends Command {
       const inputTargets = only ? only.split(',') : exclude ? exclude.split(',') : []
       for (const target of inputTargets) {
         if (!validTargets.includes(target)) {
-          this.error(`Invalid target '${target}'. Available targets are: ${validTargets.join(', ')}`)
+          this.error(
+            t('commands.all.messages.invalidTarget', {
+              availableTargets: validTargets.join(', '),
+              target,
+            }),
+          )
         }
       }
 
       // Check if any targets remain after exclusion
       if (targets.length === 0) {
-        this.error('No targets remaining after exclusion. Please specify valid targets to export.')
+        this.error(t('commands.all.messages.noTargetsAfterExclusion'))
       }
 
       // 出力ディレクトリの作成
@@ -124,7 +130,7 @@ export default class All extends Command {
 
       // プロジェクトキーからプロジェクトIDを取得
       const projectId = await validateAndGetProjectId(domain, projectIdOrKey, apiKey)
-      this.log(`プロジェクトID: ${projectId} を使用します`)
+      this.log(t('common.messages.usingProjectId', {projectId}))
 
       if (targets.includes('issues')) {
         // 課題の出力ディレクトリ
@@ -143,7 +149,7 @@ export default class All extends Command {
         })
 
         // 課題の取得と保存
-        this.log('課題の取得を開始します...')
+        this.log(t('commands.all.messages.issuesFetchStart'))
         await downloadIssues(this, {
           apiKey,
           count: maxCount,
@@ -158,7 +164,7 @@ export default class All extends Command {
         await updateSettings(issueOutput, {
           lastUpdated: new Date().toISOString(),
         })
-        this.log('課題の取得が完了しました')
+        this.log(t('commands.all.messages.issuesCompleted'))
       }
 
       if (targets.includes('wiki')) {
@@ -176,7 +182,7 @@ export default class All extends Command {
         })
 
         // Wikiの取得と保存
-        this.log('Wikiの取得を開始します...')
+        this.log(t('commands.all.messages.wikiFetchStart'))
         await downloadWikis(this, {
           apiKey,
           domain,
@@ -188,7 +194,7 @@ export default class All extends Command {
         await updateSettings(wikiOutput, {
           lastUpdated: new Date().toISOString(),
         })
-        this.log('Wikiの取得が完了しました')
+        this.log(t('commands.all.messages.wikiCompleted'))
       }
 
       if (targets.includes('documents')) {
@@ -206,7 +212,7 @@ export default class All extends Command {
         })
 
         // ドキュメントの取得と保存
-        this.log('ドキュメントの取得を開始します...')
+        this.log(t('commands.all.messages.documentsFetchStart'))
         await downloadDocuments(this, {
           apiKey,
           domain,
@@ -219,13 +225,13 @@ export default class All extends Command {
         await updateSettings(documentOutput, {
           lastUpdated: new Date().toISOString(),
         })
-        this.log('ドキュメントの取得が完了しました')
+        this.log(t('commands.all.messages.documentsCompleted'))
       }
 
-      this.log('すべてのデータの取得が完了しました！')
+      this.log(t('commands.all.messages.allCompleted'))
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      this.error(`データの取得に失敗しました: ${errorMessage}`)
+      this.error(t('commands.all.messages.fetchFailed', {errorMessage}))
     }
   }
 }

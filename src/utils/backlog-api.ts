@@ -5,6 +5,7 @@ import path from 'node:path'
 import process from 'node:process'
 
 import {sanitizeFileName, sanitizeWikiFileName} from './common.js'
+import {t} from './i18n.js'
 import {appendLog} from './log.js'
 import {RateLimiter} from './sleep.js'
 
@@ -102,7 +103,7 @@ export async function downloadIssues(
 ): Promise<void> {
   const baseUrl = `https://${options.domain}/api/v2`
 
-  command.log('課題の取得を開始します...')
+  command.log(t('commands.issue.messages.fetchStart'))
 
   // 全ての課題を格納する配列
   let allIssues: Array<{
@@ -173,7 +174,7 @@ export async function downloadIssues(
     }
 
     // 進捗状況を一行で更新
-    process.stdout.write(`\r課題を取得中... (${allIssues.length}件取得済み)`)
+    process.stdout.write(`\r${t('commands.issue.messages.fetching', {count: allIssues.length})}`)
 
     return ky.get(`${baseUrl}/issues?${params.toString()}`).json<
       Array<{
@@ -212,7 +213,7 @@ export async function downloadIssues(
         await fetchAllIssues(offset + maxCount)
       }
     } catch (error) {
-      command.error(`課題の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`)
+      command.error(t('commands.issue.messages.apiFetchFailed', {errorMessage: error instanceof Error ? error.message : String(error)}))
     }
   }
 
@@ -225,7 +226,7 @@ export async function downloadIssues(
         await rateLimiter.increment()
 
         // 進捗状況を一行で更新
-        process.stdout.write(`\r課題を取得中... (${index + 1}/${issueIdOrKeys.length}件)`)
+        process.stdout.write(`\r${t('commands.issue.messages.fetchingByKeyProgress', {current: index + 1, total: issueIdOrKeys.length})}`)
 
         // eslint-disable-next-line no-await-in-loop
         const issue = await ky
@@ -234,7 +235,10 @@ export async function downloadIssues(
         allIssues.push(issue)
       } catch (error) {
         command.warn(
-          `課題 ${issueIdOrKey} の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+          t('commands.issue.messages.issueFetchFailed', {
+            errorMessage: error instanceof Error ? error.message : String(error),
+            issueIdOrKey,
+          }),
         )
       }
     }
@@ -245,7 +249,7 @@ export async function downloadIssues(
     ? fetchIssuesByIdOrKeys(options.issueIdOrKeys)
     : fetchAllIssues(0))
 
-  command.log(`\n合計 ${allIssues.length}件の課題が見つかりました。`)
+  command.log(`\n${t('commands.issue.messages.found', {count: allIssues.length})}`)
 
   // 前回の更新日時より新しい課題のみをフィルタリング
   let filteredIssues = allIssues
@@ -255,23 +259,23 @@ export async function downloadIssues(
       const issueUpdatedDate = new Date(issue.updated)
       return issueUpdatedDate > lastUpdatedDate
     })
-    command.log(`前回の更新日時(${options.lastUpdated})以降に更新された${filteredIssues.length}件の課題を処理します。`)
+    command.log(t('commands.issue.messages.processingSinceLastUpdate', {count: filteredIssues.length, lastUpdated: options.lastUpdated}))
   }
 
   if (filteredIssues.length === 0) {
-    command.log('更新が必要な課題はありません。')
+    command.log(t('commands.issue.messages.noNeedUpdate'))
     return
   }
 
   // 各課題の詳細情報を取得して保存
-  command.log('課題を保存しています...')
+  command.log(t('commands.issue.messages.saving'))
 
   // 並列処理ではなく順次処理に変更
   for (const issue of filteredIssues) {
     try {
       // 進捗状況を一行で更新
       const currentIndex = filteredIssues.indexOf(issue) + 1
-      process.stdout.write(`\r課題を保存中... (${currentIndex}/${filteredIssues.length}件)`)
+      process.stdout.write(`\r${t('commands.issue.messages.savingProgress', {current: currentIndex, total: filteredIssues.length})}`)
 
       // BacklogのIssueへのリンクを作成
       const backlogIssueUrl = `https://${options.domain}/view/${issue.issueKey}`
@@ -366,12 +370,12 @@ ${wrapBody(issue.description || '詳細情報なし')}${commentsSection}`
       await appendLog(options.outputDir, `課題「${issue.summary}」を更新しました: ${backlogIssueUrl}`)
     } catch (error) {
       command.warn(
-        `課題 ${issue.issueKey} の保存に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+        t('commands.issue.messages.saveFailed', {errorMessage: error instanceof Error ? error.message : String(error), issueKey: issue.issueKey}),
       )
     }
   }
 
-  command.log('\n課題のダウンロードが完了しました！')
+  command.log(`\n${t('commands.issue.messages.downloadCompleted')}`)
 }
 
 /**
@@ -436,7 +440,7 @@ async function fetchAllCommentsForIssue({
     return {comments: allComments}
   } catch (error) {
     command.warn(
-      `課題 ${issueKey} のコメント取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+      t('commands.issue.messages.commentFetchFailed', {errorMessage: error instanceof Error ? error.message : String(error), issueKey}),
     )
     return {comments: allComments}
   }
@@ -466,13 +470,13 @@ export async function downloadWikis(
 ): Promise<void> {
   const baseUrl = `https://${options.domain}/api/v2`
 
-  command.log('Wikiの取得を開始します...')
+  command.log(t('commands.wiki.messages.fetchStart'))
 
   // APIリクエスト数をカウントするためのRateLimiterを作成
   const rateLimiter = new RateLimiter(command)
 
   // Wiki一覧の取得
-  command.log('Wiki一覧を取得しています...')
+  command.log(t('commands.wiki.messages.listFetch'))
 
   // APIリクエスト数をインクリメント
   await rateLimiter.increment()
@@ -481,7 +485,7 @@ export async function downloadWikis(
     .get(`${baseUrl}/wikis?apiKey=${options.apiKey}&projectIdOrKey=${options.projectIdOrKey}`)
     .json<Array<{id: string; name: string; updated: string}>>()
 
-  command.log(`${wikis.length}件のWikiが見つかりました。`)
+  command.log(t('commands.wiki.messages.found', {count: wikis.length}))
 
   // 処理対象のWikiを絞り込む
   let filteredWikis = wikis
@@ -489,7 +493,7 @@ export async function downloadWikis(
     // Wiki ID指定時は該当Wikiのみを処理する（前回更新日時による絞り込みは行わない）
     const wikiIdSet = new Set(options.wikiIds.map(String))
     filteredWikis = wikis.filter((wiki) => wikiIdSet.has(String(wiki.id)))
-    command.log(`指定された${filteredWikis.length}件のWikiを処理します。`)
+    command.log(t('commands.wiki.messages.processingSpecified', {count: filteredWikis.length}))
   } else if (options.lastUpdated) {
     // 前回の更新日時より新しいWikiのみをフィルタリング
     const lastUpdatedDate = new Date(options.lastUpdated)
@@ -497,16 +501,16 @@ export async function downloadWikis(
       const wikiUpdatedDate = new Date(wiki.updated)
       return wikiUpdatedDate > lastUpdatedDate
     })
-    command.log(`前回の更新日時(${options.lastUpdated})以降に更新された${filteredWikis.length}件のWikiを処理します。`)
+    command.log(t('commands.wiki.messages.processingSinceLastUpdate', {count: filteredWikis.length, lastUpdated: options.lastUpdated}))
   }
 
   if (filteredWikis.length === 0) {
-    command.log('更新が必要なWikiはありません。')
+    command.log(t('commands.wiki.messages.noNeedUpdate'))
     return
   }
 
   // 各Wikiの詳細情報を取得
-  command.log('Wiki詳細を取得しています...')
+  command.log(t('commands.wiki.messages.detailsFetch'))
 
   // 並列処理ではなく順次処理に変更
   for (const wiki of filteredWikis) {
@@ -519,7 +523,7 @@ export async function downloadWikis(
 
       // 進捗状況を一行で更新
       const currentIndex = filteredWikis.indexOf(wiki) + 1
-      process.stdout.write(`\rWikiを取得中... (${currentIndex}/${filteredWikis.length}件)`)
+      process.stdout.write(`\r${t('commands.wiki.messages.fetching', {current: currentIndex, total: filteredWikis.length})}`)
 
       // eslint-disable-next-line no-await-in-loop
       const wikiDetail = await ky
@@ -563,13 +567,13 @@ export async function downloadWikis(
 
       // 進捗状況を一行で更新
       const wikiIndex = filteredWikis.indexOf(wiki) + 1
-      process.stdout.write(`\rWikiを保存中... (${wikiIndex}/${filteredWikis.length}件)`)
+      process.stdout.write(`\r${t('commands.wiki.messages.saving', {current: wikiIndex, total: filteredWikis.length})}`)
     } catch (error) {
-      command.warn(`Wiki ${wiki.name} の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`)
+      command.warn(t('commands.wiki.messages.apiFetchFailed', {errorMessage: error instanceof Error ? error.message : String(error), name: wiki.name}))
     }
   }
 
-  command.log('\nWikiのダウンロードが完了しました！')
+  command.log(`\n${t('commands.wiki.messages.downloadCompleted')}`)
 }
 
 /**
@@ -664,13 +668,13 @@ export async function downloadDocuments(
 ): Promise<void> {
   const baseUrl = `https://${options.domain}/api/v2`
 
-  command.log('ドキュメントの取得を開始します...')
+  command.log(t('commands.document.messages.fetchStart'))
 
   // APIリクエスト数をカウントするためのRateLimiterを作成
   const rateLimiter = new RateLimiter(command)
 
   // ドキュメントツリーの取得
-  command.log('ドキュメントツリーを取得しています...')
+  command.log(t('commands.document.messages.treeFetch'))
 
   // APIリクエスト数をインクリメント
   await rateLimiter.increment()
@@ -699,7 +703,7 @@ export async function downloadDocuments(
       }
     }>()
 
-  command.log('アクティブなドキュメントツリーを処理します...')
+  command.log(t('commands.document.messages.treeProcess'))
 
   // ツリー構造をトラバースして、各ドキュメントの詳細を取得・保存
   const processedDocuments: string[] = []
@@ -736,7 +740,7 @@ export async function downloadDocuments(
       await rateLimiter.increment()
 
       // 進捗状況を表示
-      process.stdout.write(`\rドキュメント「${node.name}」を処理中...`)
+      process.stdout.write(`\r${t('commands.document.messages.processing', {name: node.name})}`)
 
       // ドキュメント詳細を取得
       const documentDetail = await ky.get(`${baseUrl}/documents/${node.id}?apiKey=${options.apiKey}`).json<{
@@ -781,7 +785,7 @@ export async function downloadDocuments(
       // 「00_index」というタイトルの子ドキュメントが同名ファイルを先に書き込んでいる場合は、上書きせずスキップする
       if (asParentIndex && writtenFiles.has(documentFilePath)) {
         command.warn(
-          `「${node.name}」内に「${PARENT_DOCUMENT_INDEX_FILENAME}」と同名になる子ドキュメントが存在するため、親ドキュメント本文の保存をスキップしました`,
+          t('commands.document.messages.parentIndexCollision', {fileName: PARENT_DOCUMENT_INDEX_FILENAME, name: node.name}),
         )
         return
       }
@@ -832,7 +836,10 @@ export async function downloadDocuments(
       await appendLog(options.outputDir, `ドキュメント「${documentDetail.title}」を更新しました: ${backlogDocumentUrl}`)
     } catch (error) {
       command.warn(
-        `ドキュメント ${node.name} の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+        t('commands.document.messages.documentFetchFailed', {
+          errorMessage: error instanceof Error ? error.message : String(error),
+          name: node.name,
+        }),
       )
     }
   }
@@ -870,8 +877,8 @@ export async function downloadDocuments(
     }
   }
 
-  command.log(`\n合計 ${processedDocuments.length}件のドキュメントが処理されました。`)
-  command.log('ドキュメントのダウンロードが完了しました！')
+  command.log(`\n${t('commands.document.messages.processed', {count: processedDocuments.length})}`)
+  command.log(t('commands.document.messages.downloadCompleted'))
 }
 
 /**
@@ -891,7 +898,10 @@ async function pruneLocalMarkdownFiles(
   options: {
     expectedDirs: Set<string>
     expectedFiles: Set<string>
+    /** コンソール表示用のラベル（ロケールに応じて翻訳済み） */
     label: string
+    /** backlog-update.log 用のラベル（ログファイルはロケールに依存せず日本語固定） */
+    labelJa: string
     outputDir: string
   },
 ): Promise<number> {
@@ -914,21 +924,21 @@ async function pruneLocalMarkdownFiles(
         if (remaining.length === 0 && !expectedDirsComparable.has(relativePath.toLowerCase())) {
           // eslint-disable-next-line no-await-in-loop
           await fs.rmdir(fullPath)
-          command.log(`空のディレクトリを削除しました: ${relativePath}`)
+          command.log(t('commands.prune.messages.emptyDirDeleted', {path: relativePath}))
         }
       } else if (entry.name.endsWith('.md') && !expectedFilesComparable.has(relativePath.toLowerCase())) {
         // eslint-disable-next-line no-await-in-loop
         await fs.unlink(fullPath)
         prunedCount++
-        command.log(`Backlog上に存在しない${options.label}を削除しました: ${relativePath}`)
+        command.log(t('commands.prune.messages.orphanDeleted', {label: options.label, path: relativePath}))
         // eslint-disable-next-line no-await-in-loop
-        await appendLog(options.outputDir, `${options.label}「${relativePath}」を削除しました（Backlog上に存在しないため）`)
+        await appendLog(options.outputDir, `${options.labelJa}「${relativePath}」を削除しました（Backlog上に存在しないため）`)
       }
     }
   }
 
   await pruneDirectory(options.outputDir)
-  command.log(`${prunedCount}件の不要な${options.label}ファイルを削除しました。`)
+  command.log(t('commands.prune.messages.prunedCount', {count: prunedCount, label: options.label}))
   return prunedCount
 }
 
@@ -957,7 +967,7 @@ export async function pruneDocuments(
   const baseUrl = `https://${options.domain}/api/v2`
   const rateLimiter = new RateLimiter(command)
 
-  command.log('Backlogのドキュメントツリーを取得しています...')
+  command.log(t('commands.prune.messages.documentTreeFetch'))
   await rateLimiter.increment()
 
   type DocumentNode = {
@@ -1007,7 +1017,7 @@ export async function pruneDocuments(
   // （ドキュメントごとに詳細APIを叩くと件数分のリクエストが必要になりレートリミットを浪費するため、100件ずつページングする）
   const titlesById = new Map<string, string>()
   if (leafNodes.length > 0) {
-    command.log(`${leafNodes.length}件のドキュメントの正規ファイル名を確認しています...`)
+    command.log(t('commands.prune.messages.confirmingFileNames', {count: leafNodes.length}))
     const pageSize = 100
     let offset = 0
     for (;;) {
@@ -1028,9 +1038,9 @@ export async function pruneDocuments(
         // 一覧に欠けが生じると、Backlog上に実在するドキュメントのローカルファイルを
         // 誤削除してしまうため、削除を一切行わずにpruneを中止する
         throw new Error(
-          `ドキュメント一覧の取得に失敗しました。誤削除を防ぐため、何も削除せずに中止します: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
+          t('commands.prune.messages.documentListFetchFailed', {
+            errorMessage: error instanceof Error ? error.message : String(error),
+          }),
         )
       }
 
@@ -1061,7 +1071,13 @@ export async function pruneDocuments(
     expectedFiles.add(path.join(leaf.currentPath, `${sanitizeFileName(title)}.md`).normalize('NFC'))
   }
 
-  return pruneLocalMarkdownFiles(command, {expectedDirs, expectedFiles, label: 'ドキュメント', outputDir: options.outputDir})
+  return pruneLocalMarkdownFiles(command, {
+    expectedDirs,
+    expectedFiles,
+    label: t('commands.prune.labels.document'),
+    labelJa: 'ドキュメント',
+    outputDir: options.outputDir,
+  })
 }
 
 /**
@@ -1087,7 +1103,7 @@ export async function pruneWikis(
   const baseUrl = `https://${options.domain}/api/v2`
   const rateLimiter = new RateLimiter(command)
 
-  command.log('BacklogのWiki一覧を取得しています...')
+  command.log(t('commands.prune.messages.wikiListFetch'))
   await rateLimiter.increment()
 
   const wikis = await ky
@@ -1111,5 +1127,11 @@ export async function pruneWikis(
     }
   }
 
-  return pruneLocalMarkdownFiles(command, {expectedDirs, expectedFiles, label: 'Wiki', outputDir: options.outputDir})
+  return pruneLocalMarkdownFiles(command, {
+    expectedDirs,
+    expectedFiles,
+    label: t('commands.prune.labels.wiki'),
+    labelJa: 'Wiki',
+    outputDir: options.outputDir,
+  })
 }
