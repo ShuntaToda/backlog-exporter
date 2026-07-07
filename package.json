@@ -10,6 +10,7 @@
   "dependencies": {
     "@oclif/core": "^4",
     "@oclif/plugin-help": "^6",
+    "@oclif/plugin-not-found": "^3.2.88",
     "@oclif/plugin-plugins": "^5"
   },
   "devDependencies": {
@@ -47,7 +48,8 @@
     "commands": "./dist/commands",
     "plugins": [
       "@oclif/plugin-help",
-      "@oclif/plugin-plugins"
+      "@oclif/plugin-plugins",
+      "@oclif/plugin-not-found"
     ],
     "topicSeparator": " ",
     "topics": {
