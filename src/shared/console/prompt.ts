@@ -5,17 +5,19 @@ export function isInteractiveStdin(): boolean {
   return Boolean(process.stdin.isTTY)
 }
 
-export async function readYesNo(): Promise<boolean> {
+export async function readLine(): Promise<string> {
   process.stdin.resume()
   process.stdin.setEncoding('utf8')
 
-  const response = await new Promise<boolean>((resolve) => {
+  return new Promise<string>((resolve) => {
     process.stdin.once('data', (data) => {
-      const input = data.toString().trim().toLowerCase()
-      resolve(input === 'y' || input === 'yes')
+      resolve(data.toString().trim())
       process.stdin.pause()
     })
   })
+}
 
-  return response
+export async function readYesNo(): Promise<boolean> {
+  const input = (await readLine()).toLowerCase()
+  return input === 'y' || input === 'yes'
 }

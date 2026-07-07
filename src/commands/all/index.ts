@@ -1,8 +1,10 @@
 import {Command, Flags} from '@oclif/core'
 
 import {createBacklogRepositories} from '../../composition/backlog-repositories.js'
+import {applyContentSelection, parseContentSelection} from '../../modules/all/domain/content-selection.js'
 import {exportAll, ExportTarget} from '../../modules/all/use-case/export-all.js'
 import {API_KEY_NOT_FOUND_MESSAGE, loadDotenv, resolveApiKey} from '../../shared/config/env.js'
+import {isInteractiveStdin, readLine} from '../../shared/console/prompt.js'
 
 // .envファイルを読み込む
 loadDotenv()
@@ -89,7 +91,14 @@ export default class All extends Command {
         this.error(API_KEY_NOT_FOUND_MESSAGE)
       const outputRoot = flags.output || './backlog-data'
 
-      const targets = this.determineTargets(only, exclude)
+      let targets = this.determineTargets(only, exclude)
+
+      // --only / --exclude 未指定の対話実行では、Wiki・ドキュメントのどちらを取得するか選択できるようにする
+      if (!only && !exclude && isInteractiveStdin()) {
+        targets = applyContentSelection(targets, await this.promptContentSelection())
+      }
+
+      this.log(`取得対象: ${targets.join(', ')}`)
 
       const logger = {log: (message: string) => this.log(message), warn: (message: string) => this.warn(message)}
       const repositories = createBacklogRepositories({
@@ -145,5 +154,11 @@ export default class All extends Command {
     }
 
     return targets
+  }
+
+  private async promptContentSelection() {
+    this.log('BacklogのWikiとドキュメントのどちらを取得しますか？（BacklogはWikiからドキュメントへの移行を予定しています）')
+    this.log('  [1] 両方（デフォルト）  [2] Wikiのみ  [3] ドキュメントのみ')
+    return parseContentSelection(await readLine())
   }
 }

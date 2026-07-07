@@ -295,6 +295,15 @@ $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY 
 
 ## エクスポート対象の制御
 
+`--only` / `--exclude` を指定せずに対話端末で実行した場合は、Wiki・ドキュメントのどちらを取得するかを選択できます（BacklogはWikiからドキュメントへの移行を予定しています）:
+
+```
+BacklogのWikiとドキュメントのどちらを取得しますか？（BacklogはWikiからドキュメントへの移行を予定しています）
+  [1] 両方（デフォルト）  [2] Wikiのみ  [3] ドキュメントのみ
+```
+
+非対話環境（CI・パイプ実行）では従来どおり両方を取得します。
+
 `all`コマンドでは、以下のフラグを使用してエクスポート対象を制御できます：
 
 ### --only フラグ
