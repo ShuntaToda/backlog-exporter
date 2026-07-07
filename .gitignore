@@ -16,3 +16,5 @@ pnpm-lock.yaml
 CLAUDE.md
 
 tsconfig.tsbuildinfo
+
+backlog-export-test

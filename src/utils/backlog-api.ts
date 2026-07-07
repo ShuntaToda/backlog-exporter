@@ -777,3 +777,239 @@ ${documentDetail.plain || '（内容なし）'}${attachmentsSection}${tagsSectio
   command.log(`\n合計 ${processedDocuments.length}件のドキュメントが処理されました。`)
   command.log('ドキュメントのダウンロードが完了しました！')
 }
+
+/**
+ * ローカルディレクトリを再帰的に走査し、期待パス集合に含まれない .md ファイルと空ディレクトリを削除する。
+ *
+ * pruneDocuments / pruneWikis から共用する。削除対象は .md ファイルのみで、
+ * backlog-settings.json・backlog-update.log・ユーザーが置いた他ファイルには触れない。
+ * 比較は macOSのファイルシステム(NFD)とAPIレスポンス(NFC)のUnicode正規化差異を吸収するためNFCに揃える。
+ * また、macOS/Windowsの大文字小文字を区別しないファイルシステムでは、Backlog上で大文字小文字のみ
+ * 変更されたタイトルでもディスク上のエントリ名が旧表記のまま残るため、小文字に揃えて比較する
+ * （大文字小文字を区別するファイルシステムでは旧表記のファイルが残り得るが、誤削除よりも安全側に倒す）。
+ *
+ * @returns 削除したファイル数
+ */
+async function pruneLocalMarkdownFiles(
+  command: Command,
+  options: {
+    expectedDirs: Set<string>
+    expectedFiles: Set<string>
+    label: string
+    outputDir: string
+  },
+): Promise<number> {
+  const expectedFilesComparable = new Set([...options.expectedFiles].map((p) => p.toLowerCase()))
+  const expectedDirsComparable = new Set([...options.expectedDirs].map((p) => p.toLowerCase()))
+  let prunedCount = 0
+
+  const pruneDirectory = async (dir: string): Promise<void> => {
+    const entries = await fs.readdir(dir, {withFileTypes: true})
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name)
+      const relativePath = path.relative(options.outputDir, fullPath).normalize('NFC')
+      if (entry.isDirectory()) {
+        // eslint-disable-next-line no-await-in-loop
+        await pruneDirectory(fullPath)
+
+        // 空になったディレクトリを削除（Backlog上に存在するディレクトリは残す）
+        // eslint-disable-next-line no-await-in-loop
+        const remaining = await fs.readdir(fullPath)
+        if (remaining.length === 0 && !expectedDirsComparable.has(relativePath.toLowerCase())) {
+          // eslint-disable-next-line no-await-in-loop
+          await fs.rmdir(fullPath)
+          command.log(`空のディレクトリを削除しました: ${relativePath}`)
+        }
+      } else if (entry.name.endsWith('.md') && !expectedFilesComparable.has(relativePath.toLowerCase())) {
+        // eslint-disable-next-line no-await-in-loop
+        await fs.unlink(fullPath)
+        prunedCount++
+        command.log(`Backlog上に存在しない${options.label}を削除しました: ${relativePath}`)
+        // eslint-disable-next-line no-await-in-loop
+        await appendLog(options.outputDir, `${options.label}「${relativePath}」を削除しました（Backlog上に存在しないため）`)
+      }
+    }
+  }
+
+  await pruneDirectory(options.outputDir)
+  command.log(`${prunedCount}件の不要な${options.label}ファイルを削除しました。`)
+  return prunedCount
+}
+
+/**
+ * Backlog上に存在しないローカルのドキュメントファイルを削除する（prune）
+ *
+ * Backlogのドキュメントツリーから「あるべきファイル・ディレクトリのパス集合」を構築し、
+ * そこに含まれないローカルの .md ファイルと、空になったディレクトリを削除する。
+ * Backlog上でドキュメントが削除・移動された場合に、ローカルをBacklogと同じ状態へ揃える用途。
+ *
+ * 期待ファイルのファイル名は、ダウンロード保存時と完全に同じロジックで構築する。
+ * 保存時はドキュメントの title を sanitizeFileName したものをファイル名にするため、
+ * ここでもドキュメント一覧APIから title を取得してファイル名を作り、ツリーの name と title の差異による誤削除を防ぐ。
+ *
+ * @returns 削除したファイル数
+ */
+export async function pruneDocuments(
+  command: Command,
+  options: {
+    apiKey: string
+    domain: string
+    outputDir: string
+    projectId: number
+  },
+): Promise<number> {
+  const baseUrl = `https://${options.domain}/api/v2`
+  const rateLimiter = new RateLimiter(command)
+
+  command.log('Backlogのドキュメントツリーを取得しています...')
+  await rateLimiter.increment()
+
+  type DocumentNode = {
+    children: DocumentNode[]
+    id: string
+    name: string
+  }
+
+  const documentTree = await ky
+    .get(`${baseUrl}/documents/tree?projectIdOrKey=${options.projectId}&apiKey=${options.apiKey}`)
+    .json<{
+      activeTree: {
+        children: DocumentNode[]
+        id: string
+      }
+    }>()
+
+  // Backlog上に「あるべき」ファイル・ディレクトリの相対パス集合を構築する（NFCに正規化）。
+  const expectedFiles = new Set<string>()
+  const expectedDirs = new Set<string>()
+
+  // リーフ(ドキュメント)ノードを集めて、一覧APIから title を取得し保存時と同じファイル名を構築する
+  const leafNodes: Array<{currentPath: string; id: string; name: string}> = []
+  const collectExpectedPaths = (node: DocumentNode, currentPath: string): void => {
+    if (node.children && node.children.length > 0) {
+      // フォルダノード: 保存時と同じく name をサニタイズしたものをディレクトリ名にする
+      const dirPath = path.join(currentPath, sanitizeFileName(node.name)).normalize('NFC')
+      expectedDirs.add(dirPath)
+      for (const child of node.children) {
+        collectExpectedPaths(child, dirPath)
+      }
+    } else {
+      // ドキュメントノード: ファイル名は保存時に title から作られるため、後でまとめて title を取得する
+      leafNodes.push({currentPath, id: node.id, name: node.name})
+    }
+  }
+
+  for (const rootNode of documentTree.activeTree.children) {
+    collectExpectedPaths(rootNode, '')
+  }
+
+  // ドキュメント一覧APIからタイトルをまとめて取得する
+  // （ドキュメントごとに詳細APIを叩くと件数分のリクエストが必要になりレートリミットを浪費するため、100件ずつページングする）
+  const titlesById = new Map<string, string>()
+  if (leafNodes.length > 0) {
+    command.log(`${leafNodes.length}件のドキュメントの正規ファイル名を確認しています...`)
+    const pageSize = 100
+    let offset = 0
+    for (;;) {
+      // eslint-disable-next-line no-await-in-loop
+      await rateLimiter.increment()
+      const params = new URLSearchParams({
+        apiKey: options.apiKey,
+        count: pageSize.toString(),
+        offset: offset.toString(),
+        'projectId[]': options.projectId.toString(),
+      })
+
+      let page: Array<{id: string; title: string}>
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        page = await ky.get(`${baseUrl}/documents?${params.toString()}`).json<Array<{id: string; title: string}>>()
+      } catch (error) {
+        // 一覧に欠けが生じると、Backlog上に実在するドキュメントのローカルファイルを
+        // 誤削除してしまうため、削除を一切行わずにpruneを中止する
+        throw new Error(
+          `ドキュメント一覧の取得に失敗しました。誤削除を防ぐため、何も削除せずに中止します: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        )
+      }
+
+      for (const doc of page) {
+        titlesById.set(doc.id, doc.title)
+      }
+
+      if (page.length < pageSize) {
+        break
+      }
+
+      offset += pageSize
+    }
+  }
+
+  for (const leaf of leafNodes) {
+    const title = titlesById.get(leaf.id)
+
+    // 子を持たない空フォルダはツリー上でリーフと区別できず、ドキュメント一覧にも現れない。
+    // Backlog上に存在するフォルダとして扱い、対応する空ディレクトリを誤削除しないようにする。
+    // 万一ドキュメントでありながら一覧に現れない場合にも備え、ツリーの name 由来のファイルも保護しておく
+    if (title === undefined) {
+      expectedDirs.add(path.join(leaf.currentPath, sanitizeFileName(leaf.name)).normalize('NFC'))
+      expectedFiles.add(path.join(leaf.currentPath, `${sanitizeFileName(leaf.name)}.md`).normalize('NFC'))
+      continue
+    }
+
+    expectedFiles.add(path.join(leaf.currentPath, `${sanitizeFileName(title)}.md`).normalize('NFC'))
+  }
+
+  return pruneLocalMarkdownFiles(command, {expectedDirs, expectedFiles, label: 'ドキュメント', outputDir: options.outputDir})
+}
+
+/**
+ * Backlog上に存在しないローカルのWikiファイルを削除する（prune）
+ *
+ * Backlogのwiki一覧から「あるべきファイル・ディレクトリのパス集合」を構築し、
+ * そこに含まれないローカルの .md ファイルと、空になったディレクトリを削除する。
+ *
+ * Wikiのファイル名は保存時に一覧APIの name を sanitizeWikiFileName したものを使う（"/" はディレクトリ区切りとして残す）。
+ * ドキュメントと異なり name と保存名の差異が生じないため、追加のAPI呼び出しは不要。
+ *
+ * @returns 削除したファイル数
+ */
+export async function pruneWikis(
+  command: Command,
+  options: {
+    apiKey: string
+    domain: string
+    outputDir: string
+    projectIdOrKey: string
+  },
+): Promise<number> {
+  const baseUrl = `https://${options.domain}/api/v2`
+  const rateLimiter = new RateLimiter(command)
+
+  command.log('BacklogのWiki一覧を取得しています...')
+  await rateLimiter.increment()
+
+  const wikis = await ky
+    .get(`${baseUrl}/wikis?apiKey=${options.apiKey}&projectIdOrKey=${options.projectIdOrKey}`)
+    .json<Array<{id: string; name: string}>>()
+
+  // Backlog上に「あるべき」ファイル・ディレクトリの相対パス集合を構築する（NFCに正規化）。
+  const expectedFiles = new Set<string>()
+  const expectedDirs = new Set<string>()
+  for (const wiki of wikis) {
+    // 保存時と同じく name をサニタイズ（"/" はディレクトリ区切りとして残る）。
+    // 比較相手の path.relative はOS標準の区切り文字を返すため、path.normalize で揃える（Windows対策）
+    const relativePath = path.normalize(`${sanitizeWikiFileName(wiki.name)}.md`).normalize('NFC')
+    expectedFiles.add(relativePath)
+
+    // "親/子.md" のような名前では親ディレクトリも「あるべきディレクトリ」として登録する
+    let dir = path.dirname(relativePath)
+    while (dir && dir !== '.') {
+      expectedDirs.add(dir.normalize('NFC'))
+      dir = path.dirname(dir)
+    }
+  }
+
+  return pruneLocalMarkdownFiles(command, {expectedDirs, expectedFiles, label: 'Wiki', outputDir: options.outputDir})
+}
