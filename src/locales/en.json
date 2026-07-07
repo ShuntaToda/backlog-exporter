@@ -42,7 +42,8 @@
         "processed": "Total {{count}} documents processed.",
         "processing": "Processing document \"{{name}}\"...",
         "treeFetch": "Fetching document tree...",
-        "treeProcess": "Processing active document tree..."
+        "treeProcess": "Processing active document tree...",
+        "parentIndexCollision": "Skipped saving the parent document body because a child document in \"{{name}}\" would have the same file name as \"{{fileName}}\""
       }
     },
     "issue": {

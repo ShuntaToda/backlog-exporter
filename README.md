@@ -233,12 +233,14 @@ $ backlog-exporter document --domain example.backlog.jp --projectIdOrKey PROJECT
 
 - Backlogのドキュメントツリーの階層構造がそのままローカルディレクトリ構造として再現されます
 - フォルダはディレクトリとして作成され、ドキュメントはMarkdownファイルとして保存されます
+- 子を持つ親ドキュメント自身が本文を持つ場合は、フォルダ内の `00_index.md` として保存されます（本文が空の親はファイルを作成しません）
 
 ### 出力例
 
 ```
 documents/
 ├── プロジェクト概要/
+│   ├── 00_index.md          ← 親ドキュメント「プロジェクト概要」自身の本文
 │   ├── 要件定義書.md
 │   └── 仕様書.md
 ├── 設計書/
@@ -254,6 +256,7 @@ documents/
 ### 特徴
 
 - **階層構造の完全再現**: Backlogのフォルダ階層がそのまま保持されます
+- **親ドキュメント本文の保存**: 子を持つ親ドキュメントの本文もフォルダ内の `00_index.md` として保存されます
 - **重複処理の防止**: 同じドキュメントが複数回処理されることを防ぎます
 - **ファイル名の自動サニタイズ**: 不正な文字を自動的に除去して安全なファイル名を生成します
 - **メタデータの保持**: 作成者、更新者、タグ、添付ファイル情報なども含めて保存されます
@@ -735,6 +738,25 @@ _See code: [@oclif/plugin-plugins](https://github.com/oclif/plugin-plugins/blob/
 
 # 出力形式
 
+## 本文マーカー
+
+課題の詳細・Wikiの本文・ドキュメントの内容といった「本文」部分は、種別を問わず以下のHTMLコメントマーカーで囲まれて出力されます。
+
+```markdown
+<!-- backlog-exporter:body:start -->
+ここが本文（## 見出しなどを含んでもよい）
+<!-- backlog-exporter:body:end -->
+```
+
+- マーカーはMarkdownのレンダリング時には表示されません（HTMLコメント）
+- 本文自体が `##` 見出しなどを含んでいても、開始・終了マーカー間を本文として機械的に抽出・差し替えできます
+- 本文をBacklogへ書き戻す（API反映する）ツールなどが、どこからどこまでが本文かを一意に判定するために使えます
+- 子を持つ親ドキュメントの本文（`00_index.md`）にも同じマーカーが付きます
+
+**抽出時の規約**: 本文自体がマーカーと同じ文字列を含む可能性があるため（例: このツールの使い方をBacklog上にメモした場合）、抽出ツールは「ファイル内で**最初に現れる開始マーカー**から**最後に現れる終了マーカー**まで」を本文とみなしてください。
+
+以降の出力例では、この本文マーカーを含めた形を示します。
+
 ## 課題の出力形式
 
 課題は以下の形式で Markdown ファイルとして保存されます：
@@ -763,7 +785,9 @@ _See code: [@oclif/plugin-plugins](https://github.com/oclif/plugin-plugins/blob/
 
 ## 詳細
 
+<!-- backlog-exporter:body:start -->
 ここに課題の詳細説明が入ります。
+<!-- backlog-exporter:body:end -->
 
 ## コメント
 
@@ -793,8 +817,10 @@ Wiki は以下の形式で Markdown ファイルとして保存されます：
 
 [Backlog Wiki Link](https://example.backlog.jp/alias/wiki/12345)
 
+<!-- backlog-exporter:body:start -->
 ここに Wiki の本文内容が入ります。
 Backlog の書式がそのまま保持されます。
+<!-- backlog-exporter:body:end -->
 ```
 
 ## ドキュメント の出力形式
@@ -814,8 +840,10 @@ Backlog の書式がそのまま保持されます。
 
 ## 内容
 
+<!-- backlog-exporter:body:start -->
 ここにドキュメントの本文内容が入ります。
 Backlog の書式がそのまま保持されます。
+<!-- backlog-exporter:body:end -->
 
 ## 添付ファイル
 

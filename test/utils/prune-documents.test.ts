@@ -6,12 +6,7 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 
 import {pruneDocuments} from '../../src/utils/backlog-api.js'
-
-// pruneDocuments は oclif の Command に依存するが、log/warn しか使わないためスタブで十分
-const stubCommand = {
-  log() {},
-  warn() {},
-} as never
+import {stubCommand} from '../helpers/stub-command.js'
 
 const DOMAIN = 'example.backlog.jp'
 const API_KEY = 'test-api-key'
@@ -234,5 +229,36 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
     expect(pruned).to.equal(1)
     expect(existsSync(join(outputDir, 'doc100.md')), '2ページ目のドキュメントも保護されること').to.be.true
     expect(existsSync(join(outputDir, 'orphan.md')), 'orphan.md は削除されること').to.be.false
+  })
+
+  it('親ドキュメント本文（00_index.md）は削除対象から保護されること', async () => {
+    // ツリー: 親フォルダ（本文あり想定）とその子ドキュメント
+    nock(`https://${DOMAIN}`)
+      .get('/api/v2/documents/tree')
+      .query({apiKey: API_KEY, projectIdOrKey: String(PROJECT_ID)})
+      .reply(200, {
+        activeTree: {
+          children: [{children: [{children: [], id: 'childA', name: '子A'}], id: 'parent1', name: '親フォルダ'}],
+          id: 'root',
+        },
+      })
+
+    nock(`https://${DOMAIN}`)
+      .get('/api/v2/documents')
+      .query({apiKey: API_KEY, count: '100', offset: '0', 'projectId[]': String(PROJECT_ID)})
+      .reply(200, [{id: 'childA', title: '子A'}])
+
+    // ダウンロード側が保存する構成: 親index・子・削除対象の孤児
+    await fs.mkdir(join(outputDir, '親フォルダ'), {recursive: true})
+    await fs.writeFile(join(outputDir, '親フォルダ', '00_index.md'), '# 親フォルダ\n\n親の本文')
+    await fs.writeFile(join(outputDir, '親フォルダ', '子A.md'), '# 子A')
+    await fs.writeFile(join(outputDir, '親フォルダ', 'orphan.md'), '# 削除対象')
+
+    const pruned = await pruneDocuments(stubCommand, {apiKey: API_KEY, domain: DOMAIN, outputDir, projectId: PROJECT_ID})
+
+    expect(pruned).to.equal(1)
+    expect(existsSync(join(outputDir, '親フォルダ', '00_index.md')), '親indexは保護されること').to.be.true
+    expect(existsSync(join(outputDir, '親フォルダ', '子A.md')), '子は保護されること').to.be.true
+    expect(existsSync(join(outputDir, '親フォルダ', 'orphan.md')), '孤児は削除されること').to.be.false
   })
 })
