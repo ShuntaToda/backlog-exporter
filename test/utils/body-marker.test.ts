@@ -13,15 +13,7 @@ import {
   downloadWikis,
   wrapBody,
 } from '../../src/utils/backlog-api.js'
-
-// 各download関数は oclif の Command に依存するが、log/warn/error しか使わないためスタブで十分
-const stubCommand = {
-  error(message: string) {
-    throw new Error(message)
-  },
-  log() {},
-  warn() {},
-} as never
+import {stubCommand} from '../helpers/stub-command.js'
 
 const DOMAIN = 'example.backlog.jp'
 const API_KEY = 'test-api-key'
@@ -44,15 +36,9 @@ const readAllMarkdown = async (dir: string): Promise<string> => {
   return out
 }
 
-/** 本文がマーカーで囲まれていることを検証する */
+/** 本文がマーカーで囲まれていることを検証する（連続一致すればマーカーの存在・順序も保証される） */
 const expectWrapped = (content: string, body: string): void => {
-  const startIdx = content.indexOf(BODY_START_MARKER)
-  const endIdx = content.indexOf(BODY_END_MARKER)
-  expect(startIdx, '開始マーカーが存在すること').to.be.greaterThan(-1)
-  expect(endIdx, '終了マーカーが存在すること').to.be.greaterThan(-1)
-  expect(endIdx, '終了マーカーは開始マーカーより後ろにあること').to.be.greaterThan(startIdx)
-  // マーカー間に本文がそのまま含まれること
-  expect(content).to.include(`${BODY_START_MARKER}\n${body}\n${BODY_END_MARKER}`)
+  expect(content, '本文がマーカーで囲まれていること').to.include(`${BODY_START_MARKER}\n${body}\n${BODY_END_MARKER}`)
 }
 
 describe('本文マーカー（backlog-exporter:body）', () => {
@@ -126,6 +112,23 @@ describe('本文マーカー（backlog-exporter:body）', () => {
 
       expect(existsSync(join(outputDir, 'WikiA.md'))).to.be.true
       expectWrapped(await readAllMarkdown(outputDir), BODY_WITH_HEADING)
+    })
+
+    it('Wiki: 本文が空の場合はプレースホルダがマーカーで囲まれること（課題・ドキュメントと同じ挙動）', async () => {
+      nock(`https://${DOMAIN}`)
+        .get('/api/v2/wikis')
+        .query(true)
+        .reply(200, [{id: '222', name: '空Wiki', updated: '2026-01-02T00:00:00Z'}])
+      nock(`https://${DOMAIN}`).get('/api/v2/wikis/222').query(true).reply(200, {content: '', id: '222', name: '空Wiki'})
+
+      await downloadWikis(stubCommand, {
+        apiKey: API_KEY,
+        domain: DOMAIN,
+        outputDir,
+        projectIdOrKey: PROJECT_KEY,
+      })
+
+      expectWrapped(await readAllMarkdown(outputDir), '（内容なし）')
     })
 
     it('ドキュメント: 内容（本文）がマーカーで囲まれること', async () => {

@@ -552,7 +552,8 @@ export async function downloadWikis(
       const backlogWikiUrl = `https://${options.domain}/alias/wiki/${wikiId}`
 
       // Markdownファイルに書き込む（タイトルとBacklogリンクを追加）
-      const markdownContent = `# ${wiki.name}\n\n[Backlog Wiki Link](${backlogWikiUrl})\n\n${wrapBody(content)}`
+      // 本文が空の場合は課題・ドキュメントと同様にプレースホルダを入れて種別間の出力を揃える
+      const markdownContent = `# ${wiki.name}\n\n[Backlog Wiki Link](${backlogWikiUrl})\n\n${wrapBody(content || '（内容なし）')}`
       // eslint-disable-next-line no-await-in-loop
       await fs.writeFile(wikiFilePath, markdownContent)
 

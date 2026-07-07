@@ -6,12 +6,7 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 
 import {downloadDocuments, downloadWikis} from '../../src/utils/backlog-api.js'
-
-// downloadWikis / downloadDocuments は oclif の Command に依存するが、log/warn しか使わないためスタブで十分
-const stubCommand = {
-  log() {},
-  warn() {},
-} as never
+import {stubCommand} from '../helpers/stub-command.js'
 
 const DOMAIN = 'example.backlog.jp'
 const API_KEY = 'test-api-key'
