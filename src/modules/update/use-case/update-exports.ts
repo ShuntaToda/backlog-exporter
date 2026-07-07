@@ -1,19 +1,34 @@
-import {BacklogHttpClient} from '../../../shared/backlog/http-client.js'
 import {resolveApiKey} from '../../../shared/config/env.js'
 import {readYesNo} from '../../../shared/console/prompt.js'
 import {Logger} from '../../../shared/ports.js'
 import {assertDirectoryExists, ensureDirectory} from '../../../shared/storage/markdown-store.js'
+import {DocumentRepository} from '../../document/domain/document-repository.js'
 import {exportDocuments} from '../../document/use-case/export-documents.js'
+import {IssueRepository} from '../../issue/domain/issue-repository.js'
 import {exportIssues} from '../../issue/use-case/export-issues.js'
-import {validateAndGetProjectId} from '../../project/repository/project-api.js'
+import {ProjectRepository} from '../../project/domain/project-repository.js'
 import {FolderType} from '../../settings/domain/settings.js'
 import {findSettingsDirectories, loadSettings, updateSettings} from '../../settings/repository/settings-store.js'
+import {WikiRepository} from '../../wiki/domain/wiki-repository.js'
 import {exportWikis} from '../../wiki/use-case/export-wikis.js'
 import {buildUpdatePlan, UpdateFlags, UpdatePlan} from '../domain/update-plan.js'
 
 export type {UpdateFlags} from '../domain/update-plan.js'
 
-export async function updateExports(logger: Logger, rootDir: string, flags: UpdateFlags): Promise<void> {
+export interface UpdateDeps {
+  // ディレクトリごとに設定ファイルから接続情報が決まるため、repositoryはファクトリで注入する
+  createRepositories: (connection: {apiKey: string; domain: string; onRateLimitWait?: () => void}) => {
+    documentRepository: DocumentRepository
+    issueRepository: IssueRepository
+    projectRepository: ProjectRepository
+    wikiRepository: WikiRepository
+  }
+  logger: Logger
+}
+
+export async function updateExports(deps: UpdateDeps, rootDir: string, flags: UpdateFlags): Promise<void> {
+  const {logger} = deps
+
   await assertDirectoryExists(rootDir)
 
   const directories = await findSettingsDirectories(rootDir, (dir) => {
@@ -27,11 +42,12 @@ export async function updateExports(logger: Logger, rootDir: string, flags: Upda
 
   for (const directory of directories) {
     // eslint-disable-next-line no-await-in-loop
-    await updateDirectory(logger, directory, flags)
+    await updateDirectory(deps, directory, flags)
   }
 }
 
-async function updateDirectory(logger: Logger, targetDir: string, flags: UpdateFlags): Promise<void> {
+async function updateDirectory(deps: UpdateDeps, targetDir: string, flags: UpdateFlags): Promise<void> {
+  const {logger} = deps
   const settings = await loadSettings(targetDir)
   const plan = buildUpdatePlan(settings, flags)
 
@@ -61,13 +77,13 @@ async function updateDirectory(logger: Logger, targetDir: string, flags: UpdateF
 
   await ensureDirectory(targetDir)
 
-  const client = new BacklogHttpClient({
+  const {documentRepository, issueRepository, projectRepository, wikiRepository} = deps.createRepositories({
     apiKey,
     domain: plan.domain,
     onRateLimitWait: () => logger.log('レート制限を回避するため15秒間待機します...'),
   })
 
-  const projectId = await validateAndGetProjectId(client, plan.projectIdOrKey)
+  const projectId = await projectRepository.resolveProjectId(plan.projectIdOrKey)
   logger.log(`プロジェクトID: ${projectId} を使用します`)
 
   const saveFullUpdateResult = (folderType: FolderType) =>
@@ -82,17 +98,20 @@ async function updateDirectory(logger: Logger, targetDir: string, flags: UpdateF
 
   if (plan.updateIssues) {
     logger.log('課題の更新を開始します...')
-    await exportIssues(client, logger, {
-      count: 100,
-      domain: plan.domain,
-      issueIdOrKeys: plan.issueIdOrKeys,
-      issueKeyFileName: plan.issueKeyFileName,
-      issueKeyFolder: plan.issueKeyFolder,
-      // ID指定時は該当項目のみを取得するため、lastUpdatedによる絞り込みと最終更新日時の記録は行わない
-      lastUpdated: plan.issueIdOrKeys ? undefined : plan.lastUpdated,
-      outputDir: targetDir,
-      projectId,
-    })
+    await exportIssues(
+      {issueRepository, logger},
+      {
+        count: 100,
+        domain: plan.domain,
+        issueIdOrKeys: plan.issueIdOrKeys,
+        issueKeyFileName: plan.issueKeyFileName,
+        issueKeyFolder: plan.issueKeyFolder,
+        // ID指定時は該当項目のみを取得するため、lastUpdatedによる絞り込みと最終更新日時の記録は行わない
+        lastUpdated: plan.issueIdOrKeys ? undefined : plan.lastUpdated,
+        outputDir: targetDir,
+        projectId,
+      },
+    )
 
     if (!plan.issueIdOrKeys) {
       await saveFullUpdateResult(FolderType.ISSUE)
@@ -103,13 +122,16 @@ async function updateDirectory(logger: Logger, targetDir: string, flags: UpdateF
 
   if (plan.updateWikis) {
     logger.log('Wikiの更新を開始します...')
-    await exportWikis(client, logger, {
-      domain: plan.domain,
-      lastUpdated: plan.wikiIds ? undefined : plan.lastUpdated,
-      outputDir: targetDir,
-      projectIdOrKey: plan.projectIdOrKey,
-      wikiIds: plan.wikiIds,
-    })
+    await exportWikis(
+      {logger, wikiRepository},
+      {
+        domain: plan.domain,
+        lastUpdated: plan.wikiIds ? undefined : plan.lastUpdated,
+        outputDir: targetDir,
+        projectIdOrKey: plan.projectIdOrKey,
+        wikiIds: plan.wikiIds,
+      },
+    )
 
     if (!plan.wikiIds) {
       await saveFullUpdateResult(FolderType.WIKI)
@@ -120,14 +142,17 @@ async function updateDirectory(logger: Logger, targetDir: string, flags: UpdateF
 
   if (plan.updateDocuments) {
     logger.log('ドキュメントの更新を開始します...')
-    await exportDocuments(client, logger, {
-      documentIds: plan.documentIds,
-      domain: plan.domain,
-      lastUpdated: plan.documentIds ? undefined : plan.lastUpdated,
-      outputDir: targetDir,
-      projectId,
-      projectIdOrKey: plan.projectIdOrKey,
-    })
+    await exportDocuments(
+      {documentRepository, logger},
+      {
+        documentIds: plan.documentIds,
+        domain: plan.domain,
+        lastUpdated: plan.documentIds ? undefined : plan.lastUpdated,
+        outputDir: targetDir,
+        projectId,
+        projectIdOrKey: plan.projectIdOrKey,
+      },
+    )
 
     if (!plan.documentIds) {
       await saveFullUpdateResult(FolderType.DOCUMENT)

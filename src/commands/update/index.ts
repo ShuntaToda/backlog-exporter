@@ -1,6 +1,7 @@
 import {Args, Command, Flags} from '@oclif/core'
 import process from 'node:process'
 
+import {createBacklogRepositories} from '../../composition/backlog-repositories.js'
 import {updateExports} from '../../modules/update/use-case/update-exports.js'
 import {loadDotenv} from '../../shared/config/env.js'
 
@@ -108,7 +109,7 @@ export default class Update extends Command {
     const logger = {log: (message: string) => this.log(message), warn: (message: string) => this.warn(message)}
 
     try {
-      await updateExports(logger, targetDir, flags)
+      await updateExports({createRepositories: createBacklogRepositories, logger}, targetDir, flags)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       this.error(`更新に失敗しました: ${errorMessage}`)

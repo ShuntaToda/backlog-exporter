@@ -1,6 +1,5 @@
 import path from 'node:path'
 
-import {BacklogHttpClient} from '../../../shared/backlog/http-client.js'
 import {writeProgress} from '../../../shared/console/progress.js'
 import {Logger} from '../../../shared/ports.js'
 import {deleteFile, ensureDirectory, fileExists, writeMarkdownFile} from '../../../shared/storage/markdown-store.js'
@@ -12,9 +11,14 @@ import {
   documentUrl,
   PARENT_DOCUMENT_INDEX_FILENAME,
 } from '../domain/document-path.js'
+import {DocumentRepository} from '../domain/document-repository.js'
 import {planDocumentSave} from '../domain/document-save-plan.js'
 import {DocumentNode} from '../domain/document.js'
-import {fetchDocumentDetail, fetchDocumentTree} from '../repository/document-api.js'
+
+export interface ExportDocumentsDeps {
+  documentRepository: DocumentRepository
+  logger: Logger
+}
 
 export interface ExportDocumentsOptions {
   documentIds?: string[]
@@ -26,15 +30,12 @@ export interface ExportDocumentsOptions {
   projectIdOrKey: string
 }
 
-export async function exportDocuments(
-  client: BacklogHttpClient,
-  logger: Logger,
-  options: ExportDocumentsOptions,
-): Promise<void> {
+export async function exportDocuments(deps: ExportDocumentsDeps, options: ExportDocumentsOptions): Promise<void> {
+  const {documentRepository, logger} = deps
   logger.log('ドキュメントの取得を開始します...')
 
   logger.log('ドキュメントツリーを取得しています...')
-  const documentTree = await fetchDocumentTree(client, options.projectId)
+  const documentTree = await documentRepository.fetchTree(options.projectId)
 
   logger.log('アクティブなドキュメントツリーを処理します...')
 
@@ -59,7 +60,7 @@ export async function exportDocuments(
 
       writeProgress(`ドキュメント「${node.name}」を処理中...`)
 
-      const documentDetail = await fetchDocumentDetail(client, node.id)
+      const documentDetail = await documentRepository.fetchDetail(node.id)
 
       const fileName = documentFileName(documentDetail.title, asParentIndex)
       const filePath = path.join(options.outputDir, currentPath, fileName)

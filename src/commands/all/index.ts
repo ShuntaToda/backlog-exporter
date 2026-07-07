@@ -1,7 +1,7 @@
 import {Command, Flags} from '@oclif/core'
 
+import {createBacklogRepositories} from '../../composition/backlog-repositories.js'
 import {exportAll, ExportTarget} from '../../modules/all/use-case/export-all.js'
-import {BacklogHttpClient} from '../../shared/backlog/http-client.js'
 import {API_KEY_NOT_FOUND_MESSAGE, loadDotenv, resolveApiKey} from '../../shared/config/env.js'
 
 // .envファイルを読み込む
@@ -92,22 +92,25 @@ export default class All extends Command {
       const targets = this.determineTargets(only, exclude)
 
       const logger = {log: (message: string) => this.log(message), warn: (message: string) => this.warn(message)}
-      const client = new BacklogHttpClient({
+      const repositories = createBacklogRepositories({
         apiKey,
         domain,
         onRateLimitWait: () => this.log('レート制限を回避するため15秒間待機します...'),
       })
 
-      await exportAll(client, logger, {
-        apiKey,
-        domain,
-        issueKeyFileName,
-        issueKeyFolder,
-        maxCount,
-        outputRoot,
-        projectIdOrKey,
-        targets,
-      })
+      await exportAll(
+        {...repositories, logger},
+        {
+          apiKey,
+          domain,
+          issueKeyFileName,
+          issueKeyFolder,
+          maxCount,
+          outputRoot,
+          projectIdOrKey,
+          targets,
+        },
+      )
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       this.error(`データの取得に失敗しました: ${errorMessage}`)

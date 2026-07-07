@@ -1,18 +1,17 @@
-import {BacklogHttpClient} from '../../../shared/backlog/http-client.js'
 import {Logger} from '../../../shared/ports.js'
 import {collectDocumentTreePaths, resolveDocumentLeafPaths} from '../../document/domain/document-path.js'
-import {fetchAllDocumentTitles, fetchDocumentTree} from '../../document/repository/document-api.js'
+import {DocumentRepository} from '../../document/domain/document-repository.js'
 import {buildWikiExpectedPaths} from '../../wiki/domain/wiki-path.js'
-import {fetchWikis} from '../../wiki/repository/wiki-api.js'
+import {WikiRepository} from '../../wiki/domain/wiki-repository.js'
 import {pruneLocalMarkdownFiles} from '../repository/prune-walker.js'
 
 export async function pruneDocuments(
-  client: BacklogHttpClient,
-  logger: Logger,
+  deps: {documentRepository: DocumentRepository; logger: Logger},
   options: {outputDir: string; projectId: number},
 ): Promise<number> {
+  const {documentRepository, logger} = deps
   logger.log('Backlogのドキュメントツリーを取得しています...')
-  const documentTree = await fetchDocumentTree(client, options.projectId)
+  const documentTree = await documentRepository.fetchTree(options.projectId)
 
   const expected = collectDocumentTreePaths(documentTree.activeTree.children)
 
@@ -21,7 +20,7 @@ export async function pruneDocuments(
   if (expected.leafNodes.length > 0) {
     logger.log(`${expected.leafNodes.length}件のドキュメントの正規ファイル名を確認しています...`)
     try {
-      titlesById = await fetchAllDocumentTitles(client, options.projectId)
+      titlesById = await documentRepository.fetchAllTitles(options.projectId)
     } catch (error) {
       // 一覧に欠けが生じると実在ドキュメントを誤削除するため、何も削除せずに中止する
       throw new Error(
@@ -43,12 +42,12 @@ export async function pruneDocuments(
 }
 
 export async function pruneWikis(
-  client: BacklogHttpClient,
-  logger: Logger,
+  deps: {logger: Logger; wikiRepository: WikiRepository},
   options: {outputDir: string; projectIdOrKey: string},
 ): Promise<number> {
+  const {logger, wikiRepository} = deps
   logger.log('BacklogのWiki一覧を取得しています...')
-  const wikis = await fetchWikis(client, options.projectIdOrKey)
+  const wikis = await wikiRepository.fetchWikis(options.projectIdOrKey)
 
   const expected = buildWikiExpectedPaths(wikis.map((wiki) => wiki.name))
 

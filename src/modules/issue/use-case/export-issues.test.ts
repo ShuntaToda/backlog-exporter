@@ -7,6 +7,7 @@ import {BacklogHttpClient} from '../../../shared/backlog/http-client.js'
 import {BODY_END_MARKER, BODY_START_MARKER} from '../../../shared/markdown/body-marker.js'
 import {BacklogMockServer} from '../../../shared/testing/backlog-mock-server.js'
 import {stubLogger} from '../../../shared/testing/stub-logger.js'
+import {newBacklogIssueRepository} from '../repository/backlog-issue-repository.js'
 import {exportIssues} from './export-issues.js'
 
 const API_KEY = 'test-api-key'
@@ -53,11 +54,14 @@ describe('exportIssues', () => {
     server.respond('/api/v2/issues', {body: [issue({description: BODY_WITH_HEADING})]})
     server.respond('/api/v2/issues/TEST-1/comments', {body: []})
 
-    await exportIssues(client(), stubLogger, {
-      domain: server.domain,
-      outputDir,
-      projectId: PROJECT_ID,
-    })
+    await exportIssues(
+      {issueRepository: newBacklogIssueRepository(client()), logger: stubLogger},
+      {
+        domain: server.domain,
+        outputDir,
+        projectId: PROJECT_ID,
+      },
+    )
 
     const content = await fs.readFile(join(outputDir, '2026', 'テスト課題.md'), 'utf8')
     expect(content).to.include(`${BODY_START_MARKER}\n${BODY_WITH_HEADING}\n${BODY_END_MARKER}`)
@@ -78,11 +82,14 @@ describe('exportIssues', () => {
       ],
     })
 
-    await exportIssues(client(), stubLogger, {
-      domain: server.domain,
-      outputDir,
-      projectId: PROJECT_ID,
-    })
+    await exportIssues(
+      {issueRepository: newBacklogIssueRepository(client()), logger: stubLogger},
+      {
+        domain: server.domain,
+        outputDir,
+        projectId: PROJECT_ID,
+      },
+    )
 
     const content = await fs.readFile(join(outputDir, '2026', 'コメント付き課題.md'), 'utf8')
     expect(content).to.include('## コメント')
@@ -96,12 +103,15 @@ describe('exportIssues', () => {
     })
     server.respond('/api/v2/issues/TEST-2/comments', {body: []})
 
-    await exportIssues(client(), stubLogger, {
-      domain: server.domain,
-      issueIdOrKeys: ['TEST-2'],
-      outputDir,
-      projectId: PROJECT_ID,
-    })
+    await exportIssues(
+      {issueRepository: newBacklogIssueRepository(client()), logger: stubLogger},
+      {
+        domain: server.domain,
+        issueIdOrKeys: ['TEST-2'],
+        outputDir,
+        projectId: PROJECT_ID,
+      },
+    )
 
     const content = await fs.readFile(join(outputDir, '2026', '指定課題.md'), 'utf8')
     expect(content).to.include('指定取得の本文')
@@ -111,11 +121,14 @@ describe('exportIssues', () => {
   it('projectId[]パラメータ付きで課題一覧を取得すること', async () => {
     server.respond('/api/v2/issues', {body: []})
 
-    await exportIssues(client(), stubLogger, {
-      domain: server.domain,
-      outputDir,
-      projectId: PROJECT_ID,
-    })
+    await exportIssues(
+      {issueRepository: newBacklogIssueRepository(client()), logger: stubLogger},
+      {
+        domain: server.domain,
+        outputDir,
+        projectId: PROJECT_ID,
+      },
+    )
 
     expect(server.requests[0].searchParams.get('projectId[]')).to.equal(String(PROJECT_ID))
   })

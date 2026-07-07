@@ -1,9 +1,9 @@
 import {Command, Flags} from '@oclif/core'
 
+import {createBacklogRepositories} from '../../composition/backlog-repositories.js'
 import {FolderType} from '../../modules/settings/domain/settings.js'
 import {updateSettings} from '../../modules/settings/repository/settings-store.js'
 import {exportWikis} from '../../modules/wiki/use-case/export-wikis.js'
-import {BacklogHttpClient} from '../../shared/backlog/http-client.js'
 import {API_KEY_NOT_FOUND_MESSAGE, loadDotenv, resolveApiKey} from '../../shared/config/env.js'
 import {ensureDirectory} from '../../shared/storage/markdown-store.js'
 
@@ -51,7 +51,7 @@ Wikiをダウンロードする
       const outputDir = flags.output || './wiki'
 
       const logger = {log: (message: string) => this.log(message), warn: (message: string) => this.warn(message)}
-      const client = new BacklogHttpClient({
+      const {wikiRepository} = createBacklogRepositories({
         apiKey,
         domain,
         onRateLimitWait: () => this.log('レート制限を回避するため15秒間待機します...'),
@@ -70,11 +70,14 @@ Wikiをダウンロードする
       })
 
       // Wikiの取得と保存
-      await exportWikis(client, logger, {
-        domain,
-        outputDir,
-        projectIdOrKey,
-      })
+      await exportWikis(
+        {logger, wikiRepository},
+        {
+          domain,
+          outputDir,
+          projectIdOrKey,
+        },
+      )
 
       // 最終更新日時を更新
       await updateSettings(outputDir, {

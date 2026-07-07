@@ -1,9 +1,10 @@
-import {BacklogHttpClient} from '../../../shared/backlog/http-client.js'
 import {resolveApiKey} from '../../../shared/config/env.js'
 import {Logger} from '../../../shared/ports.js'
 import {assertDirectoryExists} from '../../../shared/storage/markdown-store.js'
-import {validateAndGetProjectId} from '../../project/repository/project-api.js'
+import {DocumentRepository} from '../../document/domain/document-repository.js'
+import {ProjectRepository} from '../../project/domain/project-repository.js'
 import {findSettingsDirectories, loadSettings} from '../../settings/repository/settings-store.js'
+import {WikiRepository} from '../../wiki/domain/wiki-repository.js'
 import {classifyPruneTarget} from '../domain/prune-target.js'
 import {pruneDocuments, pruneWikis} from './prune-exports.js'
 
@@ -13,14 +14,26 @@ export interface PruneFlags {
   projectIdOrKey?: string
 }
 
+export interface PruneDeps {
+  // ディレクトリごとに設定ファイルから接続情報が決まるため、repositoryはファクトリで注入する
+  createRepositories: (connection: {apiKey: string; domain: string; onRateLimitWait?: () => void}) => {
+    documentRepository: DocumentRepository
+    projectRepository: ProjectRepository
+    wikiRepository: WikiRepository
+  }
+  logger: Logger
+}
+
 export async function pruneDirectories(
-  logger: Logger,
+  deps: PruneDeps,
   options: {
     confirmDirectory: (directory: string) => Promise<boolean>
     flags: PruneFlags
     rootDir: string
   },
 ): Promise<void> {
+  const {logger} = deps
+
   await assertDirectoryExists(options.rootDir)
 
   const directories = await findSettingsDirectories(options.rootDir, (dir) => {
@@ -34,16 +47,17 @@ export async function pruneDirectories(
 
   for (const directory of directories) {
     // eslint-disable-next-line no-await-in-loop
-    await pruneDirectory(logger, directory, options.flags, options.confirmDirectory)
+    await pruneDirectory(deps, directory, options.flags, options.confirmDirectory)
   }
 }
 
 async function pruneDirectory(
-  logger: Logger,
+  deps: PruneDeps,
   targetDir: string,
   flags: PruneFlags,
   confirmDirectory: (directory: string) => Promise<boolean>,
 ): Promise<void> {
+  const {logger} = deps
   const settings = await loadSettings(targetDir)
 
   const target = classifyPruneTarget(settings)
@@ -87,17 +101,17 @@ async function pruneDirectory(
     return
   }
 
-  const client = new BacklogHttpClient({
+  const {documentRepository, projectRepository, wikiRepository} = deps.createRepositories({
     apiKey,
     domain,
     onRateLimitWait: () => logger.log('レート制限を回避するため15秒間待機します...'),
   })
 
   await (target === 'wiki'
-    ? pruneWikis(client, logger, {outputDir: targetDir, projectIdOrKey})
-    : validateAndGetProjectId(client, projectIdOrKey).then((projectId) =>
-        pruneDocuments(client, logger, {outputDir: targetDir, projectId}),
-      ))
+    ? pruneWikis({logger, wikiRepository}, {outputDir: targetDir, projectIdOrKey})
+    : projectRepository
+        .resolveProjectId(projectIdOrKey)
+        .then((projectId) => pruneDocuments({documentRepository, logger}, {outputDir: targetDir, projectId})))
 
   logger.log(`${targetDir} のpruneが完了しました！`)
 }

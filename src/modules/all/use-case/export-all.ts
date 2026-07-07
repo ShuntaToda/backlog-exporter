@@ -1,14 +1,24 @@
 import path from 'node:path'
 
-import {BacklogHttpClient} from '../../../shared/backlog/http-client.js'
 import {Logger} from '../../../shared/ports.js'
 import {ensureDirectory} from '../../../shared/storage/markdown-store.js'
+import {DocumentRepository} from '../../document/domain/document-repository.js'
 import {exportDocuments} from '../../document/use-case/export-documents.js'
+import {IssueRepository} from '../../issue/domain/issue-repository.js'
 import {exportIssues} from '../../issue/use-case/export-issues.js'
-import {validateAndGetProjectId} from '../../project/repository/project-api.js'
+import {ProjectRepository} from '../../project/domain/project-repository.js'
 import {FolderType} from '../../settings/domain/settings.js'
 import {updateSettings} from '../../settings/repository/settings-store.js'
+import {WikiRepository} from '../../wiki/domain/wiki-repository.js'
 import {exportWikis} from '../../wiki/use-case/export-wikis.js'
+
+export interface ExportAllDeps {
+  documentRepository: DocumentRepository
+  issueRepository: IssueRepository
+  logger: Logger
+  projectRepository: ProjectRepository
+  wikiRepository: WikiRepository
+}
 
 export type ExportTarget = 'documents' | 'issues' | 'wiki'
 
@@ -23,12 +33,13 @@ export interface ExportAllOptions {
   targets: ExportTarget[]
 }
 
-export async function exportAll(client: BacklogHttpClient, logger: Logger, options: ExportAllOptions): Promise<void> {
+export async function exportAll(deps: ExportAllDeps, options: ExportAllOptions): Promise<void> {
+  const {documentRepository, issueRepository, logger, projectRepository, wikiRepository} = deps
   const {apiKey, domain, issueKeyFileName, issueKeyFolder, maxCount, outputRoot, projectIdOrKey, targets} = options
 
   await ensureDirectory(outputRoot)
 
-  const projectId = await validateAndGetProjectId(client, projectIdOrKey)
+  const projectId = await projectRepository.resolveProjectId(projectIdOrKey)
   logger.log(`プロジェクトID: ${projectId} を使用します`)
 
   if (targets.includes('issues')) {
@@ -46,14 +57,17 @@ export async function exportAll(client: BacklogHttpClient, logger: Logger, optio
     })
 
     logger.log('課題の取得を開始します...')
-    await exportIssues(client, logger, {
-      count: maxCount,
-      domain,
-      issueKeyFileName,
-      issueKeyFolder,
-      outputDir: issueOutput,
-      projectId,
-    })
+    await exportIssues(
+      {issueRepository, logger},
+      {
+        count: maxCount,
+        domain,
+        issueKeyFileName,
+        issueKeyFolder,
+        outputDir: issueOutput,
+        projectId,
+      },
+    )
 
     await updateSettings(issueOutput, {lastUpdated: new Date().toISOString()})
     logger.log('課題の取得が完了しました')
@@ -72,11 +86,14 @@ export async function exportAll(client: BacklogHttpClient, logger: Logger, optio
     })
 
     logger.log('Wikiの取得を開始します...')
-    await exportWikis(client, logger, {
-      domain,
-      outputDir: wikiOutput,
-      projectIdOrKey,
-    })
+    await exportWikis(
+      {logger, wikiRepository},
+      {
+        domain,
+        outputDir: wikiOutput,
+        projectIdOrKey,
+      },
+    )
 
     await updateSettings(wikiOutput, {lastUpdated: new Date().toISOString()})
     logger.log('Wikiの取得が完了しました')
@@ -95,12 +112,15 @@ export async function exportAll(client: BacklogHttpClient, logger: Logger, optio
     })
 
     logger.log('ドキュメントの取得を開始します...')
-    await exportDocuments(client, logger, {
-      domain,
-      outputDir: documentOutput,
-      projectId,
-      projectIdOrKey,
-    })
+    await exportDocuments(
+      {documentRepository, logger},
+      {
+        domain,
+        outputDir: documentOutput,
+        projectId,
+        projectIdOrKey,
+      },
+    )
 
     await updateSettings(documentOutput, {lastUpdated: new Date().toISOString()})
     logger.log('ドキュメントの取得が完了しました')

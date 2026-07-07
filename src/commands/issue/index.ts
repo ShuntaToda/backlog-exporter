@@ -1,10 +1,9 @@
 import {Command, Flags} from '@oclif/core'
 
+import {createBacklogRepositories} from '../../composition/backlog-repositories.js'
 import {exportIssues} from '../../modules/issue/use-case/export-issues.js'
-import {validateAndGetProjectId} from '../../modules/project/repository/project-api.js'
 import {FolderType} from '../../modules/settings/domain/settings.js'
 import {updateSettings} from '../../modules/settings/repository/settings-store.js'
-import {BacklogHttpClient} from '../../shared/backlog/http-client.js'
 import {API_KEY_NOT_FOUND_MESSAGE, loadDotenv, resolveApiKey} from '../../shared/config/env.js'
 import {ensureDirectory} from '../../shared/storage/markdown-store.js'
 
@@ -85,7 +84,7 @@ export default class Issue extends Command {
       const outputDir = flags.output || './backlog-issues'
 
       const logger = {log: (message: string) => this.log(message), warn: (message: string) => this.warn(message)}
-      const client = new BacklogHttpClient({
+      const {issueRepository, projectRepository} = createBacklogRepositories({
         apiKey,
         domain,
         onRateLimitWait: () => this.log('レート制限を回避するため15秒間待機します...'),
@@ -95,7 +94,7 @@ export default class Issue extends Command {
       await ensureDirectory(outputDir)
 
       // プロジェクトキーからプロジェクトIDを取得
-      const projectId = await validateAndGetProjectId(client, projectIdOrKey)
+      const projectId = await projectRepository.resolveProjectId(projectIdOrKey)
       this.log(`プロジェクトID: ${projectId} を使用します`)
 
       // 設定ファイルを保存
@@ -110,15 +109,18 @@ export default class Issue extends Command {
       })
 
       // 課題の取得と保存
-      await exportIssues(client, logger, {
-        count: maxCount,
-        domain,
-        issueKeyFileName,
-        issueKeyFolder,
-        outputDir,
-        projectId,
-        statusId,
-      })
+      await exportIssues(
+        {issueRepository, logger},
+        {
+          count: maxCount,
+          domain,
+          issueKeyFileName,
+          issueKeyFolder,
+          outputDir,
+          projectId,
+          statusId,
+        },
+      )
 
       // 最終更新日時を更新
       await updateSettings(outputDir, {

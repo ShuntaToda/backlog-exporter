@@ -1,6 +1,5 @@
 import path from 'node:path'
 
-import {BacklogHttpClient} from '../../../shared/backlog/http-client.js'
 import {writeProgress} from '../../../shared/console/progress.js'
 import {Logger} from '../../../shared/ports.js'
 import {writeMarkdownFile} from '../../../shared/storage/markdown-store.js'
@@ -8,8 +7,13 @@ import {appendLog} from '../../../shared/storage/update-log.js'
 import {filterIssuesUpdatedSince} from '../domain/issue-filter.js'
 import {buildIssueMarkdown} from '../domain/issue-markdown.js'
 import {issueRelativePath, issueUrl} from '../domain/issue-path.js'
+import {IssueRepository} from '../domain/issue-repository.js'
 import {Issue, IssueComment} from '../domain/issue.js'
-import {fetchAllComments, fetchIssueByIdOrKey, fetchIssuesPage} from '../repository/issue-api.js'
+
+export interface ExportIssuesDeps {
+  issueRepository: IssueRepository
+  logger: Logger
+}
 
 export interface ExportIssuesOptions {
   count?: number
@@ -23,17 +27,14 @@ export interface ExportIssuesOptions {
   statusId?: string
 }
 
-export async function exportIssues(
-  client: BacklogHttpClient,
-  logger: Logger,
-  options: ExportIssuesOptions,
-): Promise<void> {
+export async function exportIssues(deps: ExportIssuesDeps, options: ExportIssuesOptions): Promise<void> {
+  const {logger} = deps
   logger.log('課題の取得を開始します...')
 
   const allIssues =
     options.issueIdOrKeys && options.issueIdOrKeys.length > 0
-      ? await fetchIssuesByIdOrKeys(client, logger, options.issueIdOrKeys)
-      : await fetchAllIssues(client, options)
+      ? await fetchIssuesByIdOrKeys(deps, options.issueIdOrKeys)
+      : await fetchAllIssues(deps, options)
 
   logger.log(`\n合計 ${allIssues.length}件の課題が見つかりました。`)
 
@@ -53,7 +54,7 @@ export async function exportIssues(
     try {
       writeProgress(`課題を保存中... (${index + 1}/${filteredIssues.length}件)`)
       // eslint-disable-next-line no-await-in-loop
-      await saveIssue(client, logger, issue, options)
+      await saveIssue(deps, issue, options)
     } catch (error) {
       logger.warn(
         `課題 ${issue.issueKey} の保存に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
@@ -64,19 +65,15 @@ export async function exportIssues(
   logger.log('\n課題のダウンロードが完了しました！')
 }
 
-async function fetchIssuesByIdOrKeys(
-  client: BacklogHttpClient,
-  logger: Logger,
-  issueIdOrKeys: string[],
-): Promise<Issue[]> {
+async function fetchIssuesByIdOrKeys(deps: ExportIssuesDeps, issueIdOrKeys: string[]): Promise<Issue[]> {
   const issues: Issue[] = []
   for (const [index, issueIdOrKey] of issueIdOrKeys.entries()) {
     try {
       writeProgress(`課題を取得中... (${index + 1}/${issueIdOrKeys.length}件)`)
       // eslint-disable-next-line no-await-in-loop
-      issues.push(await fetchIssueByIdOrKey(client, issueIdOrKey))
+      issues.push(await deps.issueRepository.fetchByIdOrKey(issueIdOrKey))
     } catch (error) {
-      logger.warn(
+      deps.logger.warn(
         `課題 ${issueIdOrKey} の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
       )
     }
@@ -85,7 +82,7 @@ async function fetchIssuesByIdOrKeys(
   return issues
 }
 
-async function fetchAllIssues(client: BacklogHttpClient, options: ExportIssuesOptions): Promise<Issue[]> {
+async function fetchAllIssues(deps: ExportIssuesDeps, options: ExportIssuesOptions): Promise<Issue[]> {
   const pageSize = Math.min(options.count ?? 5000, 100)
   const issues: Issue[] = []
 
@@ -93,7 +90,7 @@ async function fetchAllIssues(client: BacklogHttpClient, options: ExportIssuesOp
     for (;;) {
       writeProgress(`課題を取得中... (${issues.length}件取得済み)`)
       // eslint-disable-next-line no-await-in-loop
-      const page = await fetchIssuesPage(client, {
+      const page = await deps.issueRepository.fetchPage({
         count: pageSize,
         offset: issues.length,
         projectId: options.projectId,
@@ -112,20 +109,15 @@ async function fetchAllIssues(client: BacklogHttpClient, options: ExportIssuesOp
   return issues
 }
 
-async function saveIssue(
-  client: BacklogHttpClient,
-  logger: Logger,
-  issue: Issue,
-  options: ExportIssuesOptions,
-): Promise<void> {
+async function saveIssue(deps: ExportIssuesDeps, issue: Issue, options: ExportIssuesOptions): Promise<void> {
   const backlogIssueUrl = issueUrl(options.domain, issue.issueKey)
 
   // コメント取得に失敗しても課題本体は保存する
   let comments: IssueComment[] = []
   try {
-    comments = await fetchAllComments(client, issue.issueKey)
+    comments = await deps.issueRepository.fetchAllComments(issue.issueKey)
   } catch (error) {
-    logger.warn(
+    deps.logger.warn(
       `課題 ${issue.issueKey} のコメント取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
     )
   }

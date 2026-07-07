@@ -1,6 +1,7 @@
 import {Args, Command, Flags} from '@oclif/core'
 import process from 'node:process'
 
+import {createBacklogRepositories} from '../../composition/backlog-repositories.js'
 import {pruneDirectories} from '../../modules/prune/use-case/prune-directories.js'
 import {loadDotenv} from '../../shared/config/env.js'
 import {isInteractiveStdin, readYesNo} from '../../shared/console/prompt.js'
@@ -55,15 +56,18 @@ export default class Prune extends Command {
     const logger = {log: (message: string) => this.log(message), warn: (message: string) => this.warn(message)}
 
     try {
-      await pruneDirectories(logger, {
-        confirmDirectory: (directory) => this.confirmPrune(directory, flags.force ?? false),
-        flags: {
-          apiKey: flags.apiKey,
-          domain: flags.domain,
-          projectIdOrKey: flags.projectIdOrKey,
+      await pruneDirectories(
+        {createRepositories: createBacklogRepositories, logger},
+        {
+          confirmDirectory: (directory) => this.confirmPrune(directory, flags.force ?? false),
+          flags: {
+            apiKey: flags.apiKey,
+            domain: flags.domain,
+            projectIdOrKey: flags.projectIdOrKey,
+          },
+          rootDir: targetDir,
         },
-        rootDir: targetDir,
-      })
+      )
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       this.error(`pruneに失敗しました: ${errorMessage}`)

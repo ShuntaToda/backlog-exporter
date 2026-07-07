@@ -8,6 +8,7 @@ import {BacklogHttpClient} from '../../../shared/backlog/http-client.js'
 import {BODY_END_MARKER, BODY_START_MARKER} from '../../../shared/markdown/body-marker.js'
 import {BacklogMockServer} from '../../../shared/testing/backlog-mock-server.js'
 import {stubLogger} from '../../../shared/testing/stub-logger.js'
+import {newBacklogDocumentRepository} from '../repository/backlog-document-repository.js'
 import {exportDocuments} from './export-documents.js'
 
 const API_KEY = 'test-api-key'
@@ -70,7 +71,10 @@ describe('exportDocuments', () => {
     respondTree([{children: [], id: 'd1', name: 'ドキュメントA'}])
     server.respond('/api/v2/documents/d1', {body: documentDetail('d1', 'ドキュメントA', BODY_WITH_HEADING)})
 
-    await exportDocuments(client(), stubLogger, exportOptions())
+    await exportDocuments(
+      {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+      exportOptions(),
+    )
 
     const content = await fs.readFile(join(outputDir, 'ドキュメントA.md'), 'utf8')
     expect(content).to.include(`${BODY_START_MARKER}\n${BODY_WITH_HEADING}\n${BODY_END_MARKER}`)
@@ -89,7 +93,10 @@ describe('exportDocuments', () => {
     ])
     server.respond('/api/v2/documents/da', {body: documentDetail('da', 'docA', 'docAの本文')})
 
-    await exportDocuments(client(), stubLogger, exportOptions({documentIds: ['da']}))
+    await exportDocuments(
+      {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+      exportOptions({documentIds: ['da']}),
+    )
 
     expect(existsSync(join(outputDir, '設計', 'docA.md')), 'docA.md が保存されること').to.be.true
     expect(existsSync(join(outputDir, '設計', 'docB.md')), 'docB.md は保存されないこと').to.be.false
@@ -123,9 +130,14 @@ describe('exportDocuments', () => {
       server.respond('/api/v2/documents/childB', {body: documentDetail('childB', 'API仕様書B', 'B本文')})
       server.respond('/api/v2/documents/childC', {body: documentDetail('childC', '子C', 'C本文')})
       server.respond('/api/v2/documents/emptyParent', {body: documentDetail('emptyParent', '空フォルダ', '   ')})
-      server.respond('/api/v2/documents/parent1', {body: documentDetail('parent1', 'IF仕様書', '親ドキュメントの本文です')})
+      server.respond('/api/v2/documents/parent1', {
+        body: documentDetail('parent1', 'IF仕様書', '親ドキュメントの本文です'),
+      })
 
-      await exportDocuments(client(), stubLogger, exportOptions())
+      await exportDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        exportOptions(),
+      )
 
       const indexPath = join(outputDir, 'IF仕様書', '00_index.md')
       expect(existsSync(indexPath), '親本文が IF仕様書/00_index.md に保存されること').to.be.true
@@ -150,7 +162,10 @@ describe('exportDocuments', () => {
       await fs.mkdir(join(outputDir, '親フォルダ'), {recursive: true})
       await fs.writeFile(join(outputDir, '親フォルダ', '00_index.md'), '# 親フォルダ\n\n古い本文')
 
-      await exportDocuments(client(), stubLogger, exportOptions())
+      await exportDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        exportOptions(),
+      )
 
       expect(existsSync(join(outputDir, '親フォルダ', '00_index.md')), '空になった親のindexは削除されること').to.be
         .false
@@ -162,7 +177,10 @@ describe('exportDocuments', () => {
       server.respond('/api/v2/documents/parent1', {body: documentDetail('parent1', '親フォルダ', '親の本文')})
       server.respond('/api/v2/documents/child00', {body: documentDetail('child00', '00_index', '子の本文')})
 
-      await exportDocuments(client(), stubLogger, exportOptions())
+      await exportDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        exportOptions(),
+      )
 
       const content = await fs.readFile(join(outputDir, '親フォルダ', '00_index.md'), 'utf8')
       expect(content, '先に保存された子ドキュメントの内容が残ること').to.include('子の本文')
@@ -175,7 +193,10 @@ describe('exportDocuments', () => {
       server.respond('/api/v2/documents/childA', {body: documentDetail('childA', '子A', 'A本文')})
 
       // lastUpdated は全ドキュメントの updated(2026-01-02) より後 ＝ 通常は全てスキップされる
-      await exportDocuments(client(), stubLogger, exportOptions({lastUpdated: '2026-06-01T00:00:00Z'}))
+      await exportDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        exportOptions({lastUpdated: '2026-06-01T00:00:00Z'}),
+      )
 
       expect(existsSync(join(outputDir, '親フォルダ', '00_index.md')), '未作成の親indexはバックフィルされること').to.be
         .true
@@ -189,10 +210,13 @@ describe('exportDocuments', () => {
       })
       server.respond('/api/v2/documents/childA', {body: documentDetail('childA', '子A', 'A本文')})
 
-      await exportDocuments(client(), stubLogger, exportOptions())
+      await exportDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        exportOptions(),
+      )
 
-      expect(existsSync(join(outputDir, '親フォルダ', '00_index.md')), 'nullの本文は空として扱いindexを作らないこと')
-        .to.be.false
+      expect(existsSync(join(outputDir, '親フォルダ', '00_index.md')), 'nullの本文は空として扱いindexを作らないこと').to
+        .be.false
       expect(existsSync(join(outputDir, '親フォルダ', '子A.md')), '子は保存されること').to.be.true
     })
   })

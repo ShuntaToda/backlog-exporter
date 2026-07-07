@@ -7,6 +7,8 @@ import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it} from '
 import {BacklogHttpClient} from '../../../shared/backlog/http-client.js'
 import {BacklogMockServer} from '../../../shared/testing/backlog-mock-server.js'
 import {stubLogger} from '../../../shared/testing/stub-logger.js'
+import {newBacklogDocumentRepository} from '../../document/repository/backlog-document-repository.js'
+import {newBacklogWikiRepository} from '../../wiki/repository/backlog-wiki-repository.js'
 import {pruneDocuments, pruneWikis} from './prune-exports.js'
 
 const API_KEY = 'test-api-key'
@@ -46,7 +48,10 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
     await fs.writeFile(join(outputDir, 'docA.md'), '# docA')
     await fs.writeFile(join(outputDir, 'docB.md'), '# docB(削除済み)')
 
-    const pruned = await pruneDocuments(client(), stubLogger, {outputDir, projectId: PROJECT_ID})
+    const pruned = await pruneDocuments(
+      {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+      {outputDir, projectId: PROJECT_ID},
+    )
 
     expect(pruned).to.equal(1)
     expect(existsSync(join(outputDir, 'docA.md')), 'docA.md は残ること').to.be.true
@@ -59,7 +64,10 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
 
     await fs.writeFile(join(outputDir, '新タイトル.md'), '# 新タイトル')
 
-    const pruned = await pruneDocuments(client(), stubLogger, {outputDir, projectId: PROJECT_ID})
+    const pruned = await pruneDocuments(
+      {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+      {outputDir, projectId: PROJECT_ID},
+    )
 
     expect(pruned).to.equal(0)
     expect(existsSync(join(outputDir, '新タイトル.md')), '新タイトル.md は残ること').to.be.true
@@ -73,7 +81,10 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
     await fs.writeFile(join(outputDir, 'note.txt'), 'user file')
     await fs.writeFile(join(outputDir, 'orphan.md'), '# 削除対象')
 
-    const pruned = await pruneDocuments(client(), stubLogger, {outputDir, projectId: PROJECT_ID})
+    const pruned = await pruneDocuments(
+      {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+      {outputDir, projectId: PROJECT_ID},
+    )
 
     expect(pruned).to.equal(1)
     expect(existsSync(join(outputDir, 'backlog-settings.json')), '設定ファイルは保護').to.be.true
@@ -91,7 +102,10 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
     await fs.mkdir(join(outputDir, '新フォルダ'), {recursive: true})
     await fs.writeFile(join(outputDir, '新フォルダ', 'docM.md'), '# docM(新パス)')
 
-    const pruned = await pruneDocuments(client(), stubLogger, {outputDir, projectId: PROJECT_ID})
+    const pruned = await pruneDocuments(
+      {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+      {outputDir, projectId: PROJECT_ID},
+    )
 
     expect(pruned).to.equal(1)
     expect(existsSync(join(outputDir, '旧フォルダ', 'docM.md')), '旧パスのファイルは削除').to.be.false
@@ -108,7 +122,10 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
 
     let thrown: unknown
     try {
-      await pruneDocuments(client(), stubLogger, {outputDir, projectId: PROJECT_ID})
+      await pruneDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        {outputDir, projectId: PROJECT_ID},
+      )
     } catch (error) {
       thrown = error
     }
@@ -124,7 +141,10 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
 
     await fs.mkdir(join(outputDir, '空フォルダ'), {recursive: true})
 
-    const pruned = await pruneDocuments(client(), stubLogger, {outputDir, projectId: PROJECT_ID})
+    const pruned = await pruneDocuments(
+      {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+      {outputDir, projectId: PROJECT_ID},
+    )
 
     expect(pruned).to.equal(0)
     expect(existsSync(join(outputDir, '空フォルダ')), 'Backlog上に存在する空フォルダは残ること').to.be.true
@@ -136,7 +156,10 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
 
     await fs.writeFile(join(outputDir, 'Readme.md'), '# Readme')
 
-    const pruned = await pruneDocuments(client(), stubLogger, {outputDir, projectId: PROJECT_ID})
+    const pruned = await pruneDocuments(
+      {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+      {outputDir, projectId: PROJECT_ID},
+    )
 
     expect(pruned).to.equal(0)
     expect(existsSync(join(outputDir, 'Readme.md')), '大文字小文字違いのファイルは残ること').to.be.true
@@ -157,7 +180,10 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
     await fs.writeFile(join(outputDir, 'doc100.md'), '# doc100')
     await fs.writeFile(join(outputDir, 'orphan.md'), '# 削除対象')
 
-    const pruned = await pruneDocuments(client(), stubLogger, {outputDir, projectId: PROJECT_ID})
+    const pruned = await pruneDocuments(
+      {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+      {outputDir, projectId: PROJECT_ID},
+    )
 
     expect(pruned).to.equal(1)
     expect(existsSync(join(outputDir, 'doc100.md')), '2ページ目のドキュメントも保護されること').to.be.true
@@ -173,7 +199,10 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
     await fs.writeFile(join(outputDir, '親フォルダ', '子A.md'), '# 子A')
     await fs.writeFile(join(outputDir, '親フォルダ', 'orphan.md'), '# 削除対象')
 
-    const pruned = await pruneDocuments(client(), stubLogger, {outputDir, projectId: PROJECT_ID})
+    const pruned = await pruneDocuments(
+      {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+      {outputDir, projectId: PROJECT_ID},
+    )
 
     expect(pruned).to.equal(1)
     expect(existsSync(join(outputDir, '親フォルダ', '00_index.md')), '親indexは保護されること').to.be.true
@@ -200,7 +229,10 @@ describe('pruneWikis（不要なローカルWikiの削除）', () => {
     await fs.writeFile(join(outputDir, 'WikiA.md'), '# WikiA')
     await fs.writeFile(join(outputDir, 'WikiB.md'), '# WikiB(削除済み)')
 
-    const pruned = await pruneWikis(client(), stubLogger, {outputDir, projectIdOrKey: PROJECT_KEY})
+    const pruned = await pruneWikis(
+      {logger: stubLogger, wikiRepository: newBacklogWikiRepository(client())},
+      {outputDir, projectIdOrKey: PROJECT_KEY},
+    )
 
     expect(pruned).to.equal(1)
     expect(existsSync(join(outputDir, 'WikiA.md')), 'WikiA.md は残ること').to.be.true
@@ -216,7 +248,10 @@ describe('pruneWikis（不要なローカルWikiの削除）', () => {
     await fs.mkdir(join(outputDir, '旧親'), {recursive: true})
     await fs.writeFile(join(outputDir, '旧親', '旧子.md'), '# 旧子(削除済み)')
 
-    const pruned = await pruneWikis(client(), stubLogger, {outputDir, projectIdOrKey: PROJECT_KEY})
+    const pruned = await pruneWikis(
+      {logger: stubLogger, wikiRepository: newBacklogWikiRepository(client())},
+      {outputDir, projectIdOrKey: PROJECT_KEY},
+    )
 
     expect(pruned).to.equal(2)
     expect(existsSync(join(outputDir, '親', '子A.md')), '親/子A.md は残ること').to.be.true
@@ -233,7 +268,10 @@ describe('pruneWikis（不要なローカルWikiの削除）', () => {
     await fs.writeFile(join(outputDir, 'note.txt'), 'user file')
     await fs.writeFile(join(outputDir, 'orphan.md'), '# 削除対象')
 
-    const pruned = await pruneWikis(client(), stubLogger, {outputDir, projectIdOrKey: PROJECT_KEY})
+    const pruned = await pruneWikis(
+      {logger: stubLogger, wikiRepository: newBacklogWikiRepository(client())},
+      {outputDir, projectIdOrKey: PROJECT_KEY},
+    )
 
     expect(pruned).to.equal(1)
     expect(existsSync(join(outputDir, 'backlog-settings.json')), '設定ファイルは保護').to.be.true

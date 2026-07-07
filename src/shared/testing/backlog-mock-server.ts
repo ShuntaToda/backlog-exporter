@@ -45,7 +45,8 @@ export class BacklogMockServer {
       this.requests.push(url)
 
       const onceIndex = this.onceRoutes.findIndex((route) => route.pathname === url.pathname)
-      const responder = onceIndex === -1 ? this.routes.get(url.pathname) : this.onceRoutes.splice(onceIndex, 1)[0].responder
+      const responder =
+        onceIndex === -1 ? this.routes.get(url.pathname) : this.onceRoutes.splice(onceIndex, 1)[0].responder
 
       if (responder === undefined) {
         res.writeHead(404, {'content-type': 'application/json'})

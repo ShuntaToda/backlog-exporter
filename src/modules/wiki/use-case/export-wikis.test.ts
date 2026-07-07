@@ -8,6 +8,7 @@ import {BacklogHttpClient} from '../../../shared/backlog/http-client.js'
 import {BODY_END_MARKER, BODY_START_MARKER} from '../../../shared/markdown/body-marker.js'
 import {BacklogMockServer} from '../../../shared/testing/backlog-mock-server.js'
 import {stubLogger} from '../../../shared/testing/stub-logger.js'
+import {newBacklogWikiRepository} from '../repository/backlog-wiki-repository.js'
 import {exportWikis} from './export-wikis.js'
 
 const API_KEY = 'test-api-key'
@@ -37,11 +38,14 @@ describe('exportWikis', () => {
     server.respond('/api/v2/wikis', {body: [{id: '111', name: 'WikiA', updated: '2026-01-02T00:00:00Z'}]})
     server.respond('/api/v2/wikis/111', {body: {content: BODY_WITH_HEADING, id: '111', name: 'WikiA'}})
 
-    await exportWikis(client(), stubLogger, {
-      domain: server.domain,
-      outputDir,
-      projectIdOrKey: PROJECT_KEY,
-    })
+    await exportWikis(
+      {logger: stubLogger, wikiRepository: newBacklogWikiRepository(client())},
+      {
+        domain: server.domain,
+        outputDir,
+        projectIdOrKey: PROJECT_KEY,
+      },
+    )
 
     expect(existsSync(join(outputDir, 'WikiA.md'))).to.be.true
     const content = await fs.readFile(join(outputDir, 'WikiA.md'), 'utf8')
@@ -52,11 +56,14 @@ describe('exportWikis', () => {
     server.respond('/api/v2/wikis', {body: [{id: '222', name: '空Wiki', updated: '2026-01-02T00:00:00Z'}]})
     server.respond('/api/v2/wikis/222', {body: {content: '', id: '222', name: '空Wiki'}})
 
-    await exportWikis(client(), stubLogger, {
-      domain: server.domain,
-      outputDir,
-      projectIdOrKey: PROJECT_KEY,
-    })
+    await exportWikis(
+      {logger: stubLogger, wikiRepository: newBacklogWikiRepository(client())},
+      {
+        domain: server.domain,
+        outputDir,
+        projectIdOrKey: PROJECT_KEY,
+      },
+    )
 
     const content = await fs.readFile(join(outputDir, '空Wiki.md'), 'utf8')
     expect(content).to.include(`${BODY_START_MARKER}\n（内容なし）\n${BODY_END_MARKER}`)
@@ -72,12 +79,15 @@ describe('exportWikis', () => {
     })
     server.respond('/api/v2/wikis/222', {body: {content: 'WikiBの本文', id: '222', name: 'WikiB'}})
 
-    await exportWikis(client(), stubLogger, {
-      domain: server.domain,
-      outputDir,
-      projectIdOrKey: PROJECT_KEY,
-      wikiIds: ['222'],
-    })
+    await exportWikis(
+      {logger: stubLogger, wikiRepository: newBacklogWikiRepository(client())},
+      {
+        domain: server.domain,
+        outputDir,
+        projectIdOrKey: PROJECT_KEY,
+        wikiIds: ['222'],
+      },
+    )
 
     expect(existsSync(join(outputDir, 'WikiB.md')), 'WikiB.md が保存されること').to.be.true
     expect(existsSync(join(outputDir, 'WikiA.md')), 'WikiA.md は保存されないこと').to.be.false
