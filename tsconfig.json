@@ -2,15 +2,14 @@
   "compilerOptions": {
     "declaration": true,
     "module": "Node16",
-    "outDir": "dist",
-    "rootDir": "src",
-    "strict": true,
-    "target": "es2022",
     "moduleResolution": "node16",
-    "composite": true
+    "noEmit": true,
+    "outDir": "dist",
+    "strict": true,
+    "target": "es2022"
   },
-  "include": ["./src/**/*"],
-  "ts-node": {
-    "esm": true
-  }
+  "include": [
+    "./src/**/*",
+    "./e2e/**/*"
+  ]
 }

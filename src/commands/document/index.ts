@@ -1,13 +1,14 @@
 import {Command, Flags} from '@oclif/core'
-import * as dotenv from 'dotenv'
 
-import {downloadDocuments} from '../../utils/backlog-api.js'
-import {validateAndGetProjectId} from '../../utils/backlog.js'
-import {createOutputDirectory, getApiKey} from '../../utils/common.js'
-import {FolderType, updateSettings} from '../../utils/settings.js'
+import {createBacklogRepositories} from '../../composition/backlog-repositories.js'
+import {exportDocuments} from '../../modules/document/use-case/export-documents.js'
+import {FolderType} from '../../modules/settings/domain/settings.js'
+import {updateSettings} from '../../modules/settings/repository/settings-store.js'
+import {API_KEY_NOT_FOUND_MESSAGE, loadDotenv, resolveApiKey} from '../../shared/config/env.js'
+import {ensureDirectory} from '../../shared/storage/markdown-store.js'
 
 // .envファイルを読み込む
-dotenv.config()
+loadDotenv()
 
 export default class Document extends Command {
   static description = 'Backlogからドキュメントを取得してMarkdownファイルとして保存する'
@@ -51,14 +52,23 @@ export default class Document extends Command {
 
     try {
       const {domain, keyword, projectIdOrKey} = flags
-      const apiKey = flags.apiKey || getApiKey(this)
+      const apiKey =
+        resolveApiKey(flags.apiKey, () => this.log('環境変数 BACKLOG_API_KEY からAPIキーを使用します')) ??
+        this.error(API_KEY_NOT_FOUND_MESSAGE)
       const outputDir = flags.output || './backlog-documents'
 
+      const logger = {log: (message: string) => this.log(message), warn: (message: string) => this.warn(message)}
+      const {documentRepository, projectRepository} = createBacklogRepositories({
+        apiKey,
+        domain,
+        onRateLimitWait: () => this.log('レート制限を回避するため15秒間待機します...'),
+      })
+
       // 出力ディレクトリの作成
-      await createOutputDirectory(outputDir)
+      await ensureDirectory(outputDir)
 
       // プロジェクトキーからプロジェクトIDを取得
-      const projectId = await validateAndGetProjectId(domain, projectIdOrKey, apiKey)
+      const projectId = await projectRepository.resolveProjectId(projectIdOrKey)
       this.log(`プロジェクトID: ${projectId} を使用します`)
 
       // 設定ファイルを保存
@@ -71,14 +81,16 @@ export default class Document extends Command {
       })
 
       // ドキュメントの取得と保存
-      await downloadDocuments(this, {
-        apiKey,
-        domain,
-        keyword,
-        outputDir,
-        projectId,
-        projectIdOrKey,
-      })
+      await exportDocuments(
+        {documentRepository, logger},
+        {
+          domain,
+          keyword,
+          outputDir,
+          projectId,
+          projectIdOrKey,
+        },
+      )
 
       // 最終更新日時を更新
       await updateSettings(outputDir, {

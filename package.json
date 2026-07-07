@@ -10,31 +10,25 @@
   "dependencies": {
     "@oclif/core": "^4",
     "@oclif/plugin-help": "^6",
-    "@oclif/plugin-plugins": "^5",
-    "dotenv": "^16.4.7",
-    "ky": "^1.7.5"
+    "@oclif/plugin-not-found": "^3.2.88",
+    "@oclif/plugin-plugins": "^5"
   },
   "devDependencies": {
     "@eslint/compat": "^1",
     "@oclif/prettier-config": "^0.2.1",
     "@oclif/test": "^4",
-    "@types/chai": "^4",
-    "@types/mocha": "^10",
-    "@types/node": "^18",
-    "chai": "^4",
+    "@types/node": "^22.20.0",
     "eslint": "^9",
     "eslint-config-oclif": "^6",
     "eslint-config-prettier": "^10",
-    "mocha": "^10",
-    "nock": "^14.0.1",
     "oclif": "^4",
     "prettier": "^3.6.2",
-    "shx": "^0.3.3",
-    "ts-node": "^10",
-    "typescript": "^5"
+    "tsx": "^4.23.0",
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.0.0"
   },
   "files": [
     "./bin",
@@ -54,7 +48,8 @@
     "commands": "./dist/commands",
     "plugins": [
       "@oclif/plugin-help",
-      "@oclif/plugin-plugins"
+      "@oclif/plugin-plugins",
+      "@oclif/plugin-not-found"
     ],
     "topicSeparator": " ",
     "topics": {
@@ -68,15 +63,16 @@
     "url": "git+https://github.com/ShuntaToda/backlog-exporter.git"
   },
   "scripts": {
-    "build": "shx rm -rf dist && tsc -b",
+    "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint",
-    "postpack": "shx rm -f oclif.manifest.json",
+    "postpack": "node -e \"fs.rmSync('oclif.manifest.json',{force:true})\"",
     "posttest": "npm run lint",
     "prepack": "oclif manifest && oclif readme",
-    "test": "mocha --forbid-only \"test/**/*.test.ts\"",
-    "version": "oclif readme && git add README.md"
+    "test": "vitest run",
+    "version": "oclif readme && git add README.md",
+    "test:e2e": "npm run build && vitest run --config vitest.e2e.config.ts"
   },
   "types": "dist/index.d.ts"
 }
