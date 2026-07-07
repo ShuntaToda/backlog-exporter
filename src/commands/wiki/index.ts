@@ -1,12 +1,14 @@
 import {Command, Flags} from '@oclif/core'
-import * as dotenv from 'dotenv'
 
-import {downloadWikis} from '../../utils/backlog-api.js'
-import {createOutputDirectory, getApiKey} from '../../utils/common.js'
-import {FolderType, updateSettings} from '../../utils/settings.js'
+import {FolderType} from '../../domain/settings.js'
+import {BacklogHttpClient} from '../../infrastructure/backlog/http-client.js'
+import {API_KEY_NOT_FOUND_MESSAGE, loadDotenv, resolveApiKey} from '../../infrastructure/env.js'
+import {ensureDirectory} from '../../infrastructure/storage/markdown-store.js'
+import {updateSettings} from '../../infrastructure/storage/settings-store.js'
+import {exportWikis} from '../../usecases/export-wikis.js'
 
 // .envファイルを読み込む
-dotenv.config()
+loadDotenv()
 
 export default class Wiki extends Command {
   static description = 'Backlogから Wiki を取得してMarkdownファイルとして保存する'
@@ -43,11 +45,20 @@ Wikiをダウンロードする
 
     try {
       const {domain, projectIdOrKey} = flags
-      const apiKey = flags.apiKey || getApiKey(this)
+      const apiKey =
+        resolveApiKey(flags.apiKey, () => this.log('環境変数 BACKLOG_API_KEY からAPIキーを使用します')) ??
+        this.error(API_KEY_NOT_FOUND_MESSAGE)
       const outputDir = flags.output || './wiki'
 
+      const logger = {log: (message: string) => this.log(message), warn: (message: string) => this.warn(message)}
+      const client = new BacklogHttpClient({
+        apiKey,
+        domain,
+        onRateLimitWait: () => this.log('レート制限を回避するため15秒間待機します...'),
+      })
+
       // 出力ディレクトリの作成
-      await createOutputDirectory(outputDir)
+      await ensureDirectory(outputDir)
 
       // 設定ファイルを保存
       await updateSettings(outputDir, {
@@ -59,8 +70,7 @@ Wikiをダウンロードする
       })
 
       // Wikiの取得と保存
-      await downloadWikis(this, {
-        apiKey,
+      await exportWikis(client, logger, {
         domain,
         outputDir,
         projectIdOrKey,

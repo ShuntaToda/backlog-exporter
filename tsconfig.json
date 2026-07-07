@@ -2,14 +2,12 @@
   "compilerOptions": {
     "declaration": true,
     "module": "Node16",
+    "moduleResolution": "node16",
+    "noEmit": true,
     "outDir": "dist",
     "rootDir": "src",
     "strict": true,
-    "target": "es2022",
-    "moduleResolution": "node16",
-    "composite": true
+    "target": "es2022"
   },
-  "include": [
-    "./src/**/*"
-  ]
+  "include": ["./src/**/*"]
 }

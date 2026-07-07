@@ -1,13 +1,15 @@
 import {Command, Flags} from '@oclif/core'
-import * as dotenv from 'dotenv'
 
-import {downloadIssues} from '../../utils/backlog-api.js'
-import {validateAndGetProjectId} from '../../utils/backlog.js'
-import {createOutputDirectory, getApiKey} from '../../utils/common.js'
-import {FolderType, updateSettings} from '../../utils/settings.js'
+import {FolderType} from '../../domain/settings.js'
+import {BacklogHttpClient} from '../../infrastructure/backlog/http-client.js'
+import {validateAndGetProjectId} from '../../infrastructure/backlog/project-api.js'
+import {API_KEY_NOT_FOUND_MESSAGE, loadDotenv, resolveApiKey} from '../../infrastructure/env.js'
+import {ensureDirectory} from '../../infrastructure/storage/markdown-store.js'
+import {updateSettings} from '../../infrastructure/storage/settings-store.js'
+import {exportIssues} from '../../usecases/export-issues.js'
 
 // .envファイルを読み込む
-dotenv.config()
+loadDotenv()
 
 export default class Issue extends Command {
   static description = 'Backlogから課題を取得してMarkdownファイルとして保存する'
@@ -77,14 +79,23 @@ export default class Issue extends Command {
 
     try {
       const {domain, issueKeyFileName, issueKeyFolder, maxCount, projectIdOrKey, statusId} = flags
-      const apiKey = flags.apiKey || getApiKey(this)
+      const apiKey =
+        resolveApiKey(flags.apiKey, () => this.log('環境変数 BACKLOG_API_KEY からAPIキーを使用します')) ??
+        this.error(API_KEY_NOT_FOUND_MESSAGE)
       const outputDir = flags.output || './backlog-issues'
 
+      const logger = {log: (message: string) => this.log(message), warn: (message: string) => this.warn(message)}
+      const client = new BacklogHttpClient({
+        apiKey,
+        domain,
+        onRateLimitWait: () => this.log('レート制限を回避するため15秒間待機します...'),
+      })
+
       // 出力ディレクトリの作成
-      await createOutputDirectory(outputDir)
+      await ensureDirectory(outputDir)
 
       // プロジェクトキーからプロジェクトIDを取得
-      const projectId = await validateAndGetProjectId(domain, projectIdOrKey, apiKey)
+      const projectId = await validateAndGetProjectId(client, projectIdOrKey)
       this.log(`プロジェクトID: ${projectId} を使用します`)
 
       // 設定ファイルを保存
@@ -99,8 +110,7 @@ export default class Issue extends Command {
       })
 
       // 課題の取得と保存
-      await downloadIssues(this, {
-        apiKey,
+      await exportIssues(client, logger, {
         count: maxCount,
         domain,
         issueKeyFileName,

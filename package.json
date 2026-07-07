@@ -10,9 +10,7 @@
   "dependencies": {
     "@oclif/core": "^4",
     "@oclif/plugin-help": "^6",
-    "@oclif/plugin-plugins": "^5",
-    "dotenv": "^16.4.7",
-    "ky": "^1.7.5"
+    "@oclif/plugin-plugins": "^5"
   },
   "devDependencies": {
     "@eslint/compat": "^1",
@@ -25,12 +23,12 @@
     "nock": "^14.0.1",
     "oclif": "^4",
     "prettier": "^3.6.2",
-    "shx": "^0.3.3",
+    "tsx": "^4.23.0",
     "typescript": "^5",
     "vitest": "^4.1.10"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.0.0"
   },
   "files": [
     "./bin",
@@ -64,11 +62,11 @@
     "url": "git+https://github.com/ShuntaToda/backlog-exporter.git"
   },
   "scripts": {
-    "build": "shx rm -rf dist && tsc -b",
+    "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint",
-    "postpack": "shx rm -f oclif.manifest.json",
+    "postpack": "node -e \"fs.rmSync('oclif.manifest.json',{force:true})\"",
     "posttest": "npm run lint",
     "prepack": "oclif manifest && oclif readme",
     "test": "vitest run",
