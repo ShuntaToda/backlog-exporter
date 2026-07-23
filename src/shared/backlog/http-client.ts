@@ -16,25 +16,50 @@ export class HttpError extends Error {
 const RETRYABLE_STATUSES = new Set([408, 429, 500, 502, 503, 504])
 const MAX_RETRIES = 2
 const RETRY_BASE_DELAY_MS = 300
+const RATE_LIMIT_MIN_WAIT_MS = 1000
+const RATE_LIMIT_FALLBACK_WAIT_MS = 60_000
+const RATE_LIMIT_MAX_WAIT_MS = 120_000
+
+// レート制限(429)はウィンドウが1分単位のため、短いbackoffではなく
+// X-RateLimit-Reset(UNIX秒)まで待つ。ヘッダーが無い/不正な場合は1分待つ
+export function rateLimitWaitMs(resetHeader: null | string, nowMs: number): number {
+  const resetSeconds = Number(resetHeader)
+  if (!resetHeader || !Number.isFinite(resetSeconds)) return RATE_LIMIT_FALLBACK_WAIT_MS
+  // リセット直後の境界ずれで再度429にならないよう1秒の余裕を持たせる
+  const waitMs = resetSeconds * 1000 - nowMs + 1000
+  return Math.min(Math.max(waitMs, RATE_LIMIT_MIN_WAIT_MS), RATE_LIMIT_MAX_WAIT_MS)
+}
 
 // apiKey付与・レート制限(100req/15s)・一時エラーのリトライを担うBacklog APIクライアント
 export class BacklogHttpClient {
   private readonly apiKey: string
   private readonly baseUrl: string
+  private readonly onRateLimitExceeded?: (waitSeconds: number) => void
   private readonly rateLimiter: RateLimiter
 
-  constructor(options: {apiKey: string; domain: string; onRateLimitWait?: () => void}) {
+  constructor(options: {
+    apiKey: string
+    domain: string
+    onRateLimitExceeded?: (waitSeconds: number) => void
+    onRateLimitWait?: () => void
+  }) {
     this.apiKey = options.apiKey
     this.baseUrl = `${backlogOrigin(options.domain)}/api/v2`
+    this.onRateLimitExceeded = options.onRateLimitExceeded
     this.rateLimiter = new RateLimiter(options.onRateLimitWait)
+  }
+
+  async getBinary(pathname: string, params: Record<string, string> = {}): Promise<ArrayBuffer> {
+    await this.rateLimiter.increment()
+
+    const response = await this.fetchWithRetry(this.requestUrl(pathname, params))
+    return response.arrayBuffer()
   }
 
   async getJson<T>(pathname: string, params: Record<string, string> = {}): Promise<T> {
     await this.rateLimiter.increment()
 
-    const searchParams = new URLSearchParams({apiKey: this.apiKey, ...params})
-    const url = `${this.baseUrl}${pathname}?${searchParams.toString()}`
-    const response = await this.fetchWithRetry(url)
+    const response = await this.fetchWithRetry(this.requestUrl(pathname, params))
     return (await response.json()) as T
   }
 
@@ -60,7 +85,13 @@ export class BacklogHttpClient {
       }
 
       if (attempt < MAX_RETRIES && RETRYABLE_STATUSES.has(response.status)) {
-        await sleep(RETRY_BASE_DELAY_MS * 2 ** attempt)
+        let waitMs = RETRY_BASE_DELAY_MS * 2 ** attempt
+        if (response.status === 429) {
+          waitMs = rateLimitWaitMs(response.headers.get('x-ratelimit-reset'), Date.now())
+          this.onRateLimitExceeded?.(Math.ceil(waitMs / 1000))
+        }
+
+        await sleep(waitMs)
         continue
       }
 
@@ -71,5 +102,10 @@ export class BacklogHttpClient {
 
   private maskApiKey(url: string): string {
     return url.replace(/apiKey=[^&]*/, 'apiKey=***')
+  }
+
+  private requestUrl(pathname: string, params: Record<string, string>): string {
+    const searchParams = new URLSearchParams({apiKey: this.apiKey, ...params})
+    return `${this.baseUrl}${pathname}?${searchParams.toString()}`
   }
 }

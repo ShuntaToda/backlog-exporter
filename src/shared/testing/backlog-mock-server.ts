@@ -3,6 +3,7 @@ import {AddressInfo} from 'node:net'
 
 export interface MockResponse {
   body?: unknown
+  headers?: Record<string, string>
   status?: number
 }
 
@@ -54,8 +55,14 @@ export class BacklogMockServer {
         return
       }
 
-      const {body = {}, status = 200} = typeof responder === 'function' ? responder(url) : responder
-      res.writeHead(status, {'content-type': 'application/json'})
+      const {body = {}, headers = {}, status = 200} = typeof responder === 'function' ? responder(url) : responder
+      if (body instanceof Uint8Array) {
+        res.writeHead(status, {'content-type': 'application/octet-stream', ...headers})
+        res.end(body)
+        return
+      }
+
+      res.writeHead(status, {'content-type': 'application/json', ...headers})
       res.end(JSON.stringify(body))
     })
 
