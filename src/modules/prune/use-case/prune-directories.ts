@@ -17,7 +17,12 @@ export interface PruneFlags {
 
 export interface PruneDeps {
   // ディレクトリごとに設定ファイルから接続情報が決まるため、repositoryはファクトリで注入する
-  createRepositories: (connection: {apiKey: string; domain: string; onRateLimitWait?: () => void}) => {
+  createRepositories: (connection: {
+    apiKey: string
+    domain: string
+    onRateLimitExceeded?: (waitSeconds: number) => void
+    onRateLimitWait?: () => void
+  }) => {
     documentRepository: DocumentRepository
     issueRepository: IssueRepository
     projectRepository: ProjectRepository
@@ -106,6 +111,7 @@ async function pruneDirectory(
   const {documentRepository, issueRepository, projectRepository, wikiRepository} = deps.createRepositories({
     apiKey,
     domain,
+    onRateLimitExceeded: (waitSeconds: number) => logger.log(`レート制限の上限に達しました。${waitSeconds}秒待機します...`),
     onRateLimitWait: () => logger.log('レート制限を回避するため15秒間待機します...'),
   })
 

@@ -1,5 +1,5 @@
 import {wrapBody} from '../../../shared/markdown/body-marker.js'
-import {CustomField, Issue, IssueComment, IssueCommentChange} from './issue.js'
+import {CustomField, Issue, IssueAttachment, IssueComment, IssueCommentChange} from './issue.js'
 
 // Backlogの変更履歴（changeLog）のfieldを画面表示に合わせた日本語ラベルへ変換する
 const CHANGE_FIELD_LABELS: Record<string, string> = {
@@ -35,11 +35,43 @@ function formatChange(change: IssueCommentChange): string {
   return `- ${label}: ${formatChangeValue(change.originalValue)} → ${formatChangeValue(change.newValue)}`
 }
 
-function buildCommentBody(comment: IssueComment): string {
+// Backlogの添付画像インライン記法（Markdown拡張の ![alt][ファイル名] とBacklog記法の #image(ファイル名)）を
+// ダウンロード済みファイルへのローカルリンクに変換する。未ダウンロードの参照は壊さずそのまま残す
+export function rewriteInlineImages(
+  text: string,
+  attachments: IssueAttachment[] | undefined,
+  localLinks?: Map<number, string>,
+): string {
+  if (!text || !attachments || attachments.length === 0 || !localLinks || localLinks.size === 0) {
+    return text
+  }
+
+  // 同名添付が複数ある場合は記法から特定できないため先勝ちで解決する。
+  // 記法内のファイル名はNFD（macOSからのD&D等）で入ることがあるため、照合はNFC正規化で行う
+  const linkByName = new Map<string, string>()
+  for (const attachment of attachments) {
+    const link = localLinks.get(attachment.id)
+    const name = attachment.name.normalize('NFC')
+    if (link && !linkByName.has(name)) {
+      linkByName.set(name, link)
+    }
+  }
+
+  const toLocalImage = (match: string, name: string) => {
+    const link = linkByName.get(name.normalize('NFC'))
+    return link ? `![${escapeLinkText(name)}](${link})` : match
+  }
+
+  return text
+    .replaceAll(/!\[[^\]]*\]\[([^\]]+)\]/g, toLocalImage)
+    .replaceAll(/#image\(([^)]+)\)/g, toLocalImage)
+}
+
+function buildCommentBody(comment: IssueComment, rewriteBody: (text: string) => string): string {
   const parts: string[] = []
 
   if (comment.content) {
-    parts.push(comment.content)
+    parts.push(rewriteBody(comment.content))
   }
 
   if (comment.changeLog && comment.changeLog.length > 0) {
@@ -83,7 +115,34 @@ export function createCustomFieldsSection(customFields?: CustomField[]): string 
   return customFieldsSection
 }
 
-export function buildCommentsSection(comments: IssueComment[], backlogIssueUrl: string): string {
+// ファイル名中の角括弧はリンク構文を壊すためエスケープする
+function escapeLinkText(name: string): string {
+  return name.replaceAll('[', String.raw`\[`).replaceAll(']', String.raw`\]`)
+}
+
+// ダウンロード済みの添付はローカルへの相対リンク付き、未ダウンロードはメタデータのみを出力する
+export function buildAttachmentsSection(
+  attachments: IssueAttachment[] | undefined,
+  localLinks?: Map<number, string>,
+): string {
+  if (!attachments || attachments.length === 0) {
+    return ''
+  }
+
+  const lines = attachments.map((attachment) => {
+    const fileSize = `${(attachment.size / 1024).toFixed(1)} KB`
+    const link = localLinks?.get(attachment.id)
+    return link ? `- [${escapeLinkText(attachment.name)}](${link}) (${fileSize})` : `- ${attachment.name} (${fileSize})`
+  })
+
+  return `\n\n## 添付ファイル\n\n${lines.join('\n')}`
+}
+
+export function buildCommentsSection(
+  comments: IssueComment[],
+  backlogIssueUrl: string,
+  rewriteBody: (text: string) => string = (text) => text,
+): string {
   if (comments.length === 0) {
     return ''
   }
@@ -95,7 +154,7 @@ export function buildCommentsSection(comments: IssueComment[], backlogIssueUrl: 
     const backlogCommentUrl = `${backlogIssueUrl}#comment-${comment.id}`
     commentsSection += `\n### コメント ${commentIndex}\n- **投稿者**: ${
       comment.createdUser.name
-    }\n- **日時**: ${commentDate}\n- [Backlog Comment Link](${backlogCommentUrl})\n\n${buildCommentBody(comment)}\n\n---\n`
+    }\n- **日時**: ${commentDate}\n- [Backlog Comment Link](${backlogCommentUrl})\n\n${buildCommentBody(comment, rewriteBody)}\n\n---\n`
     commentIndex++
   }
 
@@ -103,9 +162,16 @@ export function buildCommentsSection(comments: IssueComment[], backlogIssueUrl: 
   return commentsSection.slice(0, -5)
 }
 
-export function buildIssueMarkdown(issue: Issue, comments: IssueComment[], backlogIssueUrl: string): string {
-  const commentsSection = buildCommentsSection(comments, backlogIssueUrl)
+export function buildIssueMarkdown(
+  issue: Issue,
+  comments: IssueComment[],
+  backlogIssueUrl: string,
+  attachmentLinks?: Map<number, string>,
+): string {
+  const rewriteBody = (text: string) => rewriteInlineImages(text, issue.attachments, attachmentLinks)
+  const commentsSection = buildCommentsSection(comments, backlogIssueUrl, rewriteBody)
   const customFieldsSection = createCustomFieldsSection(issue.customFields)
+  const attachmentsSection = buildAttachmentsSection(issue.attachments, attachmentLinks)
 
   const assigneeName = issue.assignee ? issue.assignee.name : '未割り当て'
   const startDate = issue.startDate ? new Date(issue.startDate).toLocaleDateString('ja-JP') : '未設定'
@@ -123,9 +189,9 @@ export function buildIssueMarkdown(issue: Issue, comments: IssueComment[], backl
 - 期限日: ${dueDate}
 - 作成日時: ${new Date(issue.created).toLocaleString('ja-JP')}
 - 更新日時: ${new Date(issue.updated).toLocaleString('ja-JP')}
-- [Backlog Issue Link](${backlogIssueUrl})${customFieldsSection}
+- [Backlog Issue Link](${backlogIssueUrl})${customFieldsSection}${attachmentsSection}
 
 ## 詳細
 
-${wrapBody(issue.description || '詳細情報なし')}${commentsSection}`
+${wrapBody(issue.description ? rewriteBody(issue.description) : '詳細情報なし')}${commentsSection}`
 }

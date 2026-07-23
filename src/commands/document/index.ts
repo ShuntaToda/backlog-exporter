@@ -61,6 +61,8 @@ export default class Document extends Command {
       const {documentRepository, projectRepository} = createBacklogRepositories({
         apiKey,
         domain,
+        onRateLimitExceeded: (waitSeconds: number) =>
+          this.log(`レート制限の上限に達しました。${waitSeconds}秒待機します...`),
         onRateLimitWait: () => this.log('レート制限を回避するため15秒間待機します...'),
       })
 

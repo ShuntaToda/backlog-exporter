@@ -65,6 +65,11 @@ export default class Update extends Command {
       description: 'Backlog domain (e.g. example.backlog.jp)',
       required: false,
     }),
+    downloadAttachments: Flags.boolean({
+      char: 'd',
+      description: '課題の添付ファイルもダウンロードする（未指定時は設定ファイルの値を使用）',
+      required: false,
+    }),
     force: Flags.boolean({
       char: 'f',
       description: '確認プロンプトをスキップする',

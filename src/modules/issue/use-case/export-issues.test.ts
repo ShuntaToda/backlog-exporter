@@ -126,6 +126,211 @@ describe('exportIssues', () => {
     expect(server.requestedPaths()).to.not.include('/api/v2/issues')
   })
 
+  it('downloadAttachments指定時に添付ファイルを保存し、Markdownにローカルリンクを記載すること', async () => {
+    const binary = new Uint8Array([1, 2, 3, 4])
+    server.respond('/api/v2/issues', {
+      body: [issue({attachments: [{id: 10, name: 'design.png', size: 2048}]})],
+    })
+    server.respond('/api/v2/issues/TEST-1/comments', {body: []})
+    server.respond('/api/v2/issues/TEST-1/attachments/10', {body: binary})
+
+    await exportIssues(
+      {issueRepository: newBacklogIssueRepository(client()), logger: stubLogger},
+      {
+        domain: server.domain,
+        downloadAttachments: true,
+        outputDir,
+        projectId: PROJECT_ID,
+      },
+    )
+
+    const saved = await fs.readFile(join(outputDir, '2026', 'attachments', 'TEST-1', '10_design.png'))
+    expect(new Uint8Array(saved)).to.deep.equal(binary)
+
+    const content = await fs.readFile(join(outputDir, '2026', 'テスト課題.md'), 'utf8')
+    expect(content).to.include('## 添付ファイル')
+    expect(content).to.include('- [design.png](./attachments/TEST-1/10_design.png) (2.0 KB)')
+  })
+
+  it('issueKeyFolder指定時は課題フォルダ直下のattachmentsに保存すること', async () => {
+    server.respond('/api/v2/issues', {
+      body: [issue({attachments: [{id: 11, name: 'log.txt', size: 512}]})],
+    })
+    server.respond('/api/v2/issues/TEST-1/comments', {body: []})
+    server.respond('/api/v2/issues/TEST-1/attachments/11', {body: new Uint8Array([5, 6])})
+
+    await exportIssues(
+      {issueRepository: newBacklogIssueRepository(client()), logger: stubLogger},
+      {
+        domain: server.domain,
+        downloadAttachments: true,
+        issueKeyFolder: true,
+        outputDir,
+        projectId: PROJECT_ID,
+      },
+    )
+
+    await fs.access(join(outputDir, '2026', 'TEST-1', 'attachments', '11_log.txt'))
+
+    const content = await fs.readFile(join(outputDir, '2026', 'TEST-1', 'テスト課題.md'), 'utf8')
+    expect(content).to.include('- [log.txt](./attachments/11_log.txt) (0.5 KB)')
+  })
+
+  it('本文とコメント内の添付画像記法をローカルリンクに変換すること', async () => {
+    server.respond('/api/v2/issues', {
+      body: [
+        issue({
+          attachments: [{id: 10, name: 'design.png', size: 2048}],
+          description: '説明\n![image][design.png]',
+        }),
+      ],
+    })
+    server.respond('/api/v2/issues/TEST-1/comments', {
+      body: [
+        {
+          content: 'コメント画像\n#image(design.png)',
+          created: '2026-01-02T10:00:00Z',
+          createdUser: {id: 1, name: '投稿者'},
+          id: 999,
+        },
+      ],
+    })
+    server.respond('/api/v2/issues/TEST-1/attachments/10', {body: new Uint8Array([1])})
+
+    await exportIssues(
+      {issueRepository: newBacklogIssueRepository(client()), logger: stubLogger},
+      {
+        domain: server.domain,
+        downloadAttachments: true,
+        outputDir,
+        projectId: PROJECT_ID,
+      },
+    )
+
+    const content = await fs.readFile(join(outputDir, '2026', 'テスト課題.md'), 'utf8')
+    expect(content).to.include('説明\n![design.png](./attachments/TEST-1/10_design.png)')
+    expect(content).to.include('コメント画像\n![design.png](./attachments/TEST-1/10_design.png)')
+    expect(content).to.not.include('![image][design.png]')
+  })
+
+  it('downloadAttachments未指定時は画像記法を変換しないこと', async () => {
+    server.respond('/api/v2/issues', {
+      body: [
+        issue({
+          attachments: [{id: 10, name: 'design.png', size: 2048}],
+          description: '![image][design.png]',
+        }),
+      ],
+    })
+    server.respond('/api/v2/issues/TEST-1/comments', {body: []})
+
+    await exportIssues(
+      {issueRepository: newBacklogIssueRepository(client()), logger: stubLogger},
+      {
+        domain: server.domain,
+        outputDir,
+        projectId: PROJECT_ID,
+      },
+    )
+
+    const content = await fs.readFile(join(outputDir, '2026', 'テスト課題.md'), 'utf8')
+    expect(content).to.include('![image][design.png]')
+  })
+
+  it('ダウンロード済みの添付ファイルは再ダウンロードしないこと', async () => {
+    server.respond('/api/v2/issues', {
+      body: [issue({attachments: [{id: 10, name: 'design.png', size: 2}]})],
+    })
+    server.respond('/api/v2/issues/TEST-1/comments', {body: []})
+
+    const existingPath = join(outputDir, '2026', 'attachments', 'TEST-1', '10_design.png')
+    await fs.mkdir(join(outputDir, '2026', 'attachments', 'TEST-1'), {recursive: true})
+    await fs.writeFile(existingPath, new Uint8Array([9, 9]))
+
+    await exportIssues(
+      {issueRepository: newBacklogIssueRepository(client()), logger: stubLogger},
+      {
+        domain: server.domain,
+        downloadAttachments: true,
+        outputDir,
+        projectId: PROJECT_ID,
+      },
+    )
+
+    expect(server.requestedPaths()).to.not.include('/api/v2/issues/TEST-1/attachments/10')
+    const content = await fs.readFile(join(outputDir, '2026', 'テスト課題.md'), 'utf8')
+    expect(content, 'スキップした添付にもリンクが付くこと').to.include('(./attachments/TEST-1/10_design.png)')
+  })
+
+  it('サイズの一致しない既存ファイル（破損）は再ダウンロードすること', async () => {
+    const binary = new Uint8Array([1, 2, 3, 4])
+    server.respond('/api/v2/issues', {
+      body: [issue({attachments: [{id: 10, name: 'design.png', size: 4}]})],
+    })
+    server.respond('/api/v2/issues/TEST-1/comments', {body: []})
+    server.respond('/api/v2/issues/TEST-1/attachments/10', {body: binary})
+
+    const existingPath = join(outputDir, '2026', 'attachments', 'TEST-1', '10_design.png')
+    await fs.mkdir(join(outputDir, '2026', 'attachments', 'TEST-1'), {recursive: true})
+    await fs.writeFile(existingPath, new Uint8Array([9]))
+
+    await exportIssues(
+      {issueRepository: newBacklogIssueRepository(client()), logger: stubLogger},
+      {
+        domain: server.domain,
+        downloadAttachments: true,
+        outputDir,
+        projectId: PROJECT_ID,
+      },
+    )
+
+    expect(server.requestedPaths()).to.include('/api/v2/issues/TEST-1/attachments/10')
+    const saved = await fs.readFile(existingPath)
+    expect(new Uint8Array(saved)).to.deep.equal(binary)
+  })
+
+  it('添付ファイルの取得に失敗しても課題本体は保存し、リンクなしで記載すること', async () => {
+    server.respond('/api/v2/issues', {
+      body: [issue({attachments: [{id: 12, name: 'broken.pdf', size: 1024}]})],
+    })
+    server.respond('/api/v2/issues/TEST-1/comments', {body: []})
+    server.respond('/api/v2/issues/TEST-1/attachments/12', {status: 404})
+
+    await exportIssues(
+      {issueRepository: newBacklogIssueRepository(client()), logger: stubLogger},
+      {
+        domain: server.domain,
+        downloadAttachments: true,
+        outputDir,
+        projectId: PROJECT_ID,
+      },
+    )
+
+    const content = await fs.readFile(join(outputDir, '2026', 'テスト課題.md'), 'utf8')
+    expect(content).to.include('- broken.pdf (1.0 KB)')
+    expect(content).to.not.include('](./attachments')
+  })
+
+  it('downloadAttachments未指定時はダウンロードせず、メタデータのみ記載すること', async () => {
+    server.respond('/api/v2/issues', {
+      body: [issue({attachments: [{id: 10, name: 'design.png', size: 2048}]})],
+    })
+    server.respond('/api/v2/issues/TEST-1/comments', {body: []})
+
+    await exportIssues(
+      {issueRepository: newBacklogIssueRepository(client()), logger: stubLogger},
+      {
+        domain: server.domain,
+        outputDir,
+        projectId: PROJECT_ID,
+      },
+    )
+
+    expect(server.requestedPaths()).to.not.include('/api/v2/issues/TEST-1/attachments/10')
+    const content = await fs.readFile(join(outputDir, '2026', 'テスト課題.md'), 'utf8')
+    expect(content).to.include('- design.png (2.0 KB)')
+  })
+
   it('projectId[]パラメータ付きで課題一覧を取得すること', async () => {
     server.respond('/api/v2/issues', {body: []})
 

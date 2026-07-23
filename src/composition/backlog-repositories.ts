@@ -11,6 +11,7 @@ import {BacklogHttpClient} from '../shared/backlog/http-client.js'
 export interface BacklogConnection {
   apiKey: string
   domain: string
+  onRateLimitExceeded?: (waitSeconds: number) => void
   onRateLimitWait?: () => void
 }
 

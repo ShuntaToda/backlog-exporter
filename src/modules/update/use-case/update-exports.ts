@@ -17,7 +17,12 @@ export type {UpdateFlags} from '../domain/update-plan.js'
 
 export interface UpdateDeps {
   // ディレクトリごとに設定ファイルから接続情報が決まるため、repositoryはファクトリで注入する
-  createRepositories: (connection: {apiKey: string; domain: string; onRateLimitWait?: () => void}) => {
+  createRepositories: (connection: {
+    apiKey: string
+    domain: string
+    onRateLimitExceeded?: (waitSeconds: number) => void
+    onRateLimitWait?: () => void
+  }) => {
     documentRepository: DocumentRepository
     issueRepository: IssueRepository
     projectRepository: ProjectRepository
@@ -80,6 +85,7 @@ async function updateDirectory(deps: UpdateDeps, targetDir: string, flags: Updat
   const {documentRepository, issueRepository, projectRepository, wikiRepository} = deps.createRepositories({
     apiKey,
     domain: plan.domain,
+    onRateLimitExceeded: (waitSeconds: number) => logger.log(`レート制限の上限に達しました。${waitSeconds}秒待機します...`),
     onRateLimitWait: () => logger.log('レート制限を回避するため15秒間待機します...'),
   })
 
@@ -103,6 +109,7 @@ async function updateDirectory(deps: UpdateDeps, targetDir: string, flags: Updat
       {
         count: 100,
         domain: plan.domain,
+        downloadAttachments: plan.downloadAttachments,
         issueIdOrKeys: plan.issueIdOrKeys,
         issueKeyFileName: plan.issueKeyFileName,
         issueKeyFolder: plan.issueKeyFolder,

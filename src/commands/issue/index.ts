@@ -34,6 +34,9 @@ export default class Issue extends Command {
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFileName --issueKeyFolder
 課題キーでフォルダを作成し、ファイル名も課題キーにする
 `,
+    `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --downloadAttachments
+課題の添付ファイルもダウンロードする
+`,
   ]
   static flags = {
     apiKey: Flags.string({
@@ -43,6 +46,11 @@ export default class Issue extends Command {
     domain: Flags.string({
       description: 'Backlog domain (e.g. example.backlog.jp)',
       required: true,
+    }),
+    downloadAttachments: Flags.boolean({
+      char: 'd',
+      description: '課題の添付ファイルもダウンロードする',
+      required: false,
     }),
     issueKeyFileName: Flags.boolean({
       description: 'ファイル名を課題キーにする',
@@ -77,7 +85,7 @@ export default class Issue extends Command {
     const {flags} = await this.parse(Issue)
 
     try {
-      const {domain, issueKeyFileName, issueKeyFolder, maxCount, projectIdOrKey, statusId} = flags
+      const {domain, downloadAttachments, issueKeyFileName, issueKeyFolder, maxCount, projectIdOrKey, statusId} = flags
       const apiKey =
         resolveApiKey(flags.apiKey, () => this.log('環境変数 BACKLOG_API_KEY からAPIキーを使用します')) ??
         this.error(API_KEY_NOT_FOUND_MESSAGE)
@@ -87,6 +95,8 @@ export default class Issue extends Command {
       const {issueRepository, projectRepository} = createBacklogRepositories({
         apiKey,
         domain,
+        onRateLimitExceeded: (waitSeconds: number) =>
+          this.log(`レート制限の上限に達しました。${waitSeconds}秒待機します...`),
         onRateLimitWait: () => this.log('レート制限を回避するため15秒間待機します...'),
       })
 
@@ -101,6 +111,7 @@ export default class Issue extends Command {
       await updateSettings(outputDir, {
         apiKey,
         domain,
+        downloadAttachments,
         folderType: FolderType.ISSUE,
         issueKeyFileName,
         issueKeyFolder,
@@ -114,6 +125,7 @@ export default class Issue extends Command {
         {
           count: maxCount,
           domain,
+          downloadAttachments,
           issueKeyFileName,
           issueKeyFolder,
           outputDir,
