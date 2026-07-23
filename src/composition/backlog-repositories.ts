@@ -12,7 +12,6 @@ export interface BacklogConnection {
   apiKey: string
   domain: string
   onRateLimitExceeded?: (waitSeconds: number) => void
-  onRateLimitWait?: () => void
 }
 
 export interface BacklogRepositories {
@@ -22,7 +21,7 @@ export interface BacklogRepositories {
   wikiRepository: WikiRepository
 }
 
-// 1つのHTTPクライアント（＝レート制限カウンタ）を全repositoryで共有する
+// 1つのHTTPクライアントを全repositoryで共有する
 export function createBacklogRepositories(connection: BacklogConnection): BacklogRepositories {
   const client = new BacklogHttpClient(connection)
   return {

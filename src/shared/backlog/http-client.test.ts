@@ -113,6 +113,36 @@ describe('BacklogHttpClient', () => {
     expect(notifiedWaits).to.deep.equal([1])
   })
 
+  it('429の待機は通常のリトライ上限を消費せず成功できること', async () => {
+    // 通常のリトライ上限(2回)を超える3回の429を返しても、待機して成功する
+    const headers = {'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) - 10)}
+    server.respondOnce('/api/v2/projects/TEST', {headers, status: 429})
+    server.respondOnce('/api/v2/projects/TEST', {headers, status: 429})
+    server.respondOnce('/api/v2/projects/TEST', {headers, status: 429})
+    server.respond('/api/v2/projects/TEST', {body: {id: 1}})
+
+    const result = await client().getJson<{id: number}>('/projects/TEST')
+
+    expect(result).to.deep.equal({id: 1})
+    expect(server.requests).to.have.length(4)
+  }, 10_000)
+
+  it('429の待機回数が上限を超えた場合はHttpErrorをスローすること', async () => {
+    const headers = {'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) - 10)}
+    server.respond('/api/v2/projects/TEST', {headers, status: 429})
+
+    try {
+      await client().getJson('/projects/TEST')
+      expect.fail('エラーがスローされるべきです')
+    } catch (error) {
+      expect(error).to.be.instanceOf(HttpError)
+      expect((error as HttpError).status).to.equal(429)
+    }
+
+    // 初回 + 待機後リトライ5回
+    expect(server.requests).to.have.length(6)
+  }, 10_000)
+
   it('エラーメッセージのURL中のapiKeyがマスクされること', async () => {
     server.respond('/api/v2/projects/TEST', {status: 403})
 
