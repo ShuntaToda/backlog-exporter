@@ -6,6 +6,18 @@ export function sanitizeFileName(name: string): string {
     .slice(0, 200) // 長すぎるファイル名を防ぐために200文字に制限
 }
 
+// 添付ファイル用: sanitizeFileNameと異なり、拡張子が消えないようドットを保持する
+export function sanitizeAttachmentFileName(name: string): string {
+  const sanitized = name.replaceAll(/[\\/:*?"<>|]/g, '_').replaceAll(/\s+/g, '_')
+  if (sanitized.length <= 200) return sanitized
+
+  const dotIndex = sanitized.lastIndexOf('.')
+  const extension = dotIndex > 0 ? sanitized.slice(dotIndex) : ''
+  if (extension.length === 0 || extension.length >= 200) return sanitized.slice(0, 200)
+
+  return sanitized.slice(0, 200 - extension.length) + extension
+}
+
 export function sanitizeWikiFileName(name: string): string {
   const invalidChars = ['\\', ':', '*', '?', '"', '<', '>', '|']
   let sanitizedName = name

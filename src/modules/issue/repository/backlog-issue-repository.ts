@@ -4,6 +4,10 @@ import {Issue, IssueComment} from '../domain/issue.js'
 
 export function newBacklogIssueRepository(client: BacklogHttpClient): IssueRepository {
   return {
+    async downloadAttachment(issueIdOrKey, attachmentId) {
+      return client.getBinary(`/issues/${issueIdOrKey}/attachments/${attachmentId}`)
+    },
+
     async fetchAllComments(issueKey) {
       const allComments: IssueComment[] = []
       let minId: number | undefined

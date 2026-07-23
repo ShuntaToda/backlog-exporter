@@ -5,6 +5,7 @@ export interface UpdateFlags {
   documentId?: string
   documentsOnly?: boolean
   domain?: string
+  downloadAttachments?: boolean
   force?: boolean
   issueIdOrKey?: string
   issueKeyFileName?: boolean
@@ -18,6 +19,7 @@ export interface UpdateFlags {
 export interface UpdatePlan {
   documentIds?: string[]
   domain?: string
+  downloadAttachments: boolean
   folderType?: FolderType
   issueIdOrKeys?: string[]
   issueKeyFileName: boolean
@@ -101,6 +103,7 @@ export function buildUpdatePlan(settings: Settings, flags: UpdateFlags): UpdateP
     documentIds,
     // コマンドライン引数と設定ファイルを組み合わせて使用する値を決定
     domain: flags.domain || settings.domain,
+    downloadAttachments: flags.downloadAttachments ?? settings.downloadAttachments ?? false,
     folderType: settings.folderType,
     issueIdOrKeys,
     // 設定ファイルからオプションを読み込み、コマンドライン引数で上書き

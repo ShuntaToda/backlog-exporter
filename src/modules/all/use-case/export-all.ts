@@ -25,6 +25,7 @@ export type ExportTarget = 'documents' | 'issues' | 'wiki'
 export interface ExportAllOptions {
   apiKey: string
   domain: string
+  downloadAttachments?: boolean
   issueKeyFileName?: boolean
   issueKeyFolder?: boolean
   maxCount: number
@@ -35,7 +36,8 @@ export interface ExportAllOptions {
 
 export async function exportAll(deps: ExportAllDeps, options: ExportAllOptions): Promise<void> {
   const {documentRepository, issueRepository, logger, projectRepository, wikiRepository} = deps
-  const {apiKey, domain, issueKeyFileName, issueKeyFolder, maxCount, outputRoot, projectIdOrKey, targets} = options
+  const {apiKey, domain, downloadAttachments, issueKeyFileName, issueKeyFolder, maxCount, outputRoot, projectIdOrKey, targets} =
+    options
 
   await ensureDirectory(outputRoot)
 
@@ -49,6 +51,7 @@ export async function exportAll(deps: ExportAllDeps, options: ExportAllOptions):
     await updateSettings(issueOutput, {
       apiKey,
       domain,
+      downloadAttachments,
       folderType: FolderType.ISSUE,
       issueKeyFileName,
       issueKeyFolder,
@@ -62,6 +65,7 @@ export async function exportAll(deps: ExportAllDeps, options: ExportAllOptions):
       {
         count: maxCount,
         domain,
+        downloadAttachments,
         issueKeyFileName,
         issueKeyFolder,
         outputDir: issueOutput,

@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest'
 
-import {sanitizeFileName, sanitizeWikiFileName} from './file-name.js'
+import {sanitizeAttachmentFileName, sanitizeFileName, sanitizeWikiFileName} from './file-name.js'
 
 describe('file-naming - ファイル名のサニタイズ', () => {
   describe('sanitizeFileName', () => {
@@ -45,6 +45,31 @@ describe('file-naming - ファイル名のサニタイズ', () => {
       const result = sanitizeFileName(input)
 
       expect(result).to.equal('テスト_ファイル_txt')
+    })
+  })
+
+  describe('sanitizeAttachmentFileName', () => {
+    it('拡張子のドットを保持すること', () => {
+      expect(sanitizeAttachmentFileName('image.png')).to.equal('image.png')
+    })
+
+    it('無効文字とスペースを置換しつつ拡張子を保持すること', () => {
+      expect(sanitizeAttachmentFileName('設計 資料:最終版.xlsx')).to.equal('設計_資料_最終版.xlsx')
+    })
+
+    it('200文字を超える場合は拡張子を保持したまま切り詰めること', () => {
+      const result = sanitizeAttachmentFileName(`${'a'.repeat(250)}.png`)
+
+      expect(result).to.have.length(200)
+      expect(result.endsWith('.png')).to.be.true
+    })
+
+    it('拡張子のない長い名前は単純に切り詰めること', () => {
+      expect(sanitizeAttachmentFileName('a'.repeat(250))).to.equal('a'.repeat(200))
+    })
+
+    it('拡張子自体が200文字以上の場合も200文字に収めること', () => {
+      expect(sanitizeAttachmentFileName(`a.${'b'.repeat(300)}`)).to.have.length(200)
     })
   })
 

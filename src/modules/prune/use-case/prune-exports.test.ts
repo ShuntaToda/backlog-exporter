@@ -335,6 +335,21 @@ describe('pruneIssues（不要なローカル課題ファイルの削除）', ()
     expect(existsSync(join(outputDir, '2026', 'TEST-9')), '空になった課題キーフォルダは削除されること').to.be.false
   })
 
+  it('ダウンロード済みの.md拡張子の添付ファイルは削除しないこと', async () => {
+    server.respond('/api/v2/issues', {
+      body: [{...issue('TEST-1', '添付つき課題'), attachments: [{id: 10, name: 'notes.md', size: 100}]}],
+    })
+
+    await fs.mkdir(join(outputDir, '2026', 'attachments', 'TEST-1'), {recursive: true})
+    await fs.writeFile(join(outputDir, '2026', '添付つき課題.md'), '# 添付つき課題')
+    await fs.writeFile(join(outputDir, '2026', 'attachments', 'TEST-1', '10_notes.md'), '# 添付本体')
+
+    const pruned = await pruneIssues(issuePruneDeps(), {outputDir, projectId: PROJECT_ID})
+
+    expect(pruned).to.equal(0)
+    expect(existsSync(join(outputDir, '2026', 'attachments', 'TEST-1', '10_notes.md'))).to.be.true
+  })
+
   it('課題が100件を超える場合はページングで全件を取得すること', async () => {
     server.respond('/api/v2/issues', (url) => {
       const offset = Number(url.searchParams.get('offset'))

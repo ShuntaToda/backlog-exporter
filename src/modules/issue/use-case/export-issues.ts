@@ -2,11 +2,11 @@ import path from 'node:path'
 
 import {writeProgress} from '../../../shared/console/progress.js'
 import {Logger} from '../../../shared/ports.js'
-import {writeMarkdownFile} from '../../../shared/storage/markdown-store.js'
+import {fileSize, writeBinaryFile, writeMarkdownFile} from '../../../shared/storage/markdown-store.js'
 import {appendLog} from '../../../shared/storage/update-log.js'
 import {filterIssuesUpdatedSince} from '../domain/issue-filter.js'
 import {buildIssueMarkdown} from '../domain/issue-markdown.js'
-import {issueRelativePath, issueUrl} from '../domain/issue-path.js'
+import {attachmentMarkdownLink, attachmentRelativePath, issueRelativePath, issueUrl} from '../domain/issue-path.js'
 import {IssueRepository} from '../domain/issue-repository.js'
 import {Issue, IssueComment} from '../domain/issue.js'
 
@@ -18,6 +18,7 @@ export interface ExportIssuesDeps {
 export interface ExportIssuesOptions {
   count?: number
   domain: string
+  downloadAttachments?: boolean
   issueIdOrKeys?: string[]
   issueKeyFileName?: boolean
   issueKeyFolder?: boolean
@@ -122,7 +123,45 @@ async function saveIssue(deps: ExportIssuesDeps, issue: Issue, options: ExportIs
     )
   }
 
+  const attachmentLinks = options.downloadAttachments
+    ? await downloadIssueAttachments(deps, issue, options)
+    : undefined
+
   const filePath = path.join(options.outputDir, issueRelativePath(issue, options))
-  await writeMarkdownFile(filePath, buildIssueMarkdown(issue, comments, backlogIssueUrl))
+  await writeMarkdownFile(filePath, buildIssueMarkdown(issue, comments, backlogIssueUrl, attachmentLinks))
   await appendLog(options.outputDir, `課題「${issue.summary}」を更新しました: ${backlogIssueUrl}`)
+}
+
+// 保存できた添付のみリンク化する。個々の失敗は警告に留め、課題本体の保存は続行する
+async function downloadIssueAttachments(
+  deps: ExportIssuesDeps,
+  issue: Issue,
+  options: ExportIssuesOptions,
+): Promise<Map<number, string>> {
+  const links = new Map<number, string>()
+
+  for (const attachment of issue.attachments ?? []) {
+    const absolutePath = path.join(options.outputDir, attachmentRelativePath(issue, attachment, options))
+    try {
+      // 添付IDは不変のため、サイズの一致するファイルが既にあれば再ダウンロードしない
+      // （サイズ不一致は過去の中断等による破損とみなして取得し直す）
+      // eslint-disable-next-line no-await-in-loop
+      if ((await fileSize(absolutePath)) !== attachment.size) {
+        // eslint-disable-next-line no-await-in-loop
+        const data = await deps.issueRepository.downloadAttachment(issue.issueKey, attachment.id)
+        // eslint-disable-next-line no-await-in-loop
+        await writeBinaryFile(absolutePath, data)
+      }
+
+      links.set(attachment.id, attachmentMarkdownLink(issue, attachment, options))
+    } catch (error) {
+      deps.logger.warn(
+        `課題 ${issue.issueKey} の添付ファイル「${attachment.name}」の取得に失敗しました: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      )
+    }
+  }
+
+  return links
 }

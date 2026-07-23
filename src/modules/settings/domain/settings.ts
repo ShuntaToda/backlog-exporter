@@ -7,6 +7,7 @@ export enum FolderType {
 export interface Settings {
   apiKey?: string
   domain?: string
+  downloadAttachments?: boolean
   folderType?: FolderType
   issueKeyFileName?: boolean
   issueKeyFolder?: boolean

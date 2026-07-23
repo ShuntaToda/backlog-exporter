@@ -48,6 +48,11 @@ export default class All extends Command {
       description: 'Backlog domain (e.g. example.backlog.jp)',
       required: true,
     }),
+    downloadAttachments: Flags.boolean({
+      char: 'd',
+      description: '課題の添付ファイルもダウンロードする',
+      required: false,
+    }),
     exclude: Flags.string({
       description: "Exclude the specified types, separated by commas (e.g., 'documents,wiki')",
       required: false,
@@ -85,7 +90,8 @@ export default class All extends Command {
     const {flags} = await this.parse(All)
 
     try {
-      const {domain, exclude, issueKeyFileName, issueKeyFolder, maxCount, only, projectIdOrKey} = flags
+      const {domain, downloadAttachments, exclude, issueKeyFileName, issueKeyFolder, maxCount, only, projectIdOrKey} =
+        flags
       const apiKey =
         resolveApiKey(flags.apiKey, () => this.log('環境変数 BACKLOG_API_KEY からAPIキーを使用します')) ??
         this.error(API_KEY_NOT_FOUND_MESSAGE)
@@ -104,6 +110,8 @@ export default class All extends Command {
       const repositories = createBacklogRepositories({
         apiKey,
         domain,
+        onRateLimitExceeded: (waitSeconds: number) =>
+          this.log(`レート制限の上限に達しました。${waitSeconds}秒待機します...`),
         onRateLimitWait: () => this.log('レート制限を回避するため15秒間待機します...'),
       })
 
@@ -112,6 +120,7 @@ export default class All extends Command {
         {
           apiKey,
           domain,
+          downloadAttachments,
           issueKeyFileName,
           issueKeyFolder,
           maxCount,

@@ -159,7 +159,24 @@ $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KE
 $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --issueKeyFileName --issueKeyFolder
 ```
 
+**課題の添付ファイルもダウンロードする**
+
+```sh
+$ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --apiKey YOUR_API_KEY --downloadAttachments
+```
+
 エクスポートされた課題は、指定したディレクトリ内に Markdown ファイルとして保存されます。ファイル名は課題のキーに基づいて自動的に生成されます。
+
+## 添付ファイルのダウンロード
+
+`--downloadAttachments`（短縮形: `-d`）フラグを指定すると、課題の添付ファイルもダウンロードされます（`all` / `issue` / `update` コマンドで使用可能）。
+
+- 保存先はデフォルトでは `{年}/attachments/{課題キー}/`、`--issueKeyFolder` 指定時は課題フォルダ直下の `attachments/` です
+- ファイル名は同名の衝突を避けるため `{添付ID}_{ファイル名}` になります
+- Markdown の `## 添付ファイル` セクションにローカルファイルへの相対リンクが記載されます（フラグ未指定時はファイル名とサイズのみ記載）
+- 本文・コメント内の添付画像のインライン記法（`![image][ファイル名]` / `#image(ファイル名)`）は、ダウンロード済みファイルへの画像リンクに変換され、Markdownビューアでそのまま表示できます
+- ダウンロード済みのファイルは再ダウンロードされないため、`update` コマンドでの差分更新でも効率的に動作します
+- 設定は `backlog-settings.json` に保存され、以降の `update` コマンドで自動的に引き継がれます
 
 ## カスタム属性の対応
 
