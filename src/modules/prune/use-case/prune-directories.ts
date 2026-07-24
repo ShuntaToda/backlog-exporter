@@ -21,7 +21,6 @@ export interface PruneDeps {
     apiKey: string
     domain: string
     onRateLimitExceeded?: (waitSeconds: number) => void
-    onRateLimitWait?: () => void
   }) => {
     documentRepository: DocumentRepository
     issueRepository: IssueRepository
@@ -112,7 +111,6 @@ async function pruneDirectory(
     apiKey,
     domain,
     onRateLimitExceeded: (waitSeconds: number) => logger.log(`レート制限の上限に達しました。${waitSeconds}秒待機します...`),
-    onRateLimitWait: () => logger.log('レート制限を回避するため15秒間待機します...'),
   })
 
   if (target === 'wiki') {

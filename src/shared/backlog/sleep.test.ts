@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest'
 
-import {sleep} from './rate-limiter.js'
+import {sleep} from './sleep.js'
 
 describe('sleep', () => {
   it('指定した時間だけ待機すること', async () => {
