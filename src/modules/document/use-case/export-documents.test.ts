@@ -220,4 +220,113 @@ describe('exportDocuments', () => {
       expect(existsSync(join(outputDir, '親フォルダ', '子A.md')), '子は保存されること').to.be.true
     })
   })
+
+  describe('添付ファイルのダウンロード', () => {
+    it('downloadAttachments指定時に添付を保存し、Markdownにローカルリンクを記載すること', async () => {
+      const binary = new Uint8Array([1, 2, 3, 4])
+      respondTree([{children: [], id: 'docA', name: 'ドキュメントA'}])
+      server.respond('/api/v2/documents/docA', {
+        body: {
+          ...documentDetail('docA', 'ドキュメントA', '本文'),
+          attachments: [
+            {created: '2026-01-01T00:00:00Z', createdUser: {id: 1, name: '作成者'}, id: 77, name: 'design.png', size: 4},
+          ],
+        },
+      })
+      server.respond('/api/v2/documents/docA/attachments/77', {body: binary})
+
+      await exportDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        exportOptions({downloadAttachments: true}),
+      )
+
+      const saved = await fs.readFile(join(outputDir, 'attachments', 'ドキュメントA', '77_design.png'))
+      expect(new Uint8Array(saved)).to.deep.equal(binary)
+
+      const content = await fs.readFile(join(outputDir, 'ドキュメントA.md'), 'utf8')
+      expect(content).to.include('- [design.png](./attachments/ドキュメントA/77_design.png) (0.0 KB) - 作成者: 作成者')
+    })
+
+    it('フォルダ配下のドキュメントの添付はフォルダ内のattachmentsに保存されること', async () => {
+      respondTree([{children: [{children: [], id: 'childA', name: '子A'}], id: 'parent1', name: '親フォルダ'}])
+      server.respond('/api/v2/documents/parent1', {body: documentDetail('parent1', '親フォルダ', '')})
+      server.respond('/api/v2/documents/childA', {
+        body: {
+          ...documentDetail('childA', '子A', 'A本文'),
+          attachments: [
+            {created: '2026-01-01T00:00:00Z', createdUser: {id: 1, name: '作成者'}, id: 78, name: 'log.txt', size: 2},
+          ],
+        },
+      })
+      server.respond('/api/v2/documents/childA/attachments/78', {body: new Uint8Array([5, 6])})
+
+      await exportDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        exportOptions({downloadAttachments: true}),
+      )
+
+      expect(existsSync(join(outputDir, '親フォルダ', 'attachments', '子A', '78_log.txt'))).to.be.true
+      const content = await fs.readFile(join(outputDir, '親フォルダ', '子A.md'), 'utf8')
+      expect(content).to.include('- [log.txt](./attachments/子A/78_log.txt)')
+    })
+
+    it('downloadAttachments指定時も本文中の参照はBacklogの原文のまま維持すること', async () => {
+      const plain = [
+        '説明',
+        '![](/document/backend/TEST/docA/file/77){width="415" height="233" uuid="x" textAlign="center"}',
+        '[attachmentBadge id="78" projectKey="TEST" documentId="docA" uuid="y" attachmentUrl="/document/backend/TEST/docA/file/78" filename="資料.pdf" size="2" created="2026-01-01T00:00:00Z"]',
+      ].join('\n')
+      respondTree([{children: [], id: 'docA', name: 'ドキュメントA'}])
+      server.respond('/api/v2/documents/docA', {
+        body: {
+          ...documentDetail('docA', 'ドキュメントA', plain),
+          attachments: [
+            {created: '2026-01-01T00:00:00Z', createdUser: {id: 1, name: '作成者'}, id: 77, name: '図.png', size: 4},
+            {created: '2026-01-01T00:00:00Z', createdUser: {id: 1, name: '作成者'}, id: 78, name: '資料.pdf', size: 2},
+          ],
+        },
+      })
+      server.respond('/api/v2/documents/docA/attachments/77', {body: new Uint8Array([1, 2, 3, 4])})
+      server.respond('/api/v2/documents/docA/attachments/78', {body: new Uint8Array([5, 6])})
+
+      await exportDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        exportOptions({downloadAttachments: true}),
+      )
+
+      const content = await fs.readFile(join(outputDir, 'ドキュメントA.md'), 'utf8')
+      expect(content, '本文は原文のまま').to.include(plain)
+      expect(content, '添付セクションにはローカルリンクが付くこと').to.include(
+        '- [図.png](./attachments/ドキュメントA/77_図.png)',
+      )
+    })
+
+    it('downloadAttachments未指定時はダウンロードせず、メタデータのみ記載すること', async () => {
+      respondTree([{children: [], id: 'docA', name: 'ドキュメントA'}])
+      server.respond('/api/v2/documents/docA', {
+        body: {
+          ...documentDetail('docA', 'ドキュメントA', '本文'),
+          attachments: [
+            {
+              created: '2026-01-01T00:00:00Z',
+              createdUser: {id: 1, name: '作成者'},
+              id: 77,
+              name: 'design.png',
+              size: 2048,
+            },
+          ],
+        },
+      })
+
+      await exportDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        exportOptions(),
+      )
+
+      expect(server.requestedPaths()).to.not.include('/api/v2/documents/docA/attachments/77')
+      const content = await fs.readFile(join(outputDir, 'ドキュメントA.md'), 'utf8')
+      expect(content).to.include('- **design.png** (2.0 KB)')
+      expect(content).to.not.include('](./attachments')
+    })
+  })
 })

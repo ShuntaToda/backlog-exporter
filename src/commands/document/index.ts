@@ -32,6 +32,11 @@ export default class Document extends Command {
       description: 'Backlog domain (e.g. example.backlog.jp)',
       required: true,
     }),
+    downloadAttachments: Flags.boolean({
+      char: 'd',
+      description: '添付ファイルもダウンロードする',
+      required: false,
+    }),
     keyword: Flags.string({
       description: '検索キーワード',
       required: false,
@@ -51,7 +56,7 @@ export default class Document extends Command {
     const {flags} = await this.parse(Document)
 
     try {
-      const {domain, keyword, projectIdOrKey} = flags
+      const {domain, downloadAttachments, keyword, projectIdOrKey} = flags
       const apiKey =
         resolveApiKey(flags.apiKey, () => this.log('環境変数 BACKLOG_API_KEY からAPIキーを使用します')) ??
         this.error(API_KEY_NOT_FOUND_MESSAGE)
@@ -76,6 +81,7 @@ export default class Document extends Command {
       await updateSettings(outputDir, {
         apiKey,
         domain,
+        downloadAttachments,
         folderType: FolderType.DOCUMENT,
         outputDir,
         projectIdOrKey,
@@ -86,6 +92,7 @@ export default class Document extends Command {
         {documentRepository, logger},
         {
           domain,
+          downloadAttachments,
           keyword,
           outputDir,
           projectId,

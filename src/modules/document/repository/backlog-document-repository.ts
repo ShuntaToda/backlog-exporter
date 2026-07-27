@@ -4,6 +4,11 @@ import {DocumentDetail, DocumentTree} from '../domain/document.js'
 
 export function newBacklogDocumentRepository(client: BacklogHttpClient): DocumentRepository {
   return {
+    // 公式ドキュメント未記載だが公式SDK(nulab/backlog-js)に存在するエンドポイント
+    async downloadAttachment(documentId, attachmentId) {
+      return client.getBinary(`/documents/${documentId}/attachments/${attachmentId}`)
+    },
+
     async fetchAllTitles(projectId) {
       const titlesById = new Map<string, string>()
       const pageSize = 100

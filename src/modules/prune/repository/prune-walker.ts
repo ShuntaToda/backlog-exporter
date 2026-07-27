@@ -26,6 +26,12 @@ export async function pruneLocalMarkdownFiles(options: {
       const fullPath = path.join(dir, entry.name)
       const relativePath = path.relative(options.outputDir, fullPath).normalize('NFC')
       if (entry.isDirectory()) {
+        // 添付ファイルの保存先。Wiki・ドキュメントのpruneは一覧APIしか呼ばず添付の期待パスを持てないため、
+        // attachments/ 配下は走査せず丸ごと保護する（.md形式の添付の誤削除防止）
+        if (entry.name === 'attachments') {
+          continue
+        }
+
         await pruneDirectory(fullPath)
 
         const remaining = await fs.readdir(fullPath)

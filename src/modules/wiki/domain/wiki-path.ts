@@ -1,11 +1,40 @@
 import path from 'node:path'
 
+import {attachmentFileName, encodeLinkDestination} from '../../../shared/attachment.js'
 import {backlogOrigin} from '../../../shared/backlog-url.js'
 import {sanitizeWikiFileName} from '../../../shared/file-name.js'
 import {ExpectedPaths} from '../../prune/domain/expected-paths.js'
+import {WikiAttachment} from './wiki.js'
 
 export function wikiRelativePath(wikiName: string): string {
   return `${sanitizeWikiFileName(wikiName)}.md`
+}
+
+// 添付の保存先はMarkdownと同じディレクトリの attachments/{Wikiファイル名}/ 配下。
+// Wiki名変更時は再ダウンロードになるが、Markdown本体（{Wiki名}.md）と同じ挙動で閲覧性を優先する
+function wikiAttachmentDirName(wikiName: string): string {
+  return path.basename(wikiRelativePath(wikiName), '.md')
+}
+
+export function wikiAttachmentRelativePath(
+  wikiName: string,
+  attachment: Pick<WikiAttachment, 'id' | 'name'>,
+): string {
+  return path.join(
+    path.dirname(wikiRelativePath(wikiName)),
+    'attachments',
+    wikiAttachmentDirName(wikiName),
+    attachmentFileName(attachment),
+  )
+}
+
+export function wikiAttachmentMarkdownLink(
+  wikiName: string,
+  attachment: Pick<WikiAttachment, 'id' | 'name'>,
+): string {
+  return encodeLinkDestination(
+    ['.', 'attachments', wikiAttachmentDirName(wikiName), attachmentFileName(attachment)].join('/'),
+  )
 }
 
 export function wikiUrl(domain: string, wikiId: string): string {

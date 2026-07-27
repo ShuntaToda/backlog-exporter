@@ -29,6 +29,11 @@ Wikiをダウンロードする
       description: 'Backlog domain (e.g. example.backlog.jp)',
       required: true,
     }),
+    downloadAttachments: Flags.boolean({
+      char: 'd',
+      description: '添付ファイルもダウンロードする',
+      required: false,
+    }),
     output: Flags.string({
       char: 'o',
       description: '出力ディレクトリパス',
@@ -44,7 +49,7 @@ Wikiをダウンロードする
     const {flags} = await this.parse(Wiki)
 
     try {
-      const {domain, projectIdOrKey} = flags
+      const {domain, downloadAttachments, projectIdOrKey} = flags
       const apiKey =
         resolveApiKey(flags.apiKey, () => this.log('環境変数 BACKLOG_API_KEY からAPIキーを使用します')) ??
         this.error(API_KEY_NOT_FOUND_MESSAGE)
@@ -65,6 +70,7 @@ Wikiをダウンロードする
       await updateSettings(outputDir, {
         apiKey,
         domain,
+        downloadAttachments,
         folderType: FolderType.WIKI,
         outputDir,
         projectIdOrKey,
@@ -75,6 +81,7 @@ Wikiをダウンロードする
         {logger, wikiRepository},
         {
           domain,
+          downloadAttachments,
           outputDir,
           projectIdOrKey,
         },

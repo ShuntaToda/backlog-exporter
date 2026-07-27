@@ -131,6 +131,7 @@ async function updateDirectory(deps: UpdateDeps, targetDir: string, flags: Updat
       {logger, wikiRepository},
       {
         domain: plan.domain,
+        downloadAttachments: plan.downloadAttachments,
         lastUpdated: plan.wikiIds ? undefined : plan.lastUpdated,
         outputDir: targetDir,
         projectIdOrKey: plan.projectIdOrKey,
@@ -152,6 +153,7 @@ async function updateDirectory(deps: UpdateDeps, targetDir: string, flags: Updat
       {
         documentIds: plan.documentIds,
         domain: plan.domain,
+        downloadAttachments: plan.downloadAttachments,
         lastUpdated: plan.documentIds ? undefined : plan.lastUpdated,
         outputDir: targetDir,
         projectId,

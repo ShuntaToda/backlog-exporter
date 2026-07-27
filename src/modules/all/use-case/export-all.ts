@@ -84,6 +84,7 @@ export async function exportAll(deps: ExportAllDeps, options: ExportAllOptions):
     await updateSettings(wikiOutput, {
       apiKey,
       domain,
+      downloadAttachments,
       folderType: FolderType.WIKI,
       outputDir: wikiOutput,
       projectIdOrKey,
@@ -94,6 +95,7 @@ export async function exportAll(deps: ExportAllDeps, options: ExportAllOptions):
       {logger, wikiRepository},
       {
         domain,
+        downloadAttachments,
         outputDir: wikiOutput,
         projectIdOrKey,
       },
@@ -110,6 +112,7 @@ export async function exportAll(deps: ExportAllDeps, options: ExportAllOptions):
     await updateSettings(documentOutput, {
       apiKey,
       domain,
+      downloadAttachments,
       folderType: FolderType.DOCUMENT,
       outputDir: documentOutput,
       projectIdOrKey,
@@ -120,6 +123,7 @@ export async function exportAll(deps: ExportAllDeps, options: ExportAllOptions):
       {documentRepository, logger},
       {
         domain,
+        downloadAttachments,
         outputDir: documentOutput,
         projectId,
         projectIdOrKey,
