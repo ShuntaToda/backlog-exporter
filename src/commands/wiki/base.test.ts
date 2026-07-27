@@ -83,3 +83,14 @@ describe('Wikiコマンド - 基本機能', () => {
     })
   })
 })
+
+describe('Wikiコマンド - 添付ファイルダウンロードフラグ', () => {
+  it('downloadAttachmentsフラグが正しく設定されていること', () => {
+    const {flags} = Wiki
+
+    expect(flags.downloadAttachments).to.exist
+    expect(flags.downloadAttachments.required).to.be.false
+    expect(flags.downloadAttachments.char).to.equal('d')
+    expect(flags.downloadAttachments.description).to.include('添付ファイル')
+  })
+})
