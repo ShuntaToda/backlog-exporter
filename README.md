@@ -169,14 +169,19 @@ $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KE
 
 ## 添付ファイルのダウンロード
 
-`--downloadAttachments`（短縮形: `-d`）フラグを指定すると、課題の添付ファイルもダウンロードされます（`all` / `issue` / `update` コマンドで使用可能）。
+`--downloadAttachments`（短縮形: `-d`）フラグを指定すると、課題・Wiki・ドキュメントの添付ファイルもダウンロードされます（`all` / `issue` / `wiki` / `document` / `update` コマンドで使用可能）。
 
-- 保存先はデフォルトでは `{年}/attachments/{課題キー}/`、`--issueKeyFolder` 指定時は課題フォルダ直下の `attachments/` です
+- 保存先:
+  - 課題: デフォルトは `{年}/attachments/{課題キー}/`、`--issueKeyFolder` 指定時は課題フォルダ直下の `attachments/`
+  - Wiki: Markdownと同じディレクトリの `attachments/{Wiki名}/`（階層Wikiは末尾のページ名）
+  - ドキュメント: Markdownと同じディレクトリの `attachments/{ドキュメント名}/`
 - ファイル名は同名の衝突を避けるため `{添付ID}_{ファイル名}` になります
 - Markdown の `## 添付ファイル` セクションにローカルファイルへの相対リンクが記載されます（フラグ未指定時はファイル名とサイズのみ記載）
-- 本文・コメント内の添付画像のインライン記法（`![image][ファイル名]` / `#image(ファイル名)`）は、ダウンロード済みファイルへの画像リンクに変換され、Markdownビューアでそのまま表示できます
+- 課題の本文・コメント内の添付画像のインライン記法（`![image][ファイル名]` / `#image(ファイル名)`）は、ダウンロード済みファイルへの画像リンクに変換され、Markdownビューアでそのまま表示できます
+- Wiki・ドキュメントの本文はBacklogの原文のまま維持されます（添付参照記法の書き換えは行いません）。添付ファイルへは `## 添付ファイル` セクションのリンクからアクセスできます
 - ダウンロード済みのファイルは再ダウンロードされないため、`update` コマンドでの差分更新でも効率的に動作します
-- 設定は `backlog-settings.json` に保存され、以降の `update` コマンドで自動的に引き継がれます
+- 設定は `backlog-settings.json` に保存され、以降の `update` コマンドで自動的に引き継がれます（`update` コマンド自体でフラグを指定した場合はその実行のみ有効です）
+- Backlog側で削除された添付ファイルは、誤削除防止のため `prune` コマンドでも削除されず残ります
 
 ## カスタム属性の対応
 
