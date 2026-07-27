@@ -240,6 +240,22 @@ describe('pruneWikis（不要なローカルWikiの削除）', () => {
     expect(existsSync(join(outputDir, 'WikiB.md')), 'WikiB.md は削除されること').to.be.false
   })
 
+  it('attachmentsディレクトリ配下は.md形式の添付があっても削除しないこと', async () => {
+    server.respond('/api/v2/wikis', {body: [{id: '1', name: 'WikiA', updated: '2026-01-01T00:00:00Z'}]})
+
+    await fs.writeFile(join(outputDir, 'WikiA.md'), '# WikiA')
+    await fs.mkdir(join(outputDir, 'attachments', '1'), {recursive: true})
+    await fs.writeFile(join(outputDir, 'attachments', '1', '9_notes.md'), '# 添付本体')
+
+    const pruned = await pruneWikis(
+      {logger: stubLogger, wikiRepository: newBacklogWikiRepository(client())},
+      {outputDir, projectIdOrKey: PROJECT_KEY},
+    )
+
+    expect(pruned).to.equal(0)
+    expect(existsSync(join(outputDir, 'attachments', '1', '9_notes.md'))).to.be.true
+  })
+
   it('スラッシュを含むWiki名（階層）のファイルを正しく扱い、空ディレクトリを削除すること', async () => {
     server.respond('/api/v2/wikis', {body: [{id: '1', name: '親/子A', updated: '2026-01-01T00:00:00Z'}]})
 
