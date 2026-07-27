@@ -1,5 +1,6 @@
 import path from 'node:path'
 
+import {attachmentFileName, encodeLinkDestination} from '../../../shared/attachment.js'
 import {backlogOrigin} from '../../../shared/backlog-url.js'
 import {sanitizeFileName} from '../../../shared/file-name.js'
 import {ExpectedPaths} from '../../prune/domain/expected-paths.js'
@@ -18,6 +19,22 @@ export function documentFileName(title: string, asParentIndex: boolean): string 
 
 export function documentUrl(domain: string, projectIdOrKey: string, documentId: string): string {
   return `${backlogOrigin(domain)}/document/${projectIdOrKey}/${documentId}`
+}
+
+// 添付の保存先はMarkdownと同じディレクトリの attachments/{ドキュメント名}/ 配下。
+// タイトル改名時は再ダウンロードになるが、Markdown本体（{タイトル}.md）と同じ挙動で閲覧性を優先する
+export function documentAttachmentRelativePath(
+  currentPath: string,
+  documentTitle: string,
+  attachment: {id: number; name: string},
+): string {
+  return path.join(currentPath, 'attachments', sanitizeFileName(documentTitle), attachmentFileName(attachment))
+}
+
+export function documentAttachmentMarkdownLink(documentTitle: string, attachment: {id: number; name: string}): string {
+  return encodeLinkDestination(
+    ['.', 'attachments', sanitizeFileName(documentTitle), attachmentFileName(attachment)].join('/'),
+  )
 }
 
 export interface DocumentTreePaths extends ExpectedPaths {

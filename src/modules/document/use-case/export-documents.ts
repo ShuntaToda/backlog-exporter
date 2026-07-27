@@ -2,10 +2,19 @@ import path from 'node:path'
 
 import {writeProgress} from '../../../shared/console/progress.js'
 import {Logger} from '../../../shared/ports.js'
-import {deleteFile, ensureDirectory, fileExists, writeMarkdownFile} from '../../../shared/storage/markdown-store.js'
+import {
+  deleteFile,
+  ensureDirectory,
+  fileExists,
+  fileSize,
+  writeBinaryFile,
+  writeMarkdownFile,
+} from '../../../shared/storage/markdown-store.js'
 import {appendLog} from '../../../shared/storage/update-log.js'
 import {buildDocumentMarkdown} from '../domain/document-markdown.js'
 import {
+  documentAttachmentMarkdownLink,
+  documentAttachmentRelativePath,
   documentFileName,
   documentFolderPath,
   documentUrl,
@@ -13,7 +22,7 @@ import {
 } from '../domain/document-path.js'
 import {DocumentRepository} from '../domain/document-repository.js'
 import {planDocumentSave} from '../domain/document-save-plan.js'
-import {DocumentNode} from '../domain/document.js'
+import {DocumentDetail, DocumentNode} from '../domain/document.js'
 
 export interface ExportDocumentsDeps {
   documentRepository: DocumentRepository
@@ -23,6 +32,7 @@ export interface ExportDocumentsDeps {
 export interface ExportDocumentsOptions {
   documentIds?: string[]
   domain: string
+  downloadAttachments?: boolean
   keyword?: string
   lastUpdated?: string
   outputDir: string
@@ -87,7 +97,10 @@ export async function exportDocuments(deps: ExportDocumentsDeps, options: Export
 
         case 'save': {
           const backlogDocumentUrl = documentUrl(options.domain, options.projectIdOrKey, node.id)
-          await writeMarkdownFile(filePath, buildDocumentMarkdown(documentDetail, backlogDocumentUrl))
+          const attachmentLinks = options.downloadAttachments
+            ? await downloadDocumentAttachments(deps, documentDetail, currentPath, options.outputDir)
+            : undefined
+          await writeMarkdownFile(filePath, buildDocumentMarkdown(documentDetail, backlogDocumentUrl, attachmentLinks))
           writtenFiles.add(filePath)
           await appendLog(
             options.outputDir,
@@ -137,4 +150,41 @@ export async function exportDocuments(deps: ExportDocumentsDeps, options: Export
 
   logger.log(`\n合計 ${processedDocuments.length}件のドキュメントが処理されました。`)
   logger.log('ドキュメントのダウンロードが完了しました！')
+}
+
+// 保存できた添付のみリンク化する。個々の失敗は警告に留め、ドキュメント本体の保存は続行する
+async function downloadDocumentAttachments(
+  deps: ExportDocumentsDeps,
+  documentDetail: DocumentDetail,
+  currentPath: string,
+  outputDir: string,
+): Promise<Map<number, string>> {
+  const links = new Map<number, string>()
+
+  for (const attachment of documentDetail.attachments ?? []) {
+    const absolutePath = path.join(
+      outputDir,
+      documentAttachmentRelativePath(currentPath, documentDetail.title, attachment),
+    )
+    try {
+      // 添付IDは不変のため、サイズの一致するファイルが既にあれば再ダウンロードしない
+      // eslint-disable-next-line no-await-in-loop
+      if ((await fileSize(absolutePath)) !== attachment.size) {
+        // eslint-disable-next-line no-await-in-loop
+        const data = await deps.documentRepository.downloadAttachment(documentDetail.id, attachment.id)
+        // eslint-disable-next-line no-await-in-loop
+        await writeBinaryFile(absolutePath, data)
+      }
+
+      links.set(attachment.id, documentAttachmentMarkdownLink(documentDetail.title, attachment))
+    } catch (error) {
+      deps.logger.warn(
+        `ドキュメント「${documentDetail.title}」の添付ファイル「${attachment.name}」の取得に失敗しました: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      )
+    }
+  }
+
+  return links
 }

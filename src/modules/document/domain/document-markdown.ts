@@ -1,15 +1,23 @@
+import {escapeLinkText} from '../../../shared/attachment.js'
 import {wrapBody} from '../../../shared/markdown/body-marker.js'
 import {DocumentDetail} from './document.js'
 
-export function buildDocumentMarkdown(documentDetail: DocumentDetail, backlogDocumentUrl: string): string {
-  // 添付ファイルリストの作成
+
+export function buildDocumentMarkdown(
+  documentDetail: DocumentDetail,
+  backlogDocumentUrl: string,
+  attachmentLinks?: Map<number, string>,
+): string {
+  // 添付ファイルリストの作成（ダウンロード済みはローカルへの相対リンク付き）
   let attachmentsSection = ''
   if (documentDetail.attachments && documentDetail.attachments.length > 0) {
     attachmentsSection = '\n\n## 添付ファイル\n'
     for (const attachment of documentDetail.attachments) {
       const attachmentDate = new Date(attachment.created).toLocaleString('ja-JP')
       const fileSize = (attachment.size / 1024).toFixed(1)
-      attachmentsSection += `- **${attachment.name}** (${fileSize} KB) - 作成者: ${attachment.createdUser.name}, 作成日時: ${attachmentDate}\n`
+      const link = attachmentLinks?.get(attachment.id)
+      const label = link ? `[${escapeLinkText(attachment.name)}](${link})` : `**${attachment.name}**`
+      attachmentsSection += `- ${label} (${fileSize} KB) - 作成者: ${attachment.createdUser.name}, 作成日時: ${attachmentDate}\n`
     }
   }
 
