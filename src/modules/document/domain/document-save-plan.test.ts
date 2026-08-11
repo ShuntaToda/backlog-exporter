@@ -3,10 +3,11 @@ import {describe, expect, it} from 'vitest'
 import {planDocumentSave} from './document-save-plan.js'
 
 const base = {
+  alreadyWrittenThisRun: false,
   asParentIndex: false,
   body: '本文',
-  parentIndexAlreadyWrittenThisRun: false,
-  parentIndexExists: false,
+  fileExists: false,
+  missingFromTree: false,
   updated: '2026-01-02T00:00:00Z',
 }
 
@@ -39,7 +40,7 @@ describe('planDocumentSave（ドキュメント保存の判断）', () => {
     })
 
     it('本文が空に変更された親は、残っている古い親indexを削除すること', () => {
-      expect(planDocumentSave({...parent, body: '', parentIndexExists: true})).to.equal('delete-stale-parent-index')
+      expect(planDocumentSave({...parent, body: '', fileExists: true})).to.equal('delete-stale-parent-index')
     })
 
     it('未更新でも親indexが未作成ならバックフィルとして保存すること', () => {
@@ -47,15 +48,35 @@ describe('planDocumentSave（ドキュメント保存の判断）', () => {
     })
 
     it('未更新で親indexが作成済みならスキップすること', () => {
-      expect(planDocumentSave({...parent, lastUpdated: '2026-06-01T00:00:00Z', parentIndexExists: true})).to.equal(
+      expect(planDocumentSave({...parent, fileExists: true, lastUpdated: '2026-06-01T00:00:00Z'})).to.equal(
         'skip-unchanged',
       )
     })
 
     it('子ドキュメントが同名ファイルを書き込み済みなら上書きせずスキップすること', () => {
-      expect(planDocumentSave({...parent, parentIndexAlreadyWrittenThisRun: true})).to.equal(
-        'skip-parent-index-collision',
+      expect(planDocumentSave({...parent, alreadyWrittenThisRun: true})).to.equal('skip-parent-index-collision')
+    })
+  })
+
+  describe('ツリーに現れないドキュメント', () => {
+    const missing = {...base, missingFromTree: true}
+
+    it('未更新でもファイルが無ければバックフィルとして保存すること', () => {
+      expect(planDocumentSave({...missing, lastUpdated: '2026-06-01T00:00:00Z'})).to.equal('save')
+    })
+
+    it('未更新でファイルが既にあればスキップすること', () => {
+      expect(planDocumentSave({...missing, fileExists: true, lastUpdated: '2026-06-01T00:00:00Z'})).to.equal(
+        'skip-unchanged',
       )
+    })
+
+    it('本文が空でもファイルを作成すること（親indexとは異なりドキュメント本体のため）', () => {
+      expect(planDocumentSave({...missing, body: ''})).to.equal('save')
+    })
+
+    it('同名ファイルを書き込み済みなら上書きせずスキップすること', () => {
+      expect(planDocumentSave({...missing, alreadyWrittenThisRun: true})).to.equal('skip-fallback-collision')
     })
   })
 })

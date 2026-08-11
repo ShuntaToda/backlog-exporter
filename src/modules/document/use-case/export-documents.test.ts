@@ -7,7 +7,7 @@ import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it} from '
 import {BacklogHttpClient} from '../../../shared/backlog/http-client.js'
 import {BODY_END_MARKER, BODY_START_MARKER} from '../../../shared/markdown/body-marker.js'
 import {BacklogMockServer} from '../../../shared/testing/backlog-mock-server.js'
-import {stubLogger} from '../../../shared/testing/stub-logger.js'
+import {createRecordingLogger, stubLogger} from '../../../shared/testing/stub-logger.js'
 import {newBacklogDocumentRepository} from '../repository/backlog-document-repository.js'
 import {exportDocuments} from './export-documents.js'
 
@@ -41,6 +41,8 @@ describe('exportDocuments', () => {
   beforeEach(async () => {
     server.reset()
     outputDir = await fs.mkdtemp(join(tmpdir(), 'backlog-doc-test-'))
+    // ツリーの補完に使う一覧APIは既定で空にしておき、必要なテストだけ上書きする
+    respondDocumentList([])
   })
 
   afterEach(async () => {
@@ -57,14 +59,18 @@ describe('exportDocuments', () => {
     ...extra,
   })
 
-  const respondTree = (children: unknown[]) => {
+  const respondTree = (children: unknown[], trashChildren: unknown[] = []) => {
     server.respond('/api/v2/documents/tree', {
       body: {
         activeTree: {children, id: 'root'},
         projectId: PROJECT_ID,
-        trashTree: {children: [], id: 'trash'},
+        trashTree: {children: trashChildren, id: 'trash'},
       },
     })
+  }
+
+  const respondDocumentList = (documents: Array<{id: string; title: string}>) => {
+    server.respond('/api/v2/documents', {body: documents})
   }
 
   it('ドキュメントの内容（本文）がマーカーで囲まれて保存されること', async () => {
@@ -218,6 +224,171 @@ describe('exportDocuments', () => {
       expect(existsSync(join(outputDir, '親フォルダ', '00_index.md')), 'nullの本文は空として扱いindexを作らないこと').to
         .be.false
       expect(existsSync(join(outputDir, '親フォルダ', '子A.md')), '子は保存されること').to.be.true
+    })
+  })
+
+  describe('ツリーに現れないドキュメント', () => {
+    it('一覧APIにしか存在しないドキュメントを出力ルート直下に保存すること', async () => {
+      respondTree([{children: [], id: 'd1', name: 'ツリー内'}])
+      respondDocumentList([
+        {id: 'd1', title: 'ツリー内'},
+        {id: 'd2', title: 'ツリー外'},
+      ])
+      server.respond('/api/v2/documents/d1', {body: documentDetail('d1', 'ツリー内', 'ツリー内の本文')})
+      server.respond('/api/v2/documents/d2', {body: documentDetail('d2', 'ツリー外', 'ツリー外の本文')})
+
+      await exportDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        exportOptions(),
+      )
+
+      const content = await fs.readFile(join(outputDir, 'ツリー外.md'), 'utf8')
+      expect(content).to.include('ツリー外の本文')
+      expect(existsSync(join(outputDir, 'ツリー内.md')), 'ツリー内のドキュメントも従来どおり保存されること').to.be.true
+    })
+
+    it('フォルダ配下のドキュメントを二重に保存しないこと', async () => {
+      respondTree([{children: [{children: [], id: 'childA', name: '子A'}], id: 'parent1', name: '親フォルダ'}])
+      respondDocumentList([
+        {id: 'childA', title: '子A'},
+        {id: 'parent1', title: '親フォルダ'},
+      ])
+      server.respond('/api/v2/documents/parent1', {body: documentDetail('parent1', '親フォルダ', '親の本文')})
+      server.respond('/api/v2/documents/childA', {body: documentDetail('childA', '子A', 'A本文')})
+
+      await exportDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        exportOptions(),
+      )
+
+      expect(existsSync(join(outputDir, '親フォルダ', '子A.md')), 'ツリー上の位置に保存されること').to.be.true
+      expect(existsSync(join(outputDir, '子A.md')), '出力ルート直下には保存されないこと').to.be.false
+      expect(existsSync(join(outputDir, '親フォルダ.md')), '親ドキュメントも重複保存されないこと').to.be.false
+    })
+
+    it('ルート直下のツリー内ドキュメントと同名の場合、上書きせず警告すること', async () => {
+      respondTree([{children: [], id: 'd1', name: '同じ名前'}])
+      respondDocumentList([
+        {id: 'd1', title: '同じ名前'},
+        {id: 'd2', title: '同じ名前'},
+      ])
+      server.respond('/api/v2/documents/d1', {body: documentDetail('d1', '同じ名前', 'ツリー内の本文')})
+      server.respond('/api/v2/documents/d2', {body: documentDetail('d2', '同じ名前', 'ツリー外の本文')})
+
+      const logger = createRecordingLogger()
+      await exportDocuments({documentRepository: newBacklogDocumentRepository(client()), logger}, exportOptions())
+
+      const content = await fs.readFile(join(outputDir, '同じ名前.md'), 'utf8')
+      expect(content, 'ツリー内のドキュメントの内容が残ること').to.include('ツリー内の本文')
+      expect(content, 'ツリー外のドキュメントで上書きされないこと').to.not.include('ツリー外の本文')
+      expect(logger.warnings.join('\n'), '黙って捨てずに警告すること').to.include(
+        'ツリーに現れないドキュメント「同じ名前」',
+      )
+    })
+
+    it('ツリーに現れないドキュメント同士が同名の場合、後のドキュメントで上書きせず警告すること', async () => {
+      respondTree([])
+      respondDocumentList([
+        {id: 'd2', title: '同じ名前'},
+        {id: 'd3', title: '同じ名前'},
+      ])
+      server.respond('/api/v2/documents/d2', {body: documentDetail('d2', '同じ名前', '先に保存された本文')})
+      server.respond('/api/v2/documents/d3', {body: documentDetail('d3', '同じ名前', '後のドキュメントの本文')})
+
+      const logger = createRecordingLogger()
+      await exportDocuments({documentRepository: newBacklogDocumentRepository(client()), logger}, exportOptions())
+
+      const content = await fs.readFile(join(outputDir, '同じ名前.md'), 'utf8')
+      expect(content, '先に保存された内容が残ること').to.include('先に保存された本文')
+      expect(content, '後のドキュメントで上書きされないこと').to.not.include('後のドキュメントの本文')
+      expect(logger.warnings.join('\n'), '黙って捨てずに警告すること').to.include(
+        'ツリーに現れないドキュメント「同じ名前」',
+      )
+    })
+
+    it('増分更新でも、未取得のままだったドキュメントを保存すること', async () => {
+      respondTree([])
+      respondDocumentList([{id: 'd2', title: 'ずっと未取得'}])
+      server.respond('/api/v2/documents/d2', {body: documentDetail('d2', 'ずっと未取得', '半年前の本文')})
+
+      // lastUpdated はドキュメントの updated(2026-01-02) より後 ＝ 更新日時だけ見ればスキップされる
+      await exportDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        exportOptions({lastUpdated: '2026-06-01T00:00:00Z'}),
+      )
+
+      expect(existsSync(join(outputDir, 'ずっと未取得.md')), 'ローカルに無いファイルはバックフィルされること').to.be.true
+    })
+
+    it('増分更新で、取得済みかつ未更新のドキュメントは再取得しないこと', async () => {
+      respondTree([])
+      respondDocumentList([{id: 'd2', title: 'ツリー外'}])
+      server.respond('/api/v2/documents/d2', {body: documentDetail('d2', 'ツリー外', '新しい本文')})
+
+      await fs.writeFile(join(outputDir, 'ツリー外.md'), '# ツリー外\n\n取得済みの本文')
+
+      await exportDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        exportOptions({lastUpdated: '2026-06-01T00:00:00Z'}),
+      )
+
+      const content = await fs.readFile(join(outputDir, 'ツリー外.md'), 'utf8')
+      expect(content, '既存ファイルは上書きされないこと').to.include('取得済みの本文')
+    })
+
+    it('ゴミ箱のドキュメントは復元しないこと', async () => {
+      respondTree([], [{children: [], id: 'trashed', name: '削除済み'}])
+      respondDocumentList([{id: 'trashed', title: '削除済み'}])
+
+      await exportDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        exportOptions(),
+      )
+
+      expect(existsSync(join(outputDir, '削除済み.md')), 'ゴミ箱のドキュメントは保存されないこと').to.be.false
+      expect(server.requestedPaths()).to.not.include('/api/v2/documents/trashed')
+    })
+
+    it('一覧APIの取得に失敗しても、ツリー分のエクスポートは従来どおり完了すること', async () => {
+      respondTree([{children: [], id: 'd1', name: 'ツリー内'}])
+      server.respond('/api/v2/documents', {status: 403})
+      server.respond('/api/v2/documents/d1', {body: documentDetail('d1', 'ツリー内', 'ツリー内の本文')})
+
+      const logger = createRecordingLogger()
+      await exportDocuments({documentRepository: newBacklogDocumentRepository(client()), logger}, exportOptions())
+
+      expect(existsSync(join(outputDir, 'ツリー内.md')), 'ツリー分は保存されること').to.be.true
+      expect(logger.warnings.join('\n')).to.include('ドキュメント一覧の取得に失敗した')
+    })
+
+    it('documentIdsで指定したドキュメントがツリーに無い場合も取得できること', async () => {
+      respondTree([{children: [], id: 'd1', name: 'ツリー内'}])
+      respondDocumentList([
+        {id: 'd1', title: 'ツリー内'},
+        {id: 'd2', title: 'ツリー外'},
+      ])
+      server.respond('/api/v2/documents/d2', {body: documentDetail('d2', 'ツリー外', 'ツリー外の本文')})
+
+      await exportDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        exportOptions({documentIds: ['d2']}),
+      )
+
+      expect(existsSync(join(outputDir, 'ツリー外.md')), '指定したドキュメントが保存されること').to.be.true
+      expect(existsSync(join(outputDir, 'ツリー内.md')), '指定外は保存されないこと').to.be.false
+    })
+
+    it('documentIdsの対象がすべてツリー内にある場合は一覧APIを呼ばないこと', async () => {
+      respondTree([{children: [], id: 'd1', name: 'ツリー内'}])
+      server.respond('/api/v2/documents/d1', {body: documentDetail('d1', 'ツリー内', 'ツリー内の本文')})
+
+      await exportDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        exportOptions({documentIds: ['d1']}),
+      )
+
+      expect(existsSync(join(outputDir, 'ツリー内.md'))).to.be.true
+      expect(server.requestedPaths()).to.not.include('/api/v2/documents')
     })
   })
 
