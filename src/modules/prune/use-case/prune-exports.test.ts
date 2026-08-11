@@ -22,8 +22,10 @@ const client = () => new BacklogHttpClient({apiKey: API_KEY, domain: server.doma
 beforeAll(() => server.start())
 afterAll(() => server.stop())
 
-const respondTree = (children: unknown[]) => {
-  server.respond('/api/v2/documents/tree', {body: {activeTree: {children, id: 'root'}}})
+const respondTree = (children: unknown[], trashChildren: unknown[] = []) => {
+  server.respond('/api/v2/documents/tree', {
+    body: {activeTree: {children, id: 'root'}, trashTree: {children: trashChildren, id: 'trash'}},
+  })
 }
 
 const respondDocumentList = (documents: Array<{id: string; title: string}>) => {
@@ -76,6 +78,7 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
 
   it('設定ファイルや.md以外のユーザーファイルには触れないこと', async () => {
     respondTree([])
+    respondDocumentList([])
 
     await fs.writeFile(join(outputDir, 'backlog-settings.json'), '{}')
     await fs.writeFile(join(outputDir, 'backlog-update.log'), 'log')
@@ -189,6 +192,43 @@ describe('pruneDocuments（不要なローカルドキュメントの削除）',
     expect(pruned).to.equal(1)
     expect(existsSync(join(outputDir, 'doc100.md')), '2ページ目のドキュメントも保護されること').to.be.true
     expect(existsSync(join(outputDir, 'orphan.md')), 'orphan.md は削除されること').to.be.false
+  })
+
+  it('ツリーに現れないドキュメントの出力ルート直下のファイルを保護すること', async () => {
+    respondTree([{children: [], id: 'd1', name: 'ツリー内'}])
+    respondDocumentList([
+      {id: 'd1', title: 'ツリー内'},
+      {id: 'd2', title: 'ツリー外'},
+    ])
+
+    await fs.writeFile(join(outputDir, 'ツリー内.md'), '# ツリー内')
+    await fs.writeFile(join(outputDir, 'ツリー外.md'), '# ツリー外')
+    await fs.writeFile(join(outputDir, 'orphan.md'), '# 削除対象')
+
+    const pruned = await pruneDocuments(
+      {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+      {outputDir, projectId: PROJECT_ID},
+    )
+
+    expect(pruned).to.equal(1)
+    expect(existsSync(join(outputDir, 'ツリー内.md')), 'ツリー内のドキュメントは残ること').to.be.true
+    expect(existsSync(join(outputDir, 'ツリー外.md')), '補完して取得したドキュメントは残ること').to.be.true
+    expect(existsSync(join(outputDir, 'orphan.md')), '孤児は削除されること').to.be.false
+  })
+
+  it('ゴミ箱のドキュメントのファイルは削除すること', async () => {
+    respondTree([], [{children: [], id: 'trashed', name: '削除済み'}])
+    respondDocumentList([{id: 'trashed', title: '削除済み'}])
+
+    await fs.writeFile(join(outputDir, '削除済み.md'), '# 削除済み')
+
+    const pruned = await pruneDocuments(
+      {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+      {outputDir, projectId: PROJECT_ID},
+    )
+
+    expect(pruned).to.equal(1)
+    expect(existsSync(join(outputDir, '削除済み.md')), 'ゴミ箱のドキュメントは保護しないこと').to.be.false
   })
 
   it('親ドキュメント本文（00_index.md）は削除対象から保護されること', async () => {

@@ -1,6 +1,11 @@
 import {Logger} from '../../../shared/ports.js'
-import {collectDocumentTreePaths, resolveDocumentLeafPaths} from '../../document/domain/document-path.js'
+import {
+  addFallbackDocumentPaths,
+  collectDocumentTreePaths,
+  resolveDocumentLeafPaths,
+} from '../../document/domain/document-path.js'
 import {DocumentRepository} from '../../document/domain/document-repository.js'
+import {findDocumentsMissingFromTree} from '../../document/domain/document-tree-gap.js'
 import {buildIssueExpectedPaths} from '../../issue/domain/issue-path.js'
 import {IssueRepository} from '../../issue/domain/issue-repository.js'
 import {Issue} from '../../issue/domain/issue.js'
@@ -18,23 +23,26 @@ export async function pruneDocuments(
 
   const expected = collectDocumentTreePaths(documentTree.activeTree.children)
 
-  // 保存時のファイル名は詳細のtitle基準のため、一覧APIでタイトルを解決してから期待パスを確定する
-  let titlesById = new Map<string, string>()
-  if (expected.leafNodes.length > 0) {
-    logger.log(`${expected.leafNodes.length}件のドキュメントの正規ファイル名を確認しています...`)
-    try {
-      titlesById = await documentRepository.fetchAllTitles(options.projectId)
-    } catch (error) {
-      // 一覧に欠けが生じると実在ドキュメントを誤削除するため、何も削除せずに中止する
-      throw new Error(
-        `ドキュメント一覧の取得に失敗しました。誤削除を防ぐため、何も削除せずに中止します: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      )
-    }
+  // 保存時のファイル名は詳細のtitle基準のため、一覧APIでタイトルを解決してから期待パスを確定する。
+  // 一覧はツリーに現れないドキュメントを拾う台帳でもあるため、リーフの有無に関わらず取得する
+  logger.log('ドキュメント一覧でファイル名を確認しています...')
+  let titlesById: Map<string, string>
+  try {
+    titlesById = await documentRepository.fetchAllTitles(options.projectId)
+  } catch (error) {
+    // 一覧に欠けが生じると実在ドキュメントを誤削除するため、何も削除せずに中止する
+    throw new Error(
+      `ドキュメント一覧の取得に失敗しました。誤削除を防ぐため、何も削除せずに中止します: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    )
   }
 
   resolveDocumentLeafPaths(expected, titlesById)
+
+  // 取得側はツリーに現れないドキュメントを出力ルート直下に保存するため、同じ配置を期待集合に加える
+  // （加えないと、補完して取得したファイルをpruneが即座に削除してしまう）
+  addFallbackDocumentPaths(expected, findDocumentsMissingFromTree(documentTree, titlesById))
 
   return pruneLocalMarkdownFiles({
     expected,
