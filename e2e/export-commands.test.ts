@@ -96,6 +96,7 @@ describe('documentコマンド', () => {
         trashTree: {children: [], id: 'trash'},
       },
     })
+    server.respond('/api/v2/documents', {body: []})
     server.respond('/api/v2/documents/parent1', {body: documentPayload('parent1', '親フォルダ', '親の本文')})
     server.respond('/api/v2/documents/child1', {body: documentPayload('child1', '子ドキュメント', '子の本文')})
 
@@ -115,6 +116,40 @@ describe('documentコマンド', () => {
     expect(stdout).to.include('ドキュメントの取得が完了しました！')
     expect(existsSync(join(outputDir, '親フォルダ', '子ドキュメント.md'))).to.be.true
     expect(existsSync(join(outputDir, '親フォルダ', '00_index.md')), '親本文が00_index.mdに保存されること').to.be.true
+  })
+
+  it('ツリーに現れないドキュメントを一覧APIから補完してエクスポートすること', async () => {
+    server.respond('/api/v2/documents/tree', {
+      body: {
+        activeTree: {children: [{children: [], id: 'doc1', name: 'ツリー内'}], id: 'root'},
+        projectId: PROJECT_ID,
+        trashTree: {children: [], id: 'trash'},
+      },
+    })
+    server.respond('/api/v2/documents', {
+      body: [
+        {id: 'doc1', title: 'ツリー内'},
+        {id: 'doc2', title: 'ツリー外'},
+      ],
+    })
+    server.respond('/api/v2/documents/doc1', {body: documentPayload('doc1', 'ツリー内', 'ツリー内の本文')})
+    server.respond('/api/v2/documents/doc2', {body: documentPayload('doc2', 'ツリー外', 'ツリー外の本文')})
+
+    const {error} = await runCli([
+      'document',
+      '--domain',
+      server.domain,
+      '--projectIdOrKey',
+      PROJECT_KEY,
+      '--apiKey',
+      API_KEY,
+      '--output',
+      outputDir,
+    ])
+
+    expect(error).to.be.undefined
+    expect(existsSync(join(outputDir, 'ツリー内.md'))).to.be.true
+    expect(existsSync(join(outputDir, 'ツリー外.md')), 'ツリーに無いドキュメントも保存されること').to.be.true
   })
 })
 

@@ -4,10 +4,13 @@ import {attachmentFileName, encodeLinkDestination} from '../../../shared/attachm
 import {backlogOrigin} from '../../../shared/backlog-url.js'
 import {sanitizeFileName} from '../../../shared/file-name.js'
 import {ExpectedPaths} from '../../prune/domain/expected-paths.js'
-import {DocumentNode} from './document.js'
+import {DocumentNode, DocumentSummary} from './document.js'
 
 // 子を持つ親ドキュメント自身の本文の保存先。ダウンロード側とprune側でレイアウト定義を共有する
 export const PARENT_DOCUMENT_INDEX_FILENAME = '00_index.md'
+
+// ツリーに現れないドキュメントの保存先。ツリー上の位置が分からないため出力ルート直下に置く
+export const DOCUMENT_FALLBACK_PARENT_PATH = ''
 
 export function documentFolderPath(currentPath: string, folderName: string): string {
   return path.join(currentPath, sanitizeFileName(folderName))
@@ -79,5 +82,14 @@ export function resolveDocumentLeafPaths(paths: DocumentTreePaths, titlesById: M
     }
 
     paths.expectedFiles.add(path.join(leaf.currentPath, `${sanitizeFileName(title)}.md`).normalize('NFC'))
+  }
+}
+
+// ツリーに現れないドキュメントは出力ルート直下に保存されるため、同じ配置で期待パスに加える
+export function addFallbackDocumentPaths(paths: ExpectedPaths, documents: DocumentSummary[]): void {
+  for (const document of documents) {
+    paths.expectedFiles.add(
+      path.join(DOCUMENT_FALLBACK_PARENT_PATH, documentFileName(document.title, false)).normalize('NFC'),
+    )
   }
 }

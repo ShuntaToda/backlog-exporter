@@ -12,6 +12,11 @@ export interface DocumentTree {
     children: DocumentNode[]
     id: string
   }
+  // ゴミ箱のツリー。一覧APIとの差分を取る際に、削除済みドキュメントを除外するために参照する
+  trashTree?: {
+    children: DocumentNode[]
+    id: string
+  }
 }
 
 export interface DocumentSummary {

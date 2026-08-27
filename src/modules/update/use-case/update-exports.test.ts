@@ -24,6 +24,8 @@ describe('updateExports - downloadAttachmentsの伝播', () => {
     server.reset()
     targetDir = await fs.mkdtemp(join(tmpdir(), 'backlog-update-test-'))
     server.respond(`/api/v2/projects/${PROJECT_KEY}`, {body: {id: PROJECT_ID, projectKey: PROJECT_KEY}})
+    // ドキュメントのツリーの補完に使う一覧APIは既定で空にしておく
+    server.respond('/api/v2/documents', {body: []})
   })
 
   afterEach(async () => {

@@ -95,6 +95,7 @@ describe('updateコマンド', () => {
     server.respond('/api/v2/issues', {body: []})
     server.respond('/api/v2/wikis', {body: []})
     server.respond('/api/v2/documents/tree', {body: {activeTree: {children: [], id: 'root'}}})
+    server.respond('/api/v2/documents', {body: []})
 
     const {error, stdout} = await runCli(['update', rootDir, '--force', '--apiKey', API_KEY])
 

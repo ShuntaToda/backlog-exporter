@@ -13,6 +13,7 @@ import {
 import {appendLog} from '../../../shared/storage/update-log.js'
 import {buildDocumentMarkdown} from '../domain/document-markdown.js'
 import {
+  DOCUMENT_FALLBACK_PARENT_PATH,
   documentAttachmentMarkdownLink,
   documentAttachmentRelativePath,
   documentFileName,
@@ -22,7 +23,8 @@ import {
 } from '../domain/document-path.js'
 import {DocumentRepository} from '../domain/document-repository.js'
 import {planDocumentSave} from '../domain/document-save-plan.js'
-import {DocumentDetail, DocumentNode} from '../domain/document.js'
+import {findDocumentsMissingFromTree} from '../domain/document-tree-gap.js'
+import {DocumentDetail, DocumentNode, DocumentSummary, DocumentTree} from '../domain/document.js'
 
 export interface ExportDocumentsDeps {
   documentRepository: DocumentRepository
@@ -52,18 +54,20 @@ export async function exportDocuments(deps: ExportDocumentsDeps, options: Export
   const processedDocuments: string[] = []
   const writtenFiles = new Set<string>()
 
+  // 戻り値はファイルを書き出したかどうか（保存件数の集計に使う）
   const fetchAndSaveDocument = async (
     node: DocumentNode,
     currentPath: string,
-    asParentIndex = false,
-  ): Promise<void> => {
+    placement: {asParentIndex?: boolean; missingFromTree?: boolean} = {},
+  ): Promise<boolean> => {
+    const asParentIndex = placement.asParentIndex ?? false
     try {
       if (processedDocuments.includes(node.id)) {
-        return
+        return false
       }
 
       if (options.documentIds && options.documentIds.length > 0 && !options.documentIds.includes(node.id)) {
-        return
+        return false
       }
 
       processedDocuments.push(node.id)
@@ -76,11 +80,12 @@ export async function exportDocuments(deps: ExportDocumentsDeps, options: Export
       const filePath = path.join(options.outputDir, currentPath, fileName)
 
       const action = planDocumentSave({
+        alreadyWrittenThisRun: writtenFiles.has(filePath),
         asParentIndex,
         body: documentDetail.plain,
+        fileExists: await fileExists(filePath),
         lastUpdated: options.lastUpdated,
-        parentIndexAlreadyWrittenThisRun: writtenFiles.has(filePath),
-        parentIndexExists: asParentIndex && (await fileExists(filePath)),
+        missingFromTree: placement.missingFromTree ?? false,
         updated: documentDetail.updated,
       })
 
@@ -107,6 +112,14 @@ export async function exportDocuments(deps: ExportDocumentsDeps, options: Export
             `ドキュメント「${documentDetail.title}」を更新しました: ${backlogDocumentUrl}`,
           )
 
+          return true
+        }
+
+        case 'skip-fallback-collision': {
+          logger.warn(
+            `ツリーに現れないドキュメント「${documentDetail.title}」は、同名のファイルを既に出力しているため保存をスキップしました`,
+          )
+
           break
         }
 
@@ -124,6 +137,8 @@ export async function exportDocuments(deps: ExportDocumentsDeps, options: Export
         `ドキュメント ${node.name} の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
       )
     }
+
+    return false
   }
 
   /* eslint-disable no-await-in-loop */
@@ -137,7 +152,7 @@ export async function exportDocuments(deps: ExportDocumentsDeps, options: Export
       }
 
       // 親自身の本文はフォルダ内の親indexとして子の後に保存する
-      await fetchAndSaveDocument(node, folderRelPath, true)
+      await fetchAndSaveDocument(node, folderRelPath, {asParentIndex: true})
     } else {
       await fetchAndSaveDocument(node, currentPath)
     }
@@ -146,10 +161,55 @@ export async function exportDocuments(deps: ExportDocumentsDeps, options: Export
   for (const rootNode of documentTree.activeTree.children ?? []) {
     await processDocumentNode(rootNode, '')
   }
+
+  const missingFromTree = await findDocumentsOutsideTree(deps, documentTree, options, processedDocuments)
+  let savedMissingFromTree = 0
+  for (const document of missingFromTree) {
+    const saved = await fetchAndSaveDocument(
+      {children: [], id: document.id, name: document.title},
+      DOCUMENT_FALLBACK_PARENT_PATH,
+      {missingFromTree: true},
+    )
+    if (saved) {
+      savedMissingFromTree++
+    }
+  }
   /* eslint-enable no-await-in-loop */
+
+  // 検出件数ではなく実際に保存した件数を出す（未更新でスキップした分まで毎回報告しないため）
+  if (savedMissingFromTree > 0) {
+    logger.log(`ツリーに現れないドキュメント${savedMissingFromTree}件を出力ルート直下に保存しました`)
+  }
 
   logger.log(`\n合計 ${processedDocuments.length}件のドキュメントが処理されました。`)
   logger.log('ドキュメントのダウンロードが完了しました！')
+}
+
+// ツリーに現れないドキュメントを一覧API（全件が載る）との差分から求める。
+// 一覧の取得に失敗しても従来どおりツリー分のエクスポートは成立させるため、警告に留めて空を返す
+async function findDocumentsOutsideTree(
+  deps: ExportDocumentsDeps,
+  documentTree: DocumentTree,
+  options: ExportDocumentsOptions,
+  processedDocuments: string[],
+): Promise<DocumentSummary[]> {
+  // ID指定の取得で対象がすべてツリー内に見つかっている場合は、一覧APIを呼ぶ必要がない
+  const targetedIds = options.documentIds && options.documentIds.length > 0 ? options.documentIds : undefined
+  if (targetedIds?.every((id) => processedDocuments.includes(id))) {
+    return []
+  }
+
+  try {
+    const titlesById = await deps.documentRepository.fetchAllTitles(options.projectId)
+    return findDocumentsMissingFromTree(documentTree, titlesById)
+  } catch (error) {
+    deps.logger.warn(
+      `ドキュメント一覧の取得に失敗したため、ツリーに現れないドキュメントの確認をスキップします: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    )
+    return []
+  }
 }
 
 // 保存できた添付のみリンク化する。個々の失敗は警告に留め、ドキュメント本体の保存は続行する
