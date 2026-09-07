@@ -46,13 +46,13 @@ export function issuePayload(overrides: Record<string, unknown> = {}) {
   }
 }
 
-export function documentPayload(id: string, title: string, plain: string) {
+export function documentPayload(id: string, title: string, plain: string, json?: unknown) {
   return {
     attachments: [],
     created: '2026-01-01T00:00:00Z',
     createdUser: {id: 1, name: '作成者'},
     id,
-    json: '{}',
+    json: json ?? {content: [], type: 'doc'},
     plain,
     statusId: 1,
     tags: [],

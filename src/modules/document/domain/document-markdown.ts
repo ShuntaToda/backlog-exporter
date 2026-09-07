@@ -1,7 +1,17 @@
 import {escapeLinkText} from '../../../shared/attachment.js'
 import {wrapBody} from '../../../shared/markdown/body-marker.js'
+import {convertDocumentJsonToMarkdown} from './document-json-markdown.js'
 import {DocumentDetail} from './document.js'
 
+export const EMPTY_BODY_PLACEHOLDER = '（内容なし）'
+
+// plainはBacklog側で改行が失われることがあるため、構造を持つjsonを優先する。
+// 本文の有無の判定（親indexの保存要否）もこの結果を唯一の基準にする
+export function buildDocumentBody(documentDetail: Pick<DocumentDetail, 'json' | 'plain'>): string {
+  const fromJson = convertDocumentJsonToMarkdown(documentDetail.json)
+  if (fromJson.trim() !== '') return fromJson
+  return documentDetail.plain?.trim() ? documentDetail.plain : ''
+}
 
 export function buildDocumentMarkdown(
   documentDetail: DocumentDetail,
@@ -46,5 +56,5 @@ export function buildDocumentMarkdown(
 
 ## 内容
 
-${wrapBody(documentDetail.plain || '（内容なし）')}${attachmentsSection}${tagsSection}`
+${wrapBody(buildDocumentBody(documentDetail) || EMPTY_BODY_PLACEHOLDER)}${attachmentsSection}${tagsSection}`
 }

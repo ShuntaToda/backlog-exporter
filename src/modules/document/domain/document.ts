@@ -42,7 +42,7 @@ export interface DocumentDetail {
   }
   emoji?: string
   id: string
-  json: string
+  json: unknown
   plain: string
   statusId: number
   tags: Array<{
