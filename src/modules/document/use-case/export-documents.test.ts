@@ -17,12 +17,12 @@ const PROJECT_KEY = 'TEST'
 
 const BODY_WITH_HEADING = '本文の先頭\n\n## 本文内の見出し\n本文のつづき'
 
-const documentDetail = (id: string, title: string, plain: string) => ({
+const documentDetail = (id: string, title: string, plain: string, json?: unknown) => ({
   attachments: [],
   created: '2026-01-01T00:00:00Z',
   createdUser: {id: 1, name: '作成者'},
   id,
-  json: '{}',
+  json: json ?? {content: [], type: 'doc'},
   plain,
   statusId: 1,
   tags: [],
@@ -86,6 +86,34 @@ describe('exportDocuments', () => {
     expect(content).to.include(`${BODY_START_MARKER}\n${BODY_WITH_HEADING}\n${BODY_END_MARKER}`)
   })
 
+  it('本文はplainではなくjsonの構造から生成されること', async () => {
+    // plainは改行が失われた状態で返ることがある（今回の不具合）
+    const collapsedPlain = '見出し本文1本文2項目'
+    const json = {
+      content: [
+        {attrs: {level: 2}, content: [{text: '見出し', type: 'text'}], type: 'heading'},
+        {content: [{text: '本文1', type: 'text'}], type: 'paragraph'},
+        {content: [{text: '本文2', type: 'text'}], type: 'paragraph'},
+        {
+          content: [{content: [{content: [{text: '項目', type: 'text'}], type: 'paragraph'}], type: 'listItem'}],
+          type: 'bulletList',
+        },
+      ],
+      type: 'doc',
+    }
+    respondTree([{children: [], id: 'd1', name: 'ドキュメントA'}])
+    server.respond('/api/v2/documents/d1', {body: documentDetail('d1', 'ドキュメントA', collapsedPlain, json)})
+
+    await exportDocuments(
+      {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+      exportOptions(),
+    )
+
+    const content = await fs.readFile(join(outputDir, 'ドキュメントA.md'), 'utf8')
+    expect(content).to.include(`${BODY_START_MARKER}\n## 見出し\n\n本文1\n\n本文2\n\n- 項目\n${BODY_END_MARKER}`)
+    expect(content, '1行に潰れたplainは使われないこと').to.not.include(collapsedPlain)
+  })
+
   it('documentIdsで指定したドキュメントのみ保存されること', async () => {
     respondTree([
       {
@@ -115,6 +143,28 @@ describe('exportDocuments', () => {
   })
 
   describe('子を持つ親ドキュメントの本文', () => {
+    it('plainが空でもjsonに画像だけある親は 00_index.md を作成すること', async () => {
+      // 画像のみ・表のみの本文はplainが空になるため、json由来の本文で判定する必要がある
+      respondTree([{children: [{children: [], id: 'childA', name: '子A'}], id: 'parent1', name: '親フォルダ'}])
+      server.respond('/api/v2/documents/parent1', {
+        body: documentDetail('parent1', '親フォルダ', '', {
+          content: [{attrs: {src: '/document/foo.png'}, type: 'image'}],
+          type: 'doc',
+        }),
+      })
+      server.respond('/api/v2/documents/childA', {body: documentDetail('childA', '子A', '子の本文')})
+
+      await exportDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        exportOptions(),
+      )
+
+      const indexPath = join(outputDir, '親フォルダ', '00_index.md')
+      expect(existsSync(indexPath), '画像のみの親でもindexが作られること').to.be.true
+      const content = await fs.readFile(indexPath, 'utf8')
+      expect(content).to.include('![](/document/foo.png)')
+    })
+
     it('本文を持つ親はフォルダ内の 00_index.md に保存され、空の親は作成されないこと', async () => {
       respondTree([
         {

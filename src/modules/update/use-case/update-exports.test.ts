@@ -77,7 +77,7 @@ describe('updateExports - downloadAttachmentsの伝播', () => {
         created: '2026-01-01T00:00:00Z',
         createdUser: {id: 1, name: '作成者'},
         id: 'docA',
-        json: '{}',
+        json: {content: [], type: 'doc'},
         plain: '本文',
         statusId: 1,
         tags: [],

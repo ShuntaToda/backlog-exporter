@@ -85,6 +85,44 @@ describe('wikiコマンド', () => {
 })
 
 describe('documentコマンド', () => {
+  it('ドキュメント本文をjsonの構造からMarkdownに変換して出力すること', async () => {
+    const collapsedPlain = '見出し本文1本文2'
+    server.respond('/api/v2/documents/tree', {
+      body: {
+        activeTree: {children: [{children: [], id: 'doc1', name: 'ドキュメントA'}], id: 'root'},
+        projectId: PROJECT_ID,
+        trashTree: {children: [], id: 'trash'},
+      },
+    })
+    server.respond('/api/v2/documents/doc1', {
+      body: documentPayload('doc1', 'ドキュメントA', collapsedPlain, {
+        content: [
+          {attrs: {level: 2}, content: [{text: '見出し', type: 'text'}], type: 'heading'},
+          {content: [{text: '本文1', type: 'text'}], type: 'paragraph'},
+          {content: [{text: '本文2', type: 'text'}], type: 'paragraph'},
+        ],
+        type: 'doc',
+      }),
+    })
+
+    const {error} = await runCli([
+      'document',
+      '--domain',
+      server.domain,
+      '--projectIdOrKey',
+      PROJECT_KEY,
+      '--apiKey',
+      API_KEY,
+      '--output',
+      outputDir,
+    ])
+
+    expect(error).to.be.undefined
+    const content = await fs.readFile(join(outputDir, 'ドキュメントA.md'), 'utf8')
+    expect(content).to.include('## 見出し\n\n本文1\n\n本文2')
+    expect(content, '1行に潰れたplainは使われないこと').to.not.include(collapsedPlain)
+  })
+
   it('ツリー構造と親ドキュメント本文（00_index.md）をエクスポートすること', async () => {
     server.respond('/api/v2/documents/tree', {
       body: {

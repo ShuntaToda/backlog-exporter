@@ -11,7 +11,7 @@ import {
   writeMarkdownFile,
 } from '../../../shared/storage/markdown-store.js'
 import {appendLog} from '../../../shared/storage/update-log.js'
-import {buildDocumentMarkdown} from '../domain/document-markdown.js'
+import {buildDocumentBody, buildDocumentMarkdown} from '../domain/document-markdown.js'
 import {
   DOCUMENT_FALLBACK_PARENT_PATH,
   documentAttachmentMarkdownLink,
@@ -82,7 +82,7 @@ export async function exportDocuments(deps: ExportDocumentsDeps, options: Export
       const action = planDocumentSave({
         alreadyWrittenThisRun: writtenFiles.has(filePath),
         asParentIndex,
-        body: documentDetail.plain,
+        body: buildDocumentBody(documentDetail),
         fileExists: await fileExists(filePath),
         lastUpdated: options.lastUpdated,
         missingFromTree: placement.missingFromTree ?? false,
