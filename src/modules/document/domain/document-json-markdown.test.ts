@@ -109,6 +109,44 @@ describe('convertDocumentJsonToMarkdown（ProseMirror JSON → Markdown）', () 
       expect(convertDocumentJsonToMarkdown(json)).to.equal('3. 三つ目\n4. 四つ目')
     })
 
+    it('taskListをチェックボックス記法にすること', () => {
+      const json = doc({
+        content: [
+          {attrs: {checked: false}, content: [paragraph(text('未完了'))], type: 'taskItem'},
+          {attrs: {checked: true}, content: [paragraph(text('完了'))], type: 'taskItem'},
+        ],
+        type: 'taskList',
+      })
+      expect(convertDocumentJsonToMarkdown(json)).to.equal('- [ ] 未完了\n- [x] 完了')
+    })
+
+    it('taskItemのchecked属性が無い場合は未チェック扱いにすること', () => {
+      const json = doc({
+        content: [{content: [paragraph(text('属性なし'))], type: 'taskItem'}],
+        type: 'taskList',
+      })
+      expect(convertDocumentJsonToMarkdown(json)).to.equal('- [ ] 属性なし')
+    })
+
+    it('bulletList内にネストしたtaskListをtight listとして繋ぐこと', () => {
+      const json = doc({
+        content: [
+          {
+            content: [
+              paragraph(text('親')),
+              {
+                content: [{attrs: {checked: false}, content: [paragraph(text('子'))], type: 'taskItem'}],
+                type: 'taskList',
+              },
+            ],
+            type: 'listItem',
+          },
+        ],
+        type: 'bulletList',
+      })
+      expect(convertDocumentJsonToMarkdown(json)).to.equal('- 親\n  - [ ] 子')
+    })
+
     it('ネストしたbulletListを2スペース字下げしtight listとして繋ぐこと', () => {
       const json = doc({
         content: [

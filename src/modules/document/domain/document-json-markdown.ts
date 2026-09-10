@@ -20,6 +20,7 @@ const BLOCK_TYPES = new Set([
   'orderedList',
   'paragraph',
   'table',
+  'taskList',
 ])
 
 // マーク適用順。codeは最内側に置き、他の記号がコードスパンの外に出るようにする
@@ -27,6 +28,10 @@ const MARK_ORDER = ['code', 'bold', 'italic', 'strike', 'link']
 
 function isNode(value: unknown): value is ProseMirrorNode {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isListNode(node: ProseMirrorNode): boolean {
+  return node.type === 'bulletList' || node.type === 'orderedList' || node.type === 'taskList'
 }
 
 function isBlockLike(node: ProseMirrorNode): boolean {
@@ -344,9 +349,7 @@ function renderBlockquote(node: ProseMirrorNode): string {
 
 function renderListItem(node: ProseMirrorNode, marker: string): string {
   const children = childNodes(node)
-  const rendered = children.map((child) =>
-    child.type === 'bulletList' || child.type === 'orderedList' ? renderList(child) : renderBlock(child),
-  )
+  const rendered = children.map((child) => (isListNode(child) ? renderList(child) : renderBlock(child)))
 
   let body = ''
   for (const [index, block] of rendered.entries()) {
@@ -357,8 +360,7 @@ function renderListItem(node: ProseMirrorNode, marker: string): string {
     }
 
     // 段落直後のネストリストはtight listとして1改行で繋ぐ
-    const isNestedList = children[index].type === 'bulletList' || children[index].type === 'orderedList'
-    body += isNestedList ? `\n${block}` : `\n\n${block}`
+    body += isListNode(children[index]) ? `\n${block}` : `\n\n${block}`
   }
 
   if (body === '') return marker.trimEnd()
@@ -370,7 +372,17 @@ function renderListItem(node: ProseMirrorNode, marker: string): string {
     .join('\n')
 }
 
+function taskMarker(item: ProseMirrorNode): string {
+  return item.attrs?.checked === true ? '- [x] ' : '- [ ] '
+}
+
 function renderList(node: ProseMirrorNode): string {
+  if (node.type === 'taskList') {
+    return childNodes(node)
+      .map((item) => renderListItem(item, taskMarker(item)))
+      .join('\n')
+  }
+
   const ordered = node.type === 'orderedList'
   const startAttr = node.attrs?.start
   const start = ordered && typeof startAttr === 'number' && Number.isInteger(startAttr) ? startAttr : 1
@@ -415,7 +427,8 @@ function renderBlock(node: ProseMirrorNode): string {
     }
 
     case 'bulletList':
-    case 'orderedList': {
+    case 'orderedList':
+    case 'taskList': {
       return renderList(node)
     }
 
