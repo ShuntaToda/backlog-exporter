@@ -128,6 +128,57 @@ describe('convertDocumentJsonToMarkdown（ProseMirror JSON → Markdown）', () 
       expect(convertDocumentJsonToMarkdown(json)).to.equal('- [ ] 属性なし')
     })
 
+    it('taskList内にネストしたtaskListをリスト記号幅で字下げすること', () => {
+      const json = doc({
+        content: [
+          {
+            attrs: {checked: false},
+            content: [
+              paragraph(text('親')),
+              {
+                content: [{attrs: {checked: true}, content: [paragraph(text('子'))], type: 'taskItem'}],
+                type: 'taskList',
+              },
+            ],
+            type: 'taskItem',
+          },
+        ],
+        type: 'taskList',
+      })
+      expect(convertDocumentJsonToMarkdown(json)).to.equal('- [ ] 親\n  - [x] 子')
+    })
+
+    it('taskList内にネストしたbulletListをリスト記号幅で字下げすること', () => {
+      const json = doc({
+        content: [
+          {
+            attrs: {checked: false},
+            content: [
+              paragraph(text('親')),
+              {content: [{content: [paragraph(text('子'))], type: 'listItem'}], type: 'bulletList'},
+            ],
+            type: 'taskItem',
+          },
+        ],
+        type: 'taskList',
+      })
+      expect(convertDocumentJsonToMarkdown(json)).to.equal('- [ ] 親\n  - 子')
+    })
+
+    it('taskItemが複数ブロックを持つ場合もリスト記号幅で字下げすること', () => {
+      const json = doc({
+        content: [
+          {
+            attrs: {checked: false},
+            content: [paragraph(text('一段目')), paragraph(text('二段目'))],
+            type: 'taskItem',
+          },
+        ],
+        type: 'taskList',
+      })
+      expect(convertDocumentJsonToMarkdown(json)).to.equal('- [ ] 一段目\n\n  二段目')
+    })
+
     it('bulletList内にネストしたtaskListをtight listとして繋ぐこと', () => {
       const json = doc({
         content: [
