@@ -347,6 +347,10 @@ function renderBlockquote(node: ProseMirrorNode): string {
     .join('\n')
 }
 
+// チェックボックス記法の継続行はリスト記号"- "の幅で字下げする。
+// マーカー全長(6桁)だとCommonMarkがコードブロックと解釈しネストが壊れる
+const TASK_ITEM_INDENT = 2
+
 function renderListItem(node: ProseMirrorNode, marker: string, indentWidth = marker.length): string {
   const children = childNodes(node)
   const rendered = children.map((child) => (isListNode(child) ? renderList(child) : renderBlock(child)))
@@ -376,9 +380,6 @@ function taskMarker(item: ProseMirrorNode): string {
   return item.attrs?.checked === true ? '- [x] ' : '- [ ] '
 }
 
-// チェックボックス記法の継続行はリスト記号"- "の幅で字下げする。
-// マーカー全長(6桁)だとCommonMarkがコードブロックと解釈しネストが壊れる
-const TASK_ITEM_INDENT = 2
 
 function renderList(node: ProseMirrorNode): string {
   if (node.type === 'taskList') {
