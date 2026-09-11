@@ -262,6 +262,11 @@ function renderInline(nodes: ProseMirrorNode[], atBlockStart = false): string {
         break
       }
 
+      case 'documentMention': {
+        result += renderDocumentMention(node)
+        break
+      }
+
       case 'hardBreak': {
         result += '  \n'
         atLineStart = true
@@ -315,6 +320,15 @@ function renderAttachmentBadge(node: ProseMirrorNode): string {
   const src = attrString(node, 'src') ?? attrString(node, 'href') ?? attrString(node, 'url')
   const resolved = escapeBracketText(label.length > 0 ? label : '添付ファイル')
   return src ? `[${resolved}](${linkDestination(src)})` : resolved
+}
+
+// Backlog独自ノード。attrsにのみ値を持ち子ノードが無いためリンクに組み立てる
+function renderDocumentMention(node: ProseMirrorNode): string {
+  const label =
+    attrString(node, 'label') ?? attrString(node, 'title') ?? attrString(node, 'text') ?? renderInline(childNodes(node))
+  const url = attrString(node, 'url') ?? attrString(node, 'href')
+  const resolved = escapeBracketText(label.length > 0 ? label : 'ドキュメント')
+  return url ? `[${resolved}](${linkDestination(url)})` : resolved
 }
 
 // Backlog独自ノード。課題キーを持つキーを順に探す

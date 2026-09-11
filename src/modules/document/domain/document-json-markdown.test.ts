@@ -362,6 +362,23 @@ describe('convertDocumentJsonToMarkdown（ProseMirror JSON → Markdown）', () 
       expect(convertDocumentJsonToMarkdown(json)).to.equal('PROJ-9')
     })
 
+    it('documentMentionをラベルとURLのリンクにすること', () => {
+      const json = doc(
+        paragraph(text('詳細は'), {attrs: {label: '設計方針', url: 'https://example.backlog.jp/document/X'}, type: 'documentMention'}, text('を参照')),
+      )
+      expect(convertDocumentJsonToMarkdown(json)).to.equal('詳細は[設計方針](https://example.backlog.jp/document/X)を参照')
+    })
+
+    it('documentMentionにurlが無ければラベルだけ出力すること', () => {
+      const json = doc(paragraph({attrs: {label: '設計方針'}, type: 'documentMention'}))
+      expect(convertDocumentJsonToMarkdown(json)).to.equal('設計方針')
+    })
+
+    it('attrsが不明なdocumentMentionでも代替ラベルを出すこと', () => {
+      const json = doc(paragraph({attrs: {id: 'abc'}, type: 'documentMention'}))
+      expect(convertDocumentJsonToMarkdown(json)).to.equal('ドキュメント')
+    })
+
     it('attachmentBadgeをファイル名で出力すること', () => {
       const json = doc(paragraph({attrs: {name: 'design.pdf'}, type: 'attachmentBadge'}))
       expect(convertDocumentJsonToMarkdown(json)).to.equal('design.pdf')
