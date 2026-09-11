@@ -109,6 +109,95 @@ describe('convertDocumentJsonToMarkdown（ProseMirror JSON → Markdown）', () 
       expect(convertDocumentJsonToMarkdown(json)).to.equal('3. 三つ目\n4. 四つ目')
     })
 
+    it('taskListをチェックボックス記法にすること', () => {
+      const json = doc({
+        content: [
+          {attrs: {checked: false}, content: [paragraph(text('未完了'))], type: 'taskItem'},
+          {attrs: {checked: true}, content: [paragraph(text('完了'))], type: 'taskItem'},
+        ],
+        type: 'taskList',
+      })
+      expect(convertDocumentJsonToMarkdown(json)).to.equal('- [ ] 未完了\n- [x] 完了')
+    })
+
+    it('taskItemのchecked属性が無い場合は未チェック扱いにすること', () => {
+      const json = doc({
+        content: [{content: [paragraph(text('属性なし'))], type: 'taskItem'}],
+        type: 'taskList',
+      })
+      expect(convertDocumentJsonToMarkdown(json)).to.equal('- [ ] 属性なし')
+    })
+
+    it('taskList内にネストしたtaskListをリスト記号幅で字下げすること', () => {
+      const json = doc({
+        content: [
+          {
+            attrs: {checked: false},
+            content: [
+              paragraph(text('親')),
+              {
+                content: [{attrs: {checked: true}, content: [paragraph(text('子'))], type: 'taskItem'}],
+                type: 'taskList',
+              },
+            ],
+            type: 'taskItem',
+          },
+        ],
+        type: 'taskList',
+      })
+      expect(convertDocumentJsonToMarkdown(json)).to.equal('- [ ] 親\n  - [x] 子')
+    })
+
+    it('taskList内にネストしたbulletListをリスト記号幅で字下げすること', () => {
+      const json = doc({
+        content: [
+          {
+            attrs: {checked: false},
+            content: [
+              paragraph(text('親')),
+              {content: [{content: [paragraph(text('子'))], type: 'listItem'}], type: 'bulletList'},
+            ],
+            type: 'taskItem',
+          },
+        ],
+        type: 'taskList',
+      })
+      expect(convertDocumentJsonToMarkdown(json)).to.equal('- [ ] 親\n  - 子')
+    })
+
+    it('taskItemが複数ブロックを持つ場合もリスト記号幅で字下げすること', () => {
+      const json = doc({
+        content: [
+          {
+            attrs: {checked: false},
+            content: [paragraph(text('一段目')), paragraph(text('二段目'))],
+            type: 'taskItem',
+          },
+        ],
+        type: 'taskList',
+      })
+      expect(convertDocumentJsonToMarkdown(json)).to.equal('- [ ] 一段目\n\n  二段目')
+    })
+
+    it('bulletList内にネストしたtaskListをtight listとして繋ぐこと', () => {
+      const json = doc({
+        content: [
+          {
+            content: [
+              paragraph(text('親')),
+              {
+                content: [{attrs: {checked: false}, content: [paragraph(text('子'))], type: 'taskItem'}],
+                type: 'taskList',
+              },
+            ],
+            type: 'listItem',
+          },
+        ],
+        type: 'bulletList',
+      })
+      expect(convertDocumentJsonToMarkdown(json)).to.equal('- 親\n  - [ ] 子')
+    })
+
     it('ネストしたbulletListを2スペース字下げしtight listとして繋ぐこと', () => {
       const json = doc({
         content: [
@@ -271,6 +360,23 @@ describe('convertDocumentJsonToMarkdown（ProseMirror JSON → Markdown）', () 
     it('issueMentionがtext属性のみでも出力すること', () => {
       const json = doc(paragraph({attrs: {text: 'PROJ-9'}, type: 'issueMention'}))
       expect(convertDocumentJsonToMarkdown(json)).to.equal('PROJ-9')
+    })
+
+    it('documentMentionをラベルとURLのリンクにすること', () => {
+      const json = doc(
+        paragraph(text('詳細は'), {attrs: {label: '設計方針', url: 'https://example.backlog.jp/document/X'}, type: 'documentMention'}, text('を参照')),
+      )
+      expect(convertDocumentJsonToMarkdown(json)).to.equal('詳細は[設計方針](https://example.backlog.jp/document/X)を参照')
+    })
+
+    it('documentMentionにurlが無ければラベルだけ出力すること', () => {
+      const json = doc(paragraph({attrs: {label: '設計方針'}, type: 'documentMention'}))
+      expect(convertDocumentJsonToMarkdown(json)).to.equal('設計方針')
+    })
+
+    it('attrsが不明なdocumentMentionでも代替ラベルを出すこと', () => {
+      const json = doc(paragraph({attrs: {id: 'abc'}, type: 'documentMention'}))
+      expect(convertDocumentJsonToMarkdown(json)).to.equal('ドキュメント')
     })
 
     it('attachmentBadgeをファイル名で出力すること', () => {
