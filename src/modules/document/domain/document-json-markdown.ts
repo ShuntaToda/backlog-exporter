@@ -20,6 +20,7 @@ const BLOCK_TYPES = new Set([
   'orderedList',
   'paragraph',
   'table',
+  'taskList',
 ])
 
 // マーク適用順。codeは最内側に置き、他の記号がコードスパンの外に出るようにする
@@ -27,6 +28,10 @@ const MARK_ORDER = ['code', 'bold', 'italic', 'strike', 'link']
 
 function isNode(value: unknown): value is ProseMirrorNode {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isListNode(node: ProseMirrorNode): boolean {
+  return node.type === 'bulletList' || node.type === 'orderedList' || node.type === 'taskList'
 }
 
 function isBlockLike(node: ProseMirrorNode): boolean {
@@ -257,6 +262,11 @@ function renderInline(nodes: ProseMirrorNode[], atBlockStart = false): string {
         break
       }
 
+      case 'documentMention': {
+        result += renderDocumentMention(node)
+        break
+      }
+
       case 'hardBreak': {
         result += '  \n'
         atLineStart = true
@@ -312,6 +322,15 @@ function renderAttachmentBadge(node: ProseMirrorNode): string {
   return src ? `[${resolved}](${linkDestination(src)})` : resolved
 }
 
+// Backlog独自ノード。attrsにのみ値を持ち子ノードが無いためリンクに組み立てる
+function renderDocumentMention(node: ProseMirrorNode): string {
+  const label =
+    attrString(node, 'label') ?? attrString(node, 'title') ?? attrString(node, 'text') ?? renderInline(childNodes(node))
+  const url = attrString(node, 'url') ?? attrString(node, 'href')
+  const resolved = escapeBracketText(label.length > 0 ? label : 'ドキュメント')
+  return url ? `[${resolved}](${linkDestination(url)})` : resolved
+}
+
 // Backlog独自ノード。課題キーを持つキーを順に探す
 function renderIssueMention(node: ProseMirrorNode): string {
   const key =
@@ -342,11 +361,13 @@ function renderBlockquote(node: ProseMirrorNode): string {
     .join('\n')
 }
 
-function renderListItem(node: ProseMirrorNode, marker: string): string {
+// チェックボックス記法の継続行はリスト記号"- "の幅で字下げする。
+// マーカー全長(6桁)だとCommonMarkがコードブロックと解釈しネストが壊れる
+const TASK_ITEM_INDENT = 2
+
+function renderListItem(node: ProseMirrorNode, marker: string, indentWidth = marker.length): string {
   const children = childNodes(node)
-  const rendered = children.map((child) =>
-    child.type === 'bulletList' || child.type === 'orderedList' ? renderList(child) : renderBlock(child),
-  )
+  const rendered = children.map((child) => (isListNode(child) ? renderList(child) : renderBlock(child)))
 
   let body = ''
   for (const [index, block] of rendered.entries()) {
@@ -357,20 +378,30 @@ function renderListItem(node: ProseMirrorNode, marker: string): string {
     }
 
     // 段落直後のネストリストはtight listとして1改行で繋ぐ
-    const isNestedList = children[index].type === 'bulletList' || children[index].type === 'orderedList'
-    body += isNestedList ? `\n${block}` : `\n\n${block}`
+    body += isListNode(children[index]) ? `\n${block}` : `\n\n${block}`
   }
 
   if (body === '') return marker.trimEnd()
 
-  const indent = ' '.repeat(marker.length)
+  const indent = ' '.repeat(indentWidth)
   return body
     .split('\n')
     .map((line, index) => (index === 0 ? `${marker}${line}` : line === '' ? '' : `${indent}${line}`))
     .join('\n')
 }
 
+function taskMarker(item: ProseMirrorNode): string {
+  return item.attrs?.checked === true ? '- [x] ' : '- [ ] '
+}
+
+
 function renderList(node: ProseMirrorNode): string {
+  if (node.type === 'taskList') {
+    return childNodes(node)
+      .map((item) => renderListItem(item, taskMarker(item), TASK_ITEM_INDENT))
+      .join('\n')
+  }
+
   const ordered = node.type === 'orderedList'
   const startAttr = node.attrs?.start
   const start = ordered && typeof startAttr === 'number' && Number.isInteger(startAttr) ? startAttr : 1
@@ -415,7 +446,8 @@ function renderBlock(node: ProseMirrorNode): string {
     }
 
     case 'bulletList':
-    case 'orderedList': {
+    case 'orderedList':
+    case 'taskList': {
       return renderList(node)
     }
 
