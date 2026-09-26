@@ -1,5 +1,6 @@
 import {escapeLinkText, rewriteInlineImages} from '../../../shared/attachment.js'
 import {wrapBody} from '../../../shared/markdown/body-marker.js'
+import {IssueParent, IssueRef, IssueRelations} from './issue-relations.js'
 import {CustomField, Issue, IssueAttachment, IssueComment, IssueCommentChange} from './issue.js'
 
 // Backlogの変更履歴（changeLog）のfieldを画面表示に合わせた日本語ラベルへ変換する
@@ -126,16 +127,53 @@ export function buildCommentsSection(
   return commentsSection.slice(0, -5)
 }
 
+// Backlogのカテゴリーは複数設定できるため、カンマ区切りで並べる
+export function formatCategories(categories?: Issue['category']): string {
+  if (!categories || categories.length === 0) return '未設定'
+  return categories.map((category) => category.name).join(', ')
+}
+
+export type IssueUrlResolver = (issueKey: string) => string
+
+// URL解決関数が無い場合は壊れたリンクを書かないよう、ラベルだけを出す
+function issueRefLink(ref: IssueRef, issueUrl?: IssueUrlResolver): string {
+  const label = `${ref.issueKey} ${ref.summary}`.trim()
+  return issueUrl ? `[${escapeLinkText(label)}](${issueUrl(ref.issueKey)})` : label
+}
+
+// 課題キーを解決できなかった親はリンクにできないため、Backlog上のIDだけを出す
+export function buildParentIssueLine(parent: IssueParent | null, issueUrl?: IssueUrlResolver): string {
+  if (!parent) return ''
+  if (!parent.ref) return `\n- 親課題: (ID: ${parent.parentIssueId})`
+  return `\n- 親課題: ${issueRefLink(parent.ref, issueUrl)}`
+}
+
+// 件数が可変なので基本情報の箇条書きではなく独立セクションにする
+export function buildChildIssuesSection(children: IssueRef[], issueUrl?: IssueUrlResolver): string {
+  if (children.length === 0) return ''
+  const lines = children.map((child) => `- ${issueRefLink(child, issueUrl)}`)
+  return `\n\n## 子課題\n\n${lines.join('\n')}`
+}
+
+export interface BuildIssueMarkdownOptions {
+  attachmentLinks?: Map<number, string>
+  issueUrl?: IssueUrlResolver
+  relations?: IssueRelations
+}
+
 export function buildIssueMarkdown(
   issue: Issue,
   comments: IssueComment[],
   backlogIssueUrl: string,
-  attachmentLinks?: Map<number, string>,
+  options: BuildIssueMarkdownOptions = {},
 ): string {
+  const {attachmentLinks, issueUrl, relations} = options
   const rewriteBody = (text: string) => rewriteInlineImages(text, issue.attachments, attachmentLinks)
   const commentsSection = buildCommentsSection(comments, backlogIssueUrl, rewriteBody)
   const customFieldsSection = createCustomFieldsSection(issue.customFields)
   const attachmentsSection = buildAttachmentsSection(issue.attachments, attachmentLinks)
+  const parentIssueLine = buildParentIssueLine(relations?.parent ?? null, issueUrl)
+  const childIssuesSection = buildChildIssuesSection(relations?.children ?? [], issueUrl)
 
   const assigneeName = issue.assignee ? issue.assignee.name : '未割り当て'
   const startDate = issue.startDate ? new Date(issue.startDate).toLocaleDateString('ja-JP') : '未設定'
@@ -146,14 +184,15 @@ export function buildIssueMarkdown(
 ## 基本情報
 - 課題キー: ${issue.issueKey}
 - 種別: ${issue.issueType.name}
+- カテゴリー: ${formatCategories(issue.category)}
 - ステータス: ${issue.status.name}
 - 優先度: ${issue.priority.name}
-- 担当者: ${assigneeName}
+- 担当者: ${assigneeName}${parentIssueLine}
 - 開始日: ${startDate}
 - 期限日: ${dueDate}
 - 作成日時: ${new Date(issue.created).toLocaleString('ja-JP')}
 - 更新日時: ${new Date(issue.updated).toLocaleString('ja-JP')}
-- [Backlog Issue Link](${backlogIssueUrl})${customFieldsSection}${attachmentsSection}
+- [Backlog Issue Link](${backlogIssueUrl})${childIssuesSection}${customFieldsSection}${attachmentsSection}
 
 ## 詳細
 

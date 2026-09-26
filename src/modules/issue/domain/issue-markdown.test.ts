@@ -1,6 +1,14 @@
 import {describe, expect, it} from 'vitest'
 
-import {buildCommentsSection, createCustomFieldsSection} from './issue-markdown.js'
+import {
+  buildChildIssuesSection,
+  buildCommentsSection,
+  buildParentIssueLine,
+  createCustomFieldsSection,
+  formatCategories,
+} from './issue-markdown.js'
+
+const issueUrl = (issueKey: string) => `https://example.backlog.jp/view/${issueKey}`
 
 describe('issue-markdown', () => {
   describe('createCustomFieldsSection', () => {
@@ -255,7 +263,13 @@ describe('issue-markdown', () => {
     it('複数行・長文の変更値は1行化して切り詰めること', () => {
       const longValue = '1行目の説明テキスト\n2行目の説明テキスト\n' + 'あ'.repeat(60)
       const section = buildCommentsSection(
-        [{...baseComment, changeLog: [{field: 'description', newValue: null, originalValue: longValue}], content: null}],
+        [
+          {
+            ...baseComment,
+            changeLog: [{field: 'description', newValue: null, originalValue: longValue}],
+            content: null,
+          },
+        ],
         url,
       )
 
@@ -268,6 +282,82 @@ describe('issue-markdown', () => {
       const section = buildCommentsSection([{...baseComment, content: ''}], url)
 
       expect(section).to.include('(内容なし)')
+    })
+  })
+
+  describe('formatCategories', () => {
+    it('カテゴリー未設定の場合は「未設定」と表示すること', () => {
+      expect(formatCategories([])).to.equal('未設定')
+    })
+
+    it('カテゴリーの項目が無い（保存済みデータ等でundefined）場合も「未設定」と表示すること', () => {
+      expect(formatCategories()).to.equal('未設定')
+    })
+
+    it('単一のカテゴリーを表示すること', () => {
+      expect(formatCategories([{id: 1, name: '設計'}])).to.equal('設計')
+    })
+
+    it('複数のカテゴリーをカンマ区切りで表示すること', () => {
+      expect(
+        formatCategories([
+          {id: 1, name: '設計'},
+          {id: 2, name: '実装'},
+        ]),
+      ).to.equal('設計, 実装')
+    })
+  })
+
+  describe('buildParentIssueLine', () => {
+    it('親課題が無い場合は行を出さないこと', () => {
+      expect(buildParentIssueLine(null, issueUrl)).to.equal('')
+    })
+
+    it('解決済みの親課題を課題キー・件名付きのリンクで表示すること', () => {
+      const line = buildParentIssueLine({parentIssueId: 10, ref: {issueKey: 'TEST-10', summary: '親課題'}}, issueUrl)
+
+      expect(line).to.equal('\n- 親課題: [TEST-10 親課題](https://example.backlog.jp/view/TEST-10)')
+    })
+
+    it('課題キーを解決できなかった親課題はIDのみを表示すること', () => {
+      expect(buildParentIssueLine({parentIssueId: 999, ref: null}, issueUrl)).to.equal('\n- 親課題: (ID: 999)')
+    })
+
+    it('件名に角括弧を含む場合はリンクテキストをエスケープすること', () => {
+      const line = buildParentIssueLine(
+        {parentIssueId: 10, ref: {issueKey: 'TEST-10', summary: '[重要] 親課題'}},
+        issueUrl,
+      )
+
+      expect(line).to.include(String.raw`[TEST-10 \[重要\] 親課題]`)
+    })
+  })
+
+  describe('buildChildIssuesSection', () => {
+    it('子課題が無い場合はセクションごと出さないこと', () => {
+      expect(buildChildIssuesSection([], issueUrl)).to.equal('')
+    })
+
+    it('子課題をリンク付きの箇条書きで列挙すること', () => {
+      const section = buildChildIssuesSection(
+        [
+          {issueKey: 'TEST-11', summary: '子課題A'},
+          {issueKey: 'TEST-12', summary: '子課題B'},
+        ],
+        issueUrl,
+      )
+
+      expect(section).to.equal(
+        '\n\n## 子課題\n\n' +
+          '- [TEST-11 子課題A](https://example.backlog.jp/view/TEST-11)\n' +
+          '- [TEST-12 子課題B](https://example.backlog.jp/view/TEST-12)',
+      )
+    })
+
+    it('URL解決関数が無い場合はリンクにせずラベルのみを出すこと', () => {
+      expect(buildChildIssuesSection([{issueKey: 'TEST-11', summary: '子課題A'}])).to.equal(
+        '\n\n## 子課題\n\n- TEST-11 子課題A',
+      )
     })
   })
 })

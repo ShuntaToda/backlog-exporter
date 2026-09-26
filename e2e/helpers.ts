@@ -30,6 +30,7 @@ export async function writeSettings(directory: string, settings: Record<string, 
 export function issuePayload(overrides: Record<string, unknown> = {}) {
   return {
     assignee: null,
+    category: [],
     created: '2026-01-02T00:00:00Z',
     customFields: [],
     description: '課題の本文',
@@ -37,6 +38,7 @@ export function issuePayload(overrides: Record<string, unknown> = {}) {
     id: 1,
     issueKey: 'TEST-1',
     issueType: {id: 1, name: 'タスク'},
+    parentIssueId: null,
     priority: {id: 2, name: '中'},
     startDate: null,
     status: {id: 1, name: '未対応'},

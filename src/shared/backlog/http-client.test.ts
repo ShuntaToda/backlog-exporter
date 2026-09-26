@@ -82,6 +82,15 @@ describe('BacklogHttpClient', () => {
     expect(server.requests).to.have.length(1)
   })
 
+  it('配列で渡したパラメータを同名キーで繰り返して送ること', async () => {
+    server.respond('/api/v2/issues', {body: []})
+
+    await client().getJson('/issues', {count: '100', 'id[]': ['10', '20', '30']})
+
+    expect(server.requests[0].searchParams.getAll('id[]')).to.deep.equal(['10', '20', '30'])
+    expect(server.requests[0].searchParams.get('count')).to.equal('100')
+  })
+
   it('バイナリデータを取得できること', async () => {
     const binary = new Uint8Array([0x89, 0x50, 0x4e, 0x47])
     server.respond('/api/v2/issues/TEST-1/attachments/1', {body: binary})

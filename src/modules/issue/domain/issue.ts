@@ -1,6 +1,7 @@
 export interface Issue {
   assignee: null | {id: number; name: string}
   attachments?: IssueAttachment[]
+  category: IssueCategory[]
   created: string
   customFields: CustomField[]
   description: string
@@ -8,6 +9,7 @@ export interface Issue {
   id: number
   issueKey: string
   issueType: {id: number; name: string}
+  parentIssueId: null | number
   priority: {id: number; name: string}
   startDate: null | string
   status: {id: number; name: string}
@@ -19,6 +21,11 @@ export interface IssueAttachment {
   id: number
   name: string
   size: number
+}
+
+export interface IssueCategory {
+  id: number
+  name: string
 }
 
 export interface CustomField {

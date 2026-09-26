@@ -7,8 +7,18 @@ import {appendLog} from '../../../shared/storage/update-log.js'
 import {filterIssuesUpdatedSince} from '../domain/issue-filter.js'
 import {buildIssueMarkdown} from '../domain/issue-markdown.js'
 import {attachmentMarkdownLink, attachmentRelativePath, issueRelativePath, issueUrl} from '../domain/issue-path.js'
+import {buildChildIndex, buildIssueRefIndex, findChildren, findParent, IssueRef} from '../domain/issue-relations.js'
 import {IssueRepository} from '../domain/issue-repository.js'
 import {Issue, IssueComment} from '../domain/issue.js'
+
+// 親子の解決に使う課題の索引。保存ループに入る前に一度だけ組み立てる
+interface RelationIndex {
+  childIndex: Map<number, IssueRef[]>
+  refIndex: Map<number, IssueRef>
+}
+
+// Backlogの配列パラメータの上限に合わせ、一括取得は100件ずつに分ける
+const BULK_FETCH_SIZE = 100
 
 export interface ExportIssuesDeps {
   issueRepository: IssueRepository
@@ -51,11 +61,13 @@ export async function exportIssues(deps: ExportIssuesDeps, options: ExportIssues
 
   logger.log('課題を保存しています...')
 
+  const relationIndex = await buildRelationIndex(deps, allIssues, filteredIssues, options)
+
   for (const [index, issue] of filteredIssues.entries()) {
     try {
       writeProgress(`課題を保存中... (${index + 1}/${filteredIssues.length}件)`)
       // eslint-disable-next-line no-await-in-loop
-      await saveIssue(deps, issue, options)
+      await saveIssue(deps, issue, options, relationIndex)
     } catch (error) {
       logger.warn(
         `課題 ${issue.issueKey} の保存に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
@@ -110,7 +122,12 @@ async function fetchAllIssues(deps: ExportIssuesDeps, options: ExportIssuesOptio
   return issues
 }
 
-async function saveIssue(deps: ExportIssuesDeps, issue: Issue, options: ExportIssuesOptions): Promise<void> {
+async function saveIssue(
+  deps: ExportIssuesDeps,
+  issue: Issue,
+  options: ExportIssuesOptions,
+  relationIndex: RelationIndex,
+): Promise<void> {
   const backlogIssueUrl = issueUrl(options.domain, issue.issueKey)
 
   // コメント取得に失敗しても課題本体は保存する
@@ -123,13 +140,94 @@ async function saveIssue(deps: ExportIssuesDeps, issue: Issue, options: ExportIs
     )
   }
 
-  const attachmentLinks = options.downloadAttachments
-    ? await downloadIssueAttachments(deps, issue, options)
-    : undefined
+  const attachmentLinks = options.downloadAttachments ? await downloadIssueAttachments(deps, issue, options) : undefined
 
   const filePath = path.join(options.outputDir, issueRelativePath(issue, options))
-  await writeMarkdownFile(filePath, buildIssueMarkdown(issue, comments, backlogIssueUrl, attachmentLinks))
+  await writeMarkdownFile(
+    filePath,
+    buildIssueMarkdown(issue, comments, backlogIssueUrl, {
+      attachmentLinks,
+      issueUrl: (issueKey) => issueUrl(options.domain, issueKey),
+      relations: {
+        children: findChildren(issue, relationIndex.childIndex),
+        parent: findParent(issue, relationIndex.refIndex),
+      },
+    }),
+  )
   await appendLog(options.outputDir, `課題「${issue.summary}」を更新しました: ${backlogIssueUrl}`)
+}
+
+// 取得済みの課題だけでは足りない親子をAPIで補い、索引を組み立てる。
+// 課題ごとに引くとN+1になるため、いずれも配列パラメータでまとめて取得する。
+// 補完に失敗しても課題本体の保存は続行する（関連情報が欠けるだけに留める）
+async function buildRelationIndex(
+  deps: ExportIssuesDeps,
+  allIssues: Issue[],
+  targets: Issue[],
+  options: ExportIssuesOptions,
+): Promise<RelationIndex> {
+  const sources = [...allIssues]
+
+  // 課題キー指定では取得済み集合に子が含まれないため、対象課題の子をまとめて引く
+  if (options.issueIdOrKeys && options.issueIdOrKeys.length > 0) {
+    sources.push(...(await fetchChildrenOf(deps, targets)))
+  }
+
+  sources.push(...(await fetchMissingParents(deps, targets, buildIssueRefIndex(sources))))
+
+  return {childIndex: buildChildIndex(sources), refIndex: buildIssueRefIndex(sources)}
+}
+
+async function fetchChildrenOf(deps: ExportIssuesDeps, targets: Issue[]): Promise<Issue[]> {
+  const children: Issue[] = []
+
+  for (const ids of chunkIds(targets.map((target) => target.id))) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      children.push(...(await deps.issueRepository.fetchChildren(ids)))
+    } catch (error) {
+      deps.logger.warn(`子課題の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  return children
+}
+
+// 別プロジェクトの親やstatusIdで絞り込まれた親は取得済み集合に現れないため、IDから引き直す
+async function fetchMissingParents(
+  deps: ExportIssuesDeps,
+  targets: Issue[],
+  refIndex: Map<number, IssueRef>,
+): Promise<Issue[]> {
+  const missingIds = [
+    ...new Set(
+      targets
+        .map((target) => target.parentIssueId)
+        .filter((parentIssueId): parentIssueId is number => typeof parentIssueId === 'number')
+        .filter((parentIssueId) => !refIndex.has(parentIssueId)),
+    ),
+  ]
+
+  const parents: Issue[] = []
+  for (const ids of chunkIds(missingIds)) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      parents.push(...(await deps.issueRepository.fetchByIds(ids)))
+    } catch (error) {
+      deps.logger.warn(`親課題の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  return parents
+}
+
+function chunkIds(ids: number[]): number[][] {
+  const chunks: number[][] = []
+  for (let index = 0; index < ids.length; index += BULK_FETCH_SIZE) {
+    chunks.push(ids.slice(index, index + BULK_FETCH_SIZE))
+  }
+
+  return chunks
 }
 
 // 保存できた添付のみリンク化する。個々の失敗は警告に留め、課題本体の保存は続行する
