@@ -303,12 +303,22 @@ $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KE
 ## 基本情報
 
 - 課題キー: PROJ-123
+- 種別: タスク
+- カテゴリー: 設計, 実装
 - ステータス: 処理中
 - 優先度: 高
 - 担当者: 山田太郎
+- 親課題: [PROJ-100 親課題のタイトル](https://example.backlog.jp/view/PROJ-100)
+- 開始日: 2023/01/01
+- 期限日: 2023/01/31
 - 作成日時: 2023/01/01 10:00:00
 - 更新日時: 2023/01/02 15:30:45
 - [Backlog Issue Link](https://example.backlog.jp/view/PROJ-123)
+
+## 子課題
+
+- [PROJ-124 子課題のタイトル](https://example.backlog.jp/view/PROJ-124)
+- [PROJ-125 もう 1 つの子課題](https://example.backlog.jp/view/PROJ-125)
 
 ## カスタム属性
 
@@ -333,6 +343,14 @@ $ backlog-exporter issue --domain example.backlog.jp --projectIdOrKey PROJECT_KE
 
 コメントの内容がここに表示されます。
 ```
+
+**親課題・子課題について**:
+
+- 親課題がある場合のみ「親課題」の行を、子課題がある場合のみ「子課題」セクションを出力します
+- 3 階層（親課題・子課題・孫課題）にも対応しています。各ファイルは 1 つ上と 1 つ下の階層を出力するため、2 階層目の課題には「親課題」の行と「子課題」セクションの両方が出ます
+- 子課題は、プロジェクト全体のエクスポート（`issue` / `all`）では取得済みの課題から組み立てるため追加の API 呼び出しは発生しません。課題キーを指定した差分更新（`update --issue-key`）でのみ API から取得します（対象課題をまとめて 1 回で引きます）
+- `--status-id` で状態を絞り込んだ場合、絞り込みから外れた子課題は「子課題」セクションに現れません
+- 親課題が別プロジェクトにあるなどで課題キーを解決できなかった場合は `- 親課題: (ID: 100)` のように課題 ID のみを出力します
 
 ### Wiki の出力形式
 
