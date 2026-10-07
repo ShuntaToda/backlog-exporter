@@ -101,8 +101,8 @@ async function rewrittenIds(): Promise<number[]> {
   return ids
 }
 
-// oclifは警告を端末幅で折り返すため、空白と折り返し記号を除いて比較する
-const unwrap = (text: string) => text.replaceAll(/[\s›]+/g, '')
+// oclifは警告を端末幅で折り返すため、空白と折り返し記号（Windowsでは»）を除いて比較する
+const unwrap = (text: string) => text.replaceAll(/[\s›»]+/g, '')
 
 async function saveCount(id: number): Promise<number> {
   const log = (await fs.readFile(join(outputDir, 'backlog-update.log'), 'utf8')).slice(logLengthAfterExport)
