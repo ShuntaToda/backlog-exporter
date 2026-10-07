@@ -26,10 +26,10 @@ export function planDocumentSave(input: {
     return 'skip-fallback-collision'
   }
 
-  // 前回の更新日時チェック。親index・ツリーに現れないドキュメントは、そもそも過去のエクスポートで
-  // 取得できていない可能性があるため、ファイルが無い場合は未更新でもバックフィルとして保存する
-  const backfill = (input.asParentIndex || input.missingFromTree) && !input.fileExists
-  if (input.lastUpdated && !backfill && new Date(input.updated) <= new Date(input.lastUpdated)) {
+  // 前回の更新日時チェック。保存先にファイルが無い場合は未更新でもバックフィルとして保存する。
+  // ドキュメントの移動・親の改名・子の追加/削除による親子の切り替えは本文の更新日時を変えないため、
+  // 日時だけで判断すると新しい保存先にファイルが作られないまま取り残される
+  if (input.lastUpdated && input.fileExists && new Date(input.updated) <= new Date(input.lastUpdated)) {
     return 'skip-unchanged'
   }
 

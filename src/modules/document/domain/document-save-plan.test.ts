@@ -16,8 +16,14 @@ describe('planDocumentSave（ドキュメント保存の判断）', () => {
     expect(planDocumentSave(base)).to.equal('save')
   })
 
-  it('前回更新以降に変更がないドキュメントはスキップすること', () => {
-    expect(planDocumentSave({...base, lastUpdated: '2026-06-01T00:00:00Z'})).to.equal('skip-unchanged')
+  it('前回更新以降に変更がなく、ファイルも作成済みのドキュメントはスキップすること', () => {
+    expect(planDocumentSave({...base, fileExists: true, lastUpdated: '2026-06-01T00:00:00Z'})).to.equal(
+      'skip-unchanged',
+    )
+  })
+
+  it('前回更新以降に変更がなくても、保存先にファイルが無ければバックフィルとして保存すること（移動・親の改名など）', () => {
+    expect(planDocumentSave({...base, lastUpdated: '2026-06-01T00:00:00Z'})).to.equal('save')
   })
 
   it('前回更新以降に変更があるドキュメントは保存すること', () => {
