@@ -53,6 +53,10 @@ describe('planDocumentSave（ドキュメント保存の判断）', () => {
       expect(planDocumentSave({...parent, lastUpdated: '2026-06-01T00:00:00Z'})).to.equal('save')
     })
 
+    it('未更新で親indexが未作成でも、本文が空ならファイルを作成しないこと', () => {
+      expect(planDocumentSave({...parent, body: '', lastUpdated: '2026-06-01T00:00:00Z'})).to.equal('skip-empty-parent')
+    })
+
     it('未更新で親indexが作成済みならスキップすること', () => {
       expect(planDocumentSave({...parent, fileExists: true, lastUpdated: '2026-06-01T00:00:00Z'})).to.equal(
         'skip-unchanged',

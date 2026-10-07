@@ -276,7 +276,28 @@ describe('exportDocuments', () => {
         exportOptions({lastUpdated: '2026-06-01T00:00:00Z'}),
       )
 
-      expect(existsSync(join(outputDir, '付録', 'Apendix.md')), '移動先にファイルが作成されること').to.be.true
+      const content = await fs.readFile(join(outputDir, '付録', 'Apendix.md'), 'utf8')
+      expect(content, '移動先にAPIの内容で作成されること').to.include('付録の本文')
+      expect(existsSync(join(outputDir, '付録', '00_index.md')), '本文が空の親はバックフィルでも作成しないこと').to.be
+        .false
+      // 移動前のファイルは update では消さず、prune で整理する
+      expect(existsSync(join(outputDir, 'Apendix.md')), '移動前のファイルはpruneまで残ること').to.be.true
+    })
+
+    it('増分更新でも、親フォルダが改名された場合は子を新しいフォルダに保存すること', async () => {
+      respondTree([{children: [{children: [], id: 'childA', name: '子A'}], id: 'parent1', name: '新しい名前'}])
+      server.respond('/api/v2/documents/parent1', {body: documentDetail('parent1', '新しい名前', '')})
+      server.respond('/api/v2/documents/childA', {body: documentDetail('childA', '子A', 'A本文')})
+      await fs.mkdir(join(outputDir, '古い名前'))
+      await fs.writeFile(join(outputDir, '古い名前', '子A.md'), '# 子A\n\n取得済みの本文')
+
+      await exportDocuments(
+        {documentRepository: newBacklogDocumentRepository(client()), logger: stubLogger},
+        exportOptions({lastUpdated: '2026-06-01T00:00:00Z'}),
+      )
+
+      const content = await fs.readFile(join(outputDir, '新しい名前', '子A.md'), 'utf8')
+      expect(content, '改名後のフォルダにAPIの内容で作成されること').to.include('A本文')
     })
 
     it('増分更新でも、子がすべて無くなって親からリーフに戻ったドキュメントは保存すること', async () => {
@@ -291,7 +312,8 @@ describe('exportDocuments', () => {
         exportOptions({lastUpdated: '2026-06-01T00:00:00Z'}),
       )
 
-      expect(existsSync(join(outputDir, 'Apendix.md')), 'リーフとしてのファイルが作成されること').to.be.true
+      const content = await fs.readFile(join(outputDir, 'Apendix.md'), 'utf8')
+      expect(content, 'リーフとしてAPIの内容で作成されること').to.include('付録の本文')
     })
 
     it('親の本文（plain）がnullでもクラッシュせず、空として扱うこと', async () => {

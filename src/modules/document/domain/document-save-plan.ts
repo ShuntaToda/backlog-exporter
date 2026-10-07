@@ -6,7 +6,8 @@ export type DocumentSaveAction =
   | 'skip-parent-index-collision'
   | 'skip-unchanged'
 
-// 保存/スキップ/親index削除の判断。本文が空の親はファイルを作らず、空に変更された場合は古い親indexを削除する
+// 保存/スキップ/親index削除の判断。保存先にファイルが無ければ未更新でも保存（バックフィル）する。
+// 本文が空の親はファイルを作らず、空に変更された場合は古い親indexを削除する
 export function planDocumentSave(input: {
   alreadyWrittenThisRun: boolean
   asParentIndex: boolean
