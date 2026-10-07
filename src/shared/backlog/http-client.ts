@@ -13,6 +13,9 @@ export class HttpError extends Error {
   }
 }
 
+// Backlogの配列パラメータ（projectId[]など）は同名キーを繰り返して渡すため、値に配列を許す
+export type QueryParams = Record<string, string | string[]>
+
 const RETRYABLE_STATUSES = new Set([408, 500, 502, 503, 504])
 const MAX_RETRIES = 2
 // 429待機は1回ごとにレート制限ウィンドウ(1分)が更新されるため、通常リトライとは別枠で上限を設ける
@@ -44,12 +47,12 @@ export class BacklogHttpClient {
     this.onRateLimitExceeded = options.onRateLimitExceeded
   }
 
-  async getBinary(pathname: string, params: Record<string, string> = {}): Promise<ArrayBuffer> {
+  async getBinary(pathname: string, params: QueryParams = {}): Promise<ArrayBuffer> {
     const response = await this.fetchWithRetry(this.requestUrl(pathname, params))
     return response.arrayBuffer()
   }
 
-  async getJson<T>(pathname: string, params: Record<string, string> = {}): Promise<T> {
+  async getJson<T>(pathname: string, params: QueryParams = {}): Promise<T> {
     const response = await this.fetchWithRetry(this.requestUrl(pathname, params))
     return (await response.json()) as T
   }
@@ -101,8 +104,14 @@ export class BacklogHttpClient {
     return url.replace(/apiKey=[^&]*/, 'apiKey=***')
   }
 
-  private requestUrl(pathname: string, params: Record<string, string>): string {
-    const searchParams = new URLSearchParams({apiKey: this.apiKey, ...params})
+  private requestUrl(pathname: string, params: QueryParams): string {
+    const searchParams = new URLSearchParams({apiKey: this.apiKey})
+    for (const [key, value] of Object.entries(params)) {
+      for (const item of Array.isArray(value) ? value : [value]) {
+        searchParams.append(key, item)
+      }
+    }
+
     return `${this.baseUrl}${pathname}?${searchParams.toString()}`
   }
 }
