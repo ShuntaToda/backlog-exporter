@@ -1,6 +1,12 @@
 import {describe, expect, it} from 'vitest'
 
-import {buildChildIndex, buildIssueRefIndex, findChildren, findParent} from './issue-relations.js'
+import {
+  buildChildIndex,
+  buildIssueRefIndex,
+  findChildren,
+  findParent,
+  withParentsAndChildren,
+} from './issue-relations.js'
 import {Issue} from './issue.js'
 
 const issue = (overrides: Partial<Issue> = {}): Issue => ({
@@ -63,6 +69,39 @@ describe('issue-relations', () => {
         {issueKey: 'TEST-11', summary: '子課題A'},
         {issueKey: 'TEST-12', summary: '子課題B'},
       ])
+    })
+  })
+
+  describe('withParentsAndChildren', () => {
+    it('更新された課題に加えて、その直接の親と子だけを含めること', () => {
+      const grandparent = issue({id: 9, issueKey: 'TEST-9'})
+      const parent = issue({id: 10, issueKey: 'TEST-10', parentIssueId: 9})
+      const updated = issue({id: 11, issueKey: 'TEST-11', parentIssueId: 10})
+      const child = issue({id: 12, issueKey: 'TEST-12', parentIssueId: 11})
+      const grandchild = issue({id: 13, issueKey: 'TEST-13', parentIssueId: 12})
+      const sibling = issue({id: 14, issueKey: 'TEST-14', parentIssueId: 10})
+      const unrelated = issue({id: 15, issueKey: 'TEST-15'})
+
+      const result = withParentsAndChildren(
+        [grandparent, parent, updated, child, grandchild, sibling, unrelated],
+        [updated],
+      )
+
+      expect(result.map((target) => target.issueKey)).to.deep.equal(['TEST-10', 'TEST-11', 'TEST-12'])
+    })
+
+    it('親を持たない課題が更新されても無関係な課題を含めないこと', () => {
+      const updated = issue({id: 11, issueKey: 'TEST-11'})
+      const unrelated = issue({id: 12, issueKey: 'TEST-12'})
+
+      expect(withParentsAndChildren([updated, unrelated], [updated])).to.deep.equal([updated])
+    })
+
+    it('親と子が両方とも更新されていても重複させないこと', () => {
+      const parent = issue({id: 10, issueKey: 'TEST-10'})
+      const child = issue({id: 11, issueKey: 'TEST-11', parentIssueId: 10})
+
+      expect(withParentsAndChildren([parent, child], [parent, child])).to.deep.equal([parent, child])
     })
   })
 })

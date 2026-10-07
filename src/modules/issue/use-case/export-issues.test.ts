@@ -460,6 +460,10 @@ describe('exportIssues', () => {
     const content = await fs.readFile(join(outputDir, '2026', '子課題A.md'), 'utf8')
     expect(content).to.include(`- 親課題: [TEST-10 親課題](${server.domain}/view/TEST-10)`)
     expect(content).to.include(`- [TEST-20 孫課題](${server.domain}/view/TEST-20)`)
+    expect(
+      await fs.readdir(join(outputDir, '2026')),
+      '補完に使った親子の課題はファイルとして書き直さないこと',
+    ).to.have.members(['子課題A.md'])
   })
 
   it('複数の課題を指定しても親課題・子課題の取得はそれぞれ1回にまとめること', async () => {
@@ -555,5 +559,132 @@ describe('exportIssues', () => {
     const grandchild = await fs.readFile(join(outputDir, '2026', '孫課題.md'), 'utf8')
     expect(grandchild).to.include(`- 親課題: [TEST-11 子課題](${server.domain}/view/TEST-11)`)
     expect(grandchild, '子を持たない3階層目には子課題セクションを出さないこと').to.not.include('## 子課題')
+  })
+
+  it('lastUpdated指定時は更新された課題の直接の親と子も書き直すこと', async () => {
+    server.respond('/api/v2/issues', {
+      body: [
+        issue({id: 10, issueKey: 'TEST-10', summary: '親課題'}),
+        issue({id: 11, issueKey: 'TEST-11', parentIssueId: 10, summary: '既存の子課題'}),
+        issue({
+          id: 12,
+          issueKey: 'TEST-12',
+          parentIssueId: 10,
+          summary: '新しい子課題',
+          updated: '2026-02-01T00:00:00Z',
+        }),
+        issue({id: 20, issueKey: 'TEST-20', summary: '改名した親課題', updated: '2026-02-01T00:00:00Z'}),
+        issue({id: 21, issueKey: 'TEST-21', parentIssueId: 20, summary: '改名した親の子課題'}),
+        issue({id: 30, issueKey: 'TEST-30', summary: '無関係な課題'}),
+      ],
+    })
+    for (const issueKey of ['TEST-10', 'TEST-11', 'TEST-12', 'TEST-20', 'TEST-21', 'TEST-30']) {
+      server.respond(`/api/v2/issues/${issueKey}/comments`, {body: []})
+    }
+
+    await exportIssues(
+      {issueRepository: newBacklogIssueRepository(client()), logger: stubLogger},
+      {
+        domain: server.domain,
+        lastUpdated: '2026-01-15T00:00:00Z',
+        outputDir,
+        projectId: PROJECT_ID,
+      },
+    )
+
+    const parent = await fs.readFile(join(outputDir, '2026', '親課題.md'), 'utf8')
+    expect(parent, '子が追加された親は更新日時が変わらなくても書き直すこと').to.include(
+      `- [TEST-12 新しい子課題](${server.domain}/view/TEST-12)`,
+    )
+    expect(parent, '書き直しても既存の子を残すこと').to.include(
+      `- [TEST-11 既存の子課題](${server.domain}/view/TEST-11)`,
+    )
+
+    const child = await fs.readFile(join(outputDir, '2026', '改名した親の子課題.md'), 'utf8')
+    expect(child, '更新された親の子は新しい件名を参照すること').to.include(
+      `- 親課題: [TEST-20 改名した親課題](${server.domain}/view/TEST-20)`,
+    )
+
+    const savedFiles = await fs.readdir(join(outputDir, '2026'))
+    expect(savedFiles, '更新された課題の兄弟や無関係な課題は書き直さないこと').to.have.members([
+      '親課題.md',
+      '新しい子課題.md',
+      '改名した親課題.md',
+      '改名した親の子課題.md',
+    ])
+  })
+
+  it('親子の表示を揃えるための書き直しはコメント取得に失敗したら見送り、既存のファイルを残すこと', async () => {
+    await fs.mkdir(join(outputDir, '2026'), {recursive: true})
+    await fs.writeFile(join(outputDir, '2026', '親課題.md'), '既存の内容')
+
+    server.respond('/api/v2/issues', {
+      body: [
+        issue({id: 10, issueKey: 'TEST-10', summary: '親課題'}),
+        issue({
+          id: 11,
+          issueKey: 'TEST-11',
+          parentIssueId: 10,
+          summary: '新しい子課題',
+          updated: '2026-02-01T00:00:00Z',
+        }),
+      ],
+    })
+    server.respond('/api/v2/issues/TEST-10/comments', {status: 404})
+    server.respond('/api/v2/issues/TEST-11/comments', {status: 404})
+
+    await exportIssues(
+      {issueRepository: newBacklogIssueRepository(client()), logger: stubLogger},
+      {
+        domain: server.domain,
+        lastUpdated: '2026-01-15T00:00:00Z',
+        outputDir,
+        projectId: PROJECT_ID,
+      },
+    )
+
+    expect(await fs.readFile(join(outputDir, '2026', '親課題.md'), 'utf8')).to.equal('既存の内容')
+    expect(
+      await fs.readFile(join(outputDir, '2026', '新しい子課題.md'), 'utf8'),
+      '更新された課題はコメント取得に失敗しても保存すること',
+    ).to.include(`- 親課題: [TEST-10 親課題](${server.domain}/view/TEST-10)`)
+  })
+
+  it('親子の表示を揃えるために書き直す課題の親も取得済み集合になければ補完すること', async () => {
+    server.respond('/api/v2/issues', (url) => {
+      if (url.searchParams.getAll('id[]').includes('999')) {
+        return {body: [issue({id: 999, issueKey: 'OTHER-1', summary: '別プロジェクトの親課題'})]}
+      }
+
+      return {
+        body: [
+          issue({id: 10, issueKey: 'TEST-10', parentIssueId: 999, summary: '親課題'}),
+          issue({
+            id: 11,
+            issueKey: 'TEST-11',
+            parentIssueId: 10,
+            summary: '新しい子課題',
+            updated: '2026-02-01T00:00:00Z',
+          }),
+        ],
+      }
+    })
+    for (const issueKey of ['TEST-10', 'TEST-11']) {
+      server.respond(`/api/v2/issues/${issueKey}/comments`, {body: []})
+    }
+
+    await exportIssues(
+      {issueRepository: newBacklogIssueRepository(client()), logger: stubLogger},
+      {
+        domain: server.domain,
+        lastUpdated: '2026-01-15T00:00:00Z',
+        outputDir,
+        projectId: PROJECT_ID,
+      },
+    )
+
+    expect(await fs.readFile(join(outputDir, '2026', '親課題.md'), 'utf8')).to.include(
+      `- 親課題: [OTHER-1 別プロジェクトの親課題](${server.domain}/view/OTHER-1)`,
+    )
   })
 })

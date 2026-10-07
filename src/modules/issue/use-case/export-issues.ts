@@ -7,7 +7,14 @@ import {appendLog} from '../../../shared/storage/update-log.js'
 import {filterIssuesUpdatedSince} from '../domain/issue-filter.js'
 import {buildIssueMarkdown} from '../domain/issue-markdown.js'
 import {attachmentMarkdownLink, attachmentRelativePath, issueRelativePath, issueUrl} from '../domain/issue-path.js'
-import {buildChildIndex, buildIssueRefIndex, findChildren, findParent, IssueRef} from '../domain/issue-relations.js'
+import {
+  buildChildIndex,
+  buildIssueRefIndex,
+  findChildren,
+  findParent,
+  IssueRef,
+  withParentsAndChildren,
+} from '../domain/issue-relations.js'
 import {IssueRepository} from '../domain/issue-repository.js'
 import {Issue, IssueComment} from '../domain/issue.js'
 
@@ -59,15 +66,21 @@ export async function exportIssues(deps: ExportIssuesDeps, options: ExportIssues
     return
   }
 
+  const updatedIssueIds = new Set(filteredIssues.map((issue) => issue.id))
+  const targetIssues = withParentsAndChildren(allIssues, filteredIssues)
+  if (targetIssues.length > filteredIssues.length) {
+    logger.log(`親子の表示を揃えるため、${targetIssues.length - filteredIssues.length}件の課題もあわせて書き直します。`)
+  }
+
   logger.log('課題を保存しています...')
 
-  const relationIndex = await buildRelationIndex(deps, allIssues, filteredIssues, options)
+  const relationIndex = await buildRelationIndex(deps, allIssues, targetIssues, options)
 
-  for (const [index, issue] of filteredIssues.entries()) {
+  for (const [index, issue] of targetIssues.entries()) {
     try {
-      writeProgress(`課題を保存中... (${index + 1}/${filteredIssues.length}件)`)
+      writeProgress(`課題を保存中... (${index + 1}/${targetIssues.length}件)`)
       // eslint-disable-next-line no-await-in-loop
-      await saveIssue(deps, issue, options, relationIndex)
+      await saveIssue(deps, issue, options, {relationIndex, relationOnly: !updatedIssueIds.has(issue.id)})
     } catch (error) {
       logger.warn(
         `課題 ${issue.issueKey} の保存に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
@@ -126,18 +139,22 @@ async function saveIssue(
   deps: ExportIssuesDeps,
   issue: Issue,
   options: ExportIssuesOptions,
-  relationIndex: RelationIndex,
+  {relationIndex, relationOnly}: {relationIndex: RelationIndex; relationOnly: boolean},
 ): Promise<void> {
   const backlogIssueUrl = issueUrl(options.domain, issue.issueKey)
 
-  // コメント取得に失敗しても課題本体は保存する
   let comments: IssueComment[] = []
   try {
     comments = await deps.issueRepository.fetchAllComments(issue.issueKey)
   } catch (error) {
-    deps.logger.warn(
-      `課題 ${issue.issueKey} のコメント取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
-    )
+    const reason = error instanceof Error ? error.message : String(error)
+    // 更新された課題はコメントが欠けても本体を保存するが、親子の表示を揃えるためだけの書き直しでは既存のファイルを残す
+    if (relationOnly) {
+      deps.logger.warn(`課題 ${issue.issueKey} のコメント取得に失敗したため、親子の表示の更新を見送りました: ${reason}`)
+      return
+    }
+
+    deps.logger.warn(`課題 ${issue.issueKey} のコメント取得に失敗しました: ${reason}`)
   }
 
   const attachmentLinks = options.downloadAttachments ? await downloadIssueAttachments(deps, issue, options) : undefined

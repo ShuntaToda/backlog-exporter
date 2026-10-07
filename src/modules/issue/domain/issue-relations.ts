@@ -43,6 +43,23 @@ export function buildChildIndex(issues: Issue[]): Map<number, IssueRef[]> {
   return childIndex
 }
 
+// 課題のファイルには直接の親と子しか載らないため、更新された課題の上下1段を書き直せば親子の表示が揃う
+export function withParentsAndChildren(allIssues: Issue[], updatedIssues: Issue[]): Issue[] {
+  const updatedIds = new Set(updatedIssues.map((issue) => issue.id))
+  const parentIds = new Set(
+    updatedIssues
+      .map((issue) => issue.parentIssueId)
+      .filter((parentIssueId): parentIssueId is number => parentIssueId !== null),
+  )
+
+  return allIssues.filter(
+    (issue) =>
+      updatedIds.has(issue.id) ||
+      parentIds.has(issue.id) ||
+      (issue.parentIssueId !== null && updatedIds.has(issue.parentIssueId)),
+  )
+}
+
 export function findChildren(issue: Issue, childIndex: Map<number, IssueRef[]>): IssueRef[] {
   return childIndex.get(issue.id) ?? []
 }
