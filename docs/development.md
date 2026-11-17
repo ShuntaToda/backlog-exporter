@@ -13,7 +13,7 @@ src/
 │   ├── domain/       # 判断・変換（Markdown の組み立て・保存先のパス・更新の要否・消す対象）。入出力を持たない
 │   ├── use-case/     # 手順（取得 → domain で判断 → 保存）
 │   └── repository/   # Backlog API・ファイルとのやりとり。domain のインターフェースを満たす
-└── shared/           # modules から使う共通の部品
+└── shared/           # modules から使う共通の部品。直下の ports.ts・attachment.ts・file-name.ts・backlog-url.ts は入出力を持たず、domain から使ってよい
     ├── backlog/      # HTTP クライアント（API キーの伏せ字・429 の待ち）
     ├── storage/      # ファイルへの保存・更新ログ
     ├── console/      # 進捗・入力
@@ -39,6 +39,9 @@ import の向きは、外から内への一方向です。
 | `no-restricted-imports`・`no-restricted-properties`・`no-restricted-globals`・`no-restricted-syntax` | oclif・環境変数・通信・時刻が、決めた置き場の外に散らばること                               | `no-restricted-imports`・`no-restricted-syntax` は後の設定が前を上書きするので、domain の設定には src 全体の分も含めて書いている                                          |
 | `@typescript-eslint/no-non-null-assertion`・二重のアサーションの禁止                                 | 型の検査を外して通すこと                                                                    | 既にある `!` 1 件（`backlog-issue-repository.ts`）を、理由つきの例外にしている                                                                                            |
 | `reportUnusedDisableDirectives`                                                                      | 直したあとに残った disable                                                                  | なし                                                                                                                                                                      |
+| `@eslint-community/eslint-comments`（`no-restricted-disable`・`no-unlimited-disable` ほか）          | 構造のルールを disable で外すこと・ルールを書かない disable                                 | 理由（`-- 理由`）の無い disable は、既にあるもの（`no-await-in-loop`）が多いので、まだ落とさない                                                                          |
+| `scripts/eslint-config.test.mjs`（`ESLint#lintText`）                                                | 足した設定が、oclif のルールや別の場所の決まりを黙って上書きすること                        | 決まりを足すたびに、落ちる例と通る例をここに足す                                                                                                                          |
+| prettier（CI の `npm run format:check`）                                                             | 整形の違い                                                                                  | 整っていない既存のファイルを `.prettierignore` に載せている。src を並行して直している PR が入ったあとに一括で整え、README.md 以外を消す                                   |
 | `npm run typecheck`（`tsc --noEmit`）                                                                | テスト・e2e の型の誤り（`npm run build` は `tsconfig.build.json` でテストを外すため見ない） | CI が数秒伸びる                                                                                                                                                           |
 | lefthook（`lefthook.yml`）                                                                           | 整形・lint の違反、決まりに合わないコミットメッセージが手元からそのまま入ること             | `npm install` の `prepare` で入る。入れたくないときは `LEFTHOOK=0`                                                                                                        |
 | CI の `commit-messages`（`.github/workflows/commit-messages.yml`）                                   | `--no-verify`・GitHub の画面で作ったコミット                                                | PR のコミットだけを見る（前からの履歴は見ない）。マージコミットは見ない（GitHub が作り、文面を選べない）                                                                  |
@@ -48,9 +51,11 @@ import の向きは、外から内への一方向です。
 `.claude/settings.json` に 2 つの hook があります（`.claude/hooks/`。依存なし。Node の組み込みだけ）。
 
 - `lint-edited-file.mjs`（PostToolUse: Edit・Write・MultiEdit）: 編集したファイルに eslint と prettier をかけ、違反を終了コード 2 で AI に返す
-- `check-on-stop.mjs`（Stop）: 手を止める前に、まだコミットしていない変更に eslint・prettier と、`.ts` を変えていれば `tsc --noEmit` をかける。同じ停止で 2 度は止めない
+- `check-on-stop.mjs`（Stop）: 手を止める前に、まだコミットしていない変更に eslint・prettier と、`src`・`e2e` の `.ts` か `tsconfig*.json` を変えていれば `tsc --noEmit` をかける。同じ停止で 2 度は止めない
 
-hook の中の失敗（道具が無い・git が無い・時間切れ・入力が読めない）では 0 で終え、作業を止めません。hook のテストは `.claude/hooks/hooks.test.mjs` です。
+道具は `node_modules` の中の JS の入口を Node で直に動かします（Windows の `.cmd` を shell で動かすと、空白を含むパスで誤った失敗を返すため）。hook の中の失敗（道具が無い・git が無い・時間切れ・入力が読めない）では 0 で終え、作業を止めません。`--untracked-files=all` で変更を拾うので、CLI を試すときはリポジトリの外に書き出します。
+
+同じ設定の `attribution` で、Claude Code がコミットに AI の署名（`Co-Authored-By`・セッションの URL）を付けないようにしています（コミットメッセージの決まりと合わせるため）。hook のテストは `.claude/hooks/hooks.test.mjs` です。
 
 ## 道具で縛る決まりを足す
 
@@ -64,6 +69,7 @@ hook の中の失敗（道具が無い・git が無い・時間切れ・入力�
 
 足すときに守ること:
 
+- `scripts/eslint-config.test.mjs` に、落ちる例と通る例を足す
 - メッセージは日本語で、「何が決まりか・どう直すか・どこへ置くか」を書く（AI がメッセージだけで直せるように）。メッセージを書けないルール（`no-console` など）は、`.claude/hooks/hook-util.mjs` の `HINTS` に直し方を足す
 - 今のコードに違反があれば、例外を足さずにコードを直す。直せない例外は、`eslint.config.mjs` に理由のコメントを付けて 1 ファイルずつ書く
 - わざと違反を入れて、落ちること・メッセージで直せることを確かめる

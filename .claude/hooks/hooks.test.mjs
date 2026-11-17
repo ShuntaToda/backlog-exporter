@@ -5,7 +5,7 @@ import path from 'node:path'
 import {describe, expect, test} from 'vitest'
 
 import {needsTypecheck} from './check-on-stop.mjs'
-import {clip, lintTargetOf, parseStatus} from './hook-util.mjs'
+import {clip, lintProblemsOf, lintTargetOf, parseStatus, runTool} from './hook-util.mjs'
 
 const root = path.resolve(import.meta.dirname, '../..')
 
@@ -145,5 +145,48 @@ describe('hook のスクリプト', () => {
 
   test('[正常系]同じ停止で 2 度目（stop_hook_active）は、確かめずに終える', () => {
     expect(run('check-on-stop.mjs', '{"stop_hook_active":true}').status).toBe(0)
+  })
+})
+
+describe('runTool', () => {
+  test('[正常系]道具を動かし、終了コードと出力を返す', () => {
+    const result = runTool(root, 'prettier', ['--version'], 30_000)
+
+    expect(result?.ok).toBe(true)
+    expect(result?.output).toMatch(/^\d+\.\d+\.\d+$/)
+  })
+
+  test.each([
+    ['知らない道具', 'unknown', 30_000],
+    ['持ち時間が残っていない', 'prettier', 0],
+  ])('[異常系]%s は、確かめられなかったとして null', (_, tool, timeoutMs) => {
+    expect(runTool(root, tool, ['--version'], timeoutMs)).toBeNull()
+  })
+
+  test('[異常系]道具が入っていない根では null', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hook-util-'))
+    try {
+      expect(runTool(dir, 'eslint', ['--version'], 30_000)).toBeNull()
+    } finally {
+      fs.rmSync(dir, {force: true, recursive: true})
+    }
+  })
+})
+
+describe('lintProblemsOf', () => {
+  test('[異常系]eslint の違反に、英語のメッセージの直し方を添える', () => {
+    const file = 'src/modules/wiki/use-case/zz-hook-probe.ts'
+    fs.writeFileSync(path.join(root, file), "console.log('a')\n")
+    try {
+      const problems = lintProblemsOf(root, [{eslint: true, file}], () => 60_000)
+
+      expect(problems.join('\n')).toContain('Logger（src/shared/ports.ts）を引数で受けて')
+    } finally {
+      fs.rmSync(path.join(root, file))
+    }
+  })
+
+  test('[正常系]決まりに合うファイルは、何も返さない', () => {
+    expect(lintProblemsOf(root, [{eslint: true, file: 'src/shared/file-name.ts'}], () => 60_000)).toStrictEqual([])
   })
 })

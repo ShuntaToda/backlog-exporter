@@ -1,10 +1,31 @@
+import comments from '@eslint-community/eslint-plugin-eslint-comments/configs'
 import {includeIgnoreFile} from '@eslint/compat'
 import oclif from 'eslint-config-oclif'
 import prettier from 'eslint-config-prettier'
 import path from 'node:path'
 import {fileURLToPath} from 'node:url'
 
-const gitignorePath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '.gitignore')
+const rootDir = path.dirname(fileURLToPath(import.meta.url))
+const gitignorePath = path.resolve(rootDir, '.gitignore')
+
+/**
+ * oclif の設定が付けているルールの options。flat config では後の設定が同じルールの options を丸ごと置き換えるので、
+ * 決まりを足すときは、これを含めて書く（含めないと oclif の分が黙って消える）
+ */
+const oclifOptionsOf = (rule) => {
+  const config = oclif.findLast((entry) => entry.rules?.[rule] !== undefined)
+  const value = config?.rules[rule]
+  return Array.isArray(value) ? value.slice(1) : []
+}
+
+const oclifRestrictedImports = oclifOptionsOf('no-restricted-imports')
+const oclifRestrictedGlobals = oclifOptionsOf('no-restricted-globals')
+
+const oclifImportMessage = {
+  group: ['@oclif/*'],
+  message:
+    'oclif（@oclif/*）を import できるのは src/commands と src/index.ts だけです。フラグ・出力は commands で受け、値と Logger を渡してください',
+}
 
 // 層の import の向き（commands → composition → modules（use-case → domain・repository → domain）→ shared）。
 // 置き場と向きの理由は docs/development.md「層と置き場」
@@ -48,6 +69,12 @@ const layerZones = [
   },
 ]
 
+const testingZone = {
+  from: './src/shared/testing',
+  message: 'src/shared/testing はテスト用です（ビルドに入れない）。本番のコードから import できません',
+  target: ['./src/commands', './src/composition', './src/modules', './src/index.ts'],
+}
+
 const domainUseCaseZone = {
   from: './src/modules/*/use-case/**',
   message: 'domain から use-case は import できません。両方が使う型は domain に置いてください',
@@ -71,38 +98,45 @@ export default [
   },
   ...oclif,
   prettier,
+  comments.recommended,
+  {
+    rules: {
+      // 構造を守るルールは disable で外さない（例外は、この設定に理由つきで書く）
+      '@eslint-community/eslint-comments/no-restricted-disable': [
+        'error',
+        'import/no-restricted-paths',
+        'import/no-cycle',
+        'no-restricted-*',
+        'no-console',
+        '@typescript-eslint/no-explicit-any',
+        '@typescript-eslint/no-non-null-assertion',
+      ],
+    },
+  },
   {
     files: ['src/**/*.ts'],
     // テストは本物の組み立て（composition）を使ってよい
     ignores: ['**/*.test.ts'],
     rules: {
       'import/no-cycle': 'error',
-      'import/no-restricted-paths': ['error', {zones: [...layerZones, domainUseCaseZone]}],
+      'import/no-restricted-paths': [
+        'error',
+        {basePath: rootDir, zones: [...layerZones, testingZone, domainUseCaseZone]},
+      ],
     },
   },
   {
     // 既にある違反（ExportTarget の型を use-case から読んでいる）。型を domain に移したら、この例外を消す
     files: ['src/modules/all/domain/content-selection.ts'],
     rules: {
-      'import/no-restricted-paths': ['error', {zones: layerZones}],
+      'import/no-restricted-paths': ['error', {basePath: rootDir, zones: [...layerZones, testingZone]}],
     },
   },
   {
     files: ['src/**/*.ts'],
     ignores: ['src/commands/**', 'src/index.ts'],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['@oclif/*'],
-              message:
-                'oclif（@oclif/*）を import できるのは src/commands と src/index.ts だけです。フラグ・出力は commands で受け、値と Logger を渡してください',
-            },
-          ],
-        },
-      ],
+      'no-restricted-imports': ['error', {paths: oclifRestrictedImports, patterns: [oclifImportMessage]}],
     },
   },
   {
@@ -126,6 +160,7 @@ export default [
     rules: {
       'no-restricted-globals': [
         'error',
+        ...oclifRestrictedGlobals,
         {
           message:
             'Backlog への通信は src/shared/backlog の BacklogHttpClient を通します（API キーの伏せ字・レート制限の待ちをそこで持つため）',
@@ -157,7 +192,7 @@ export default [
       '@typescript-eslint/no-non-null-assertion': 'off',
     },
   },
-  // domain の決まり。no-restricted-imports・no-restricted-syntax は後の設定が前を上書きするので、src 全体の分も含めてここに書く
+  // domain の決まり。no-restricted-imports・no-restricted-syntax は後の設定が前を上書きするので、src 全体と oclif の分も含めてここに書く
   {
     files: ['src/modules/*/domain/**/*.ts'],
     ignores: ['**/*.test.ts'],
@@ -165,11 +200,9 @@ export default [
       'no-restricted-imports': [
         'error',
         {
+          paths: oclifRestrictedImports,
           patterns: [
-            {
-              group: ['@oclif/*'],
-              message: 'domain から oclif は import できません',
-            },
+            oclifImportMessage,
             {
               group: ['node:*', '!node:path'],
               message:

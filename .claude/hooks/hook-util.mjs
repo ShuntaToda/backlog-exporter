@@ -89,16 +89,24 @@ export const changedFilesOf = (root) => {
   return parseStatus(status.stdout)
 }
 
-/** node_modules/.bin の道具を動かす。道具が無い・時間切れは「確かめられなかった」として null */
+/**
+ * 道具の入口（node_modules の中の JS）。.bin を通さないのは、Windows の .cmd を shell で動かすと、
+ * 空白や & を含むパス・ファイル名が分かれて、違反でないのに失敗を返すため
+ */
+const TOOL_ENTRIES = {
+  eslint: 'node_modules/eslint/bin/eslint.js',
+  prettier: 'node_modules/prettier/bin/prettier.cjs',
+  tsc: 'node_modules/typescript/bin/tsc',
+}
+
+/** 道具を Node で動かす。道具が無い・時間切れは「確かめられなかった」として null */
 export const runTool = (root, tool, args, timeoutMs) => {
-  // Windows では .bin の道具が .cmd になる
-  const bin = path.join(root, 'node_modules/.bin', process.platform === 'win32' ? `${tool}.cmd` : tool)
-  if (!fs.existsSync(bin) || timeoutMs <= 0) return null
-  const result = spawnSync(bin, args, {
+  const entry = TOOL_ENTRIES[tool] === undefined ? undefined : path.join(root, TOOL_ENTRIES[tool])
+  if (entry === undefined || !fs.existsSync(entry) || timeoutMs <= 0) return null
+  const result = spawnSync(process.execPath, [entry, ...args], {
     cwd: root,
     encoding: 'utf8',
     maxBuffer: MAX_BUFFER,
-    shell: process.platform === 'win32',
     timeout: timeoutMs,
   })
   if (result.error !== undefined || result.status === null) return null

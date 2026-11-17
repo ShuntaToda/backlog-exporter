@@ -19,3 +19,20 @@ Thumbs.db
 
 # Generated files
 oclif.manifest.json 
+# 整形の決まりに合っていない既にあるファイル。src を並行して直している PR とぶつからないよう、それが入ったあとに prettier --write で一括して整え、ここから消す
+# README.md は oclif readme が作る節を含むので、整形すると oclif readme との間で差分が往復する（ここに残す）
+e2e/export-commands.test.ts
+e2e/prune.test.ts
+e2e/update.test.ts
+README.md
+src/commands/all/index.ts
+src/modules/all/use-case/export-all.ts
+src/modules/document/domain/document-json-markdown.test.ts
+src/modules/document/domain/document-json-markdown.ts
+src/modules/document/use-case/export-documents.test.ts
+src/modules/prune/use-case/prune-directories.ts
+src/modules/update/use-case/update-exports.ts
+src/modules/wiki/domain/wiki-path.ts
+src/shared/attachment.ts
+tsconfig.build.json
+tsconfig.json

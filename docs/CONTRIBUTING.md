@@ -31,7 +31,7 @@ npm test
 
 ```bash
 npm run build      # TypeScriptをビルド
-npm run format     # コードフォーマット
+npm run format     # コードフォーマット（.prettierignore に載せた既存のファイルは整えない）
 npm run lint       # ESLint実行
 npm run typecheck  # テスト・e2eを含めて型を確かめる
 npm test           # テスト実行（終わるとlintも動く）
@@ -71,7 +71,8 @@ npm run test:e2e   # ビルドしたCLIをモックサーバーに向けて動�
 2. フィーチャーブランチを作成（`feature/your-feature`）
 3. 実装とテストを追加
 4. `npm test`ですべてのテストが通ることを確認
-5. プルリクエストを作成（本文はテンプレートの「何を・なぜ」「確かめたこと」「黙らせた検査・残したこと」に沿って書く）
+5. コミットメッセージは 1 行で書く（本文・`Co-Authored-By` などのトレーラーは付けない。CI が確かめる）
+6. プルリクエストを作成（本文はテンプレートの「何を・なぜ」「確かめたこと」「黙らせた検査・残したこと」に沿って書く）
 
 #### 注意事項
 
