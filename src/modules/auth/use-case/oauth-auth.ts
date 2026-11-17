@@ -1,7 +1,9 @@
 import {BacklogAuth} from '../../../shared/backlog/auth.js'
+import {Logger} from '../../../shared/ports.js'
 import {needsRefresh, OAuthSession, OAuthToken, refreshTokenGrant} from '../domain/oauth-session.js'
 
 export interface OAuthAuthDeps {
+  logger: Logger
   now: () => number
   requestToken: (domain: string, grant: URLSearchParams, nowMs: number) => Promise<OAuthToken>
   saveSession: (session: OAuthSession) => Promise<void>
@@ -30,8 +32,16 @@ export function createOAuthAuth(deps: OAuthAuthDeps, session: OAuthSession): Bac
       }
 
       current = {...current, token}
-      // 更新でリフレッシュトークンも新しくなるため、次回の実行に引き継ぐ
-      await deps.saveSession(current)
+      // 更新でリフレッシュトークンも新しくなるため、次回の実行に引き継ぐ。
+      // 保存に失敗しても手元のトークンは有効なので、今回の実行は続ける（古いリフレッシュトークンは使えなくなっている）
+      try {
+        await deps.saveSession(current)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        deps.logger.warn(
+          `更新したトークンを保存できませんでした。次回の実行では backlog-exporter login で再度ログインしてください（${message}）`,
+        )
+      }
     })().finally(() => {
       refreshing = undefined
     })

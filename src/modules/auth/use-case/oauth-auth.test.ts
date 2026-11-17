@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest'
 
+import {createRecordingLogger} from '../../../shared/testing/stub-logger.js'
 import {OAuthSession, OAuthToken} from '../domain/oauth-session.js'
 import {createOAuthAuth} from './oauth-auth.js'
 
@@ -17,11 +18,16 @@ const newToken: OAuthToken = {
   refreshToken: 'new-refresh',
 }
 
-function fakes(requestToken: () => Promise<OAuthToken> = async () => newToken) {
+function fakes(
+  requestToken: () => Promise<OAuthToken> = async () => newToken,
+  saveSession: (session: OAuthSession) => Promise<void> = async () => {},
+) {
   const grants: URLSearchParams[] = []
   const saved: OAuthSession[] = []
+  const logger = createRecordingLogger()
   return {
     deps: {
+      logger,
       now: () => NOW,
       async requestToken(_domain: string, grant: URLSearchParams) {
         grants.push(grant)
@@ -29,9 +35,11 @@ function fakes(requestToken: () => Promise<OAuthToken> = async () => newToken) {
       },
       async saveSession(s: OAuthSession) {
         saved.push(s)
+        await saveSession(s)
       },
     },
     grants,
+    logger,
     saved,
   }
 }
@@ -82,5 +90,15 @@ describe('createOAuthAuth', () => {
 
     await expect(auth.credentials()).rejects.toThrow('backlog-exporter login')
     expect(saved).to.have.length(0)
+  })
+
+  it('更新したトークンを保存できなくても今回の実行は続け、次回の再ログインを案内すること', async () => {
+    const {deps, logger} = fakes(undefined, async () => {
+      throw new Error('EACCES')
+    })
+    const auth = createOAuthAuth(deps, session(-1))
+
+    expect((await auth.credentials()).headers.authorization).to.equal('Bearer new-access')
+    expect(logger.warnings.join('\n')).to.include('backlog-exporter login')
   })
 })

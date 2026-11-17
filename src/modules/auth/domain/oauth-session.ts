@@ -18,27 +18,46 @@ export interface OAuthSession {
   token: OAuthToken
 }
 
-// トークンエンドポイントのレスポンス（https://developer.nulab.com/ja/docs/backlog/auth/）
-export interface TokenResponse {
-  access_token: string
-  expires_in: number
-  refresh_token: string
-  token_type: string
-}
-
 // 期限ちょうどに送ると途中で切れるため、残りがこの時間を切ったら先に更新する
 const REFRESH_MARGIN_MS = 60_000
 
-export function tokenFromResponse(response: TokenResponse, nowMs: number): OAuthToken {
-  if (!response.access_token || !response.refresh_token || !Number.isFinite(response.expires_in)) {
-    throw new Error('トークンエンドポイントのレスポンスにアクセストークンまたはリフレッシュトークンが含まれていません')
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function nonEmptyString(value: unknown): string | undefined {
+  return typeof value === 'string' && value !== '' ? value : undefined
+}
+
+// トークンエンドポイントのレスポンス（https://developer.nulab.com/ja/docs/backlog/auth/）。外から来る値なので形を確かめる
+export function tokenFromResponse(response: unknown, nowMs: number): OAuthToken {
+  const accessToken = isRecord(response) ? nonEmptyString(response.access_token) : undefined
+  const refreshToken = isRecord(response) ? nonEmptyString(response.refresh_token) : undefined
+  const expiresIn = isRecord(response) ? response.expires_in : undefined
+  if (!accessToken || !refreshToken || typeof expiresIn !== 'number' || !Number.isFinite(expiresIn)) {
+    throw new Error(
+      'トークンエンドポイントのレスポンスにアクセストークン・リフレッシュトークン・有効期限が含まれていません',
+    )
   }
 
-  return {
-    accessToken: response.access_token,
-    expiresAt: new Date(nowMs + response.expires_in * 1000).toISOString(),
-    refreshToken: response.refresh_token,
+  return {accessToken, expiresAt: new Date(nowMs + expiresIn * 1000).toISOString(), refreshToken}
+}
+
+// 保存したログイン情報は手で書き換えられることもあるため、使う前に形を確かめる。足りなければundefined
+export function parseOAuthSession(value: unknown): OAuthSession | undefined {
+  if (!isRecord(value) || !isRecord(value.client) || !isRecord(value.token)) return undefined
+  const domain = nonEmptyString(value.domain)
+  const clientId = nonEmptyString(value.client.clientId)
+  const clientSecret = nonEmptyString(value.client.clientSecret)
+  const redirectUri = nonEmptyString(value.client.redirectUri)
+  const accessToken = nonEmptyString(value.token.accessToken)
+  const expiresAt = nonEmptyString(value.token.expiresAt)
+  const refreshToken = nonEmptyString(value.token.refreshToken)
+  if (!domain || !clientId || !clientSecret || !redirectUri || !accessToken || !expiresAt || !refreshToken) {
+    return undefined
   }
+
+  return {client: {clientId, clientSecret, redirectUri}, domain, token: {accessToken, expiresAt, refreshToken}}
 }
 
 export function needsRefresh(token: OAuthToken, nowMs: number): boolean {

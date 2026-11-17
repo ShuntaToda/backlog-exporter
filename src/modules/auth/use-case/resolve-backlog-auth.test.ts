@@ -1,5 +1,4 @@
-import process from 'node:process'
-import {afterEach, beforeEach, describe, expect, it} from 'vitest'
+import {beforeEach, describe, expect, it} from 'vitest'
 
 import {BacklogAuth} from '../../../shared/backlog/auth.js'
 import {stubLogger} from '../../../shared/testing/stub-logger.js'
@@ -19,27 +18,20 @@ const OAUTH_AUTH: BacklogAuth = {
 }
 
 describe('resolveBacklogAuth', () => {
-  let savedEnv: string | undefined
   const loadedDomains: string[] = []
 
-  const deps = (session?: OAuthSession) => ({
+  const deps = (session?: OAuthSession, envApiKey?: string) => ({
     createOAuthAuth: () => OAUTH_AUTH,
     async loadSession(domain: string) {
       loadedDomains.push(domain)
       return session
     },
     logger: stubLogger,
+    readApiKeyFromEnv: () => envApiKey,
   })
 
   beforeEach(() => {
-    savedEnv = process.env.BACKLOG_API_KEY
-    delete process.env.BACKLOG_API_KEY
     loadedDomains.length = 0
-  })
-
-  afterEach(() => {
-    if (savedEnv === undefined) delete process.env.BACKLOG_API_KEY
-    else process.env.BACKLOG_API_KEY = savedEnv
   })
 
   it('APIキーが指定されていればログイン済みでもAPIキーを使うこと', async () => {
@@ -50,9 +42,7 @@ describe('resolveBacklogAuth', () => {
   })
 
   it('指定が無ければ環境変数のAPIキーを使うこと', async () => {
-    process.env.BACKLOG_API_KEY = 'env-key'
-
-    const auth = await resolveBacklogAuth(deps(SESSION), {domain: 'example.backlog.jp'})
+    const auth = await resolveBacklogAuth(deps(SESSION, 'env-key'), {domain: 'example.backlog.jp'})
 
     expect((await auth!.credentials()).query).to.deep.equal({apiKey: 'env-key'})
   })

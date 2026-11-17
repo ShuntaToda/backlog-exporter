@@ -35,6 +35,33 @@ describe('listenForCallback', () => {
     }
   })
 
+  it('stateもerrorも無いアクセスでは待ちを終わらせないこと', async () => {
+    const port = await freePort()
+    const listener = await listenForCallback({hostname: '127.0.0.1', pathname: '/callback', port}, 5000)
+
+    try {
+      const stray = await fetch(`http://127.0.0.1:${port}/callback`)
+      expect(stray.status).to.equal(400)
+
+      await fetch(`http://127.0.0.1:${port}/callback?code=abc&state=s1`)
+      expect((await listener.callbackUrl).searchParams.get('state')).to.equal('s1')
+    } finally {
+      await listener.close()
+    }
+  })
+
+  it('localhostならIPv4で受け取れること', async () => {
+    const port = await freePort()
+    const listener = await listenForCallback({hostname: 'localhost', pathname: '/callback', port}, 5000)
+
+    try {
+      await fetch(`http://127.0.0.1:${port}/callback?error=access_denied`)
+      expect((await listener.callbackUrl).searchParams.get('error')).to.equal('access_denied')
+    } finally {
+      await listener.close()
+    }
+  })
+
   it('期限までに戻ってこなければエラーにすること', async () => {
     const port = await freePort()
     const listener = await listenForCallback({hostname: '127.0.0.1', pathname: '/callback', port}, 10)

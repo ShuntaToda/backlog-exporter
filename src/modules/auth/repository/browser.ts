@@ -6,7 +6,8 @@ export async function openBrowser(url: string): Promise<boolean> {
   const [command, args] = browserCommand(url)
   return new Promise((resolve) => {
     try {
-      const child = spawn(command, args, {detached: true, stdio: 'ignore'})
+      // cmd に空のタイトル（""）をそのまま渡すため、Windowsでは引数を引用符で囲ませない
+      const child = spawn(command, args, {detached: true, stdio: 'ignore', windowsVerbatimArguments: true})
       child.once('error', () => resolve(false))
       child.once('spawn', () => {
         child.unref()

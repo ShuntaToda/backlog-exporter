@@ -1,8 +1,8 @@
-import {backlogOrigin} from '../../../shared/backlog-url.js'
-import {OAuthToken, tokenFromResponse, TokenResponse} from '../domain/oauth-session.js'
+import {backlogOrigin} from '../backlog-url.js'
 
-// https://developer.nulab.com/ja/docs/backlog/auth/ のトークンエンドポイント（認可コードの交換とトークンの更新で共通）
-export async function requestToken(domain: string, grant: URLSearchParams, nowMs: number): Promise<OAuthToken> {
+// https://developer.nulab.com/ja/docs/backlog/auth/ のトークンエンドポイント（認可コードの交換とトークンの更新で共通）。
+// 本文の形は呼び出し側（auth の domain）で確かめる
+export async function postTokenRequest(domain: string, grant: URLSearchParams): Promise<unknown> {
   const response = await fetch(`${backlogOrigin(domain)}/api/v2/oauth2/token`, {
     body: grant,
     headers: {'content-type': 'application/x-www-form-urlencoded'},
@@ -13,7 +13,7 @@ export async function requestToken(domain: string, grant: URLSearchParams, nowMs
     throw new Error(`トークンの取得に失敗しました: HTTP ${response.status} ${await errorDetail(response)}`)
   }
 
-  return tokenFromResponse((await response.json()) as TokenResponse, nowMs)
+  return response.json()
 }
 
 // Backlogのエラーは {errors: [{message}]} の形。読めなければステータス行だけを出す

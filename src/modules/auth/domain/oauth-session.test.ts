@@ -3,9 +3,9 @@ import {describe, expect, it} from 'vitest'
 import {
   authorizationCodeGrant,
   needsRefresh,
+  parseOAuthSession,
   refreshTokenGrant,
   tokenFromResponse,
-  TokenResponse,
 } from './oauth-session.js'
 
 const NOW = Date.parse('2026-01-01T00:00:00Z')
@@ -13,7 +13,7 @@ const CLIENT = {clientId: 'client-id', clientSecret: 'client-secret', redirectUr
 
 // トークンエンドポイントが返すJSONの本文（キーはBacklogの仕様どおりスネークケース）
 const TOKEN_BODY = '{"access_token":"access","expires_in":3600,"refresh_token":"refresh","token_type":"Bearer"}'
-const tokenBody = (fields: Record<string, unknown> = {}): TokenResponse => ({...JSON.parse(TOKEN_BODY), ...fields})
+const tokenBody = (fields: Record<string, unknown> = {}): unknown => ({...JSON.parse(TOKEN_BODY), ...fields})
 
 const tokenExpiringIn = (ms: number) => ({
   accessToken: 'a',
@@ -36,6 +36,38 @@ describe('tokenFromResponse', () => {
 
   it('expires_inが数でないレスポンスはエラーにすること', () => {
     expect(() => tokenFromResponse(tokenBody(Object.fromEntries([['expires_in', 'one hour']])), NOW)).to.throw()
+  })
+})
+
+describe('tokenFromResponse - 形の確認', () => {
+  it('オブジェクトでない本文はエラーにすること', () => {
+    expect(() => tokenFromResponse('ok', NOW)).to.throw('アクセストークン')
+    expect(() => tokenFromResponse(null, NOW)).to.throw('アクセストークン')
+  })
+})
+
+describe('parseOAuthSession', () => {
+  const SESSION = {
+    client: {clientId: 'id', clientSecret: 'secret', redirectUri: 'http://localhost:5033/callback'},
+    domain: 'example.backlog.jp',
+    token: {accessToken: 'a', expiresAt: '2026-01-01T01:00:00.000Z', refreshToken: 'r'},
+  }
+
+  it('すべての項目がそろっていれば読み取ること', () => {
+    expect(parseOAuthSession(SESSION)).to.deep.equal(SESSION)
+  })
+
+  it('トークンが欠けていればundefinedを返すこと', () => {
+    expect(parseOAuthSession({...SESSION, token: {accessToken: 'a', expiresAt: 'x'}})).to.be.undefined
+  })
+
+  it('Client Secretが空ならundefinedを返すこと', () => {
+    expect(parseOAuthSession({...SESSION, client: {...SESSION.client, clientSecret: ''}})).to.be.undefined
+  })
+
+  it('オブジェクトでなければundefinedを返すこと', () => {
+    expect(parseOAuthSession([])).to.be.undefined
+    expect(parseOAuthSession('session')).to.be.undefined
   })
 })
 
