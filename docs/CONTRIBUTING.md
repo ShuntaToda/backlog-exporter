@@ -6,7 +6,7 @@ backlog-exporterへの貢献を歓迎します！
 
 ### 前提条件
 
-- Node.js 18以上
+- Node.js 22以上
 - npm
 - Git
 
@@ -33,21 +33,16 @@ npm test
 npm run build      # TypeScriptをビルド
 npm run format     # コードフォーマット
 npm run lint       # ESLint実行
-npm test           # テスト実行
+npm run typecheck  # テスト・e2eを含めて型を確かめる
+npm test           # テスト実行（終わるとlintも動く）
+npm run test:e2e   # ビルドしたCLIをモックサーバーに向けて動かす
 ```
 
-## プロジェクト構造
+## プロジェクト構造と決まり
 
-```
-src/
-├── commands/          # CLIコマンド実装
-│   ├── all/           # 一括エクスポート
-│   ├── document/      # ドキュメントエクスポート
-│   ├── issue/         # 課題エクスポート
-│   ├── update/        # 更新
-│   └── wiki/          # Wikiエクスポート
-└── utils/             # ユーティリティ関数
-```
+層の分け方・import の向き・道具で縛っている決まりは [development.md](development.md) にあります。AI のコーディングエージェント向けの約束は [AGENTS.md](../AGENTS.md) です。
+
+`npm install` で lefthook の git hook が入り、コミットの前に整形と lint、コミットメッセージの形（1 行・AI の署名なし）、push の前に型とテストを確かめます。
 
 ## 貢献の方法
 
@@ -76,7 +71,7 @@ src/
 2. フィーチャーブランチを作成（`feature/your-feature`）
 3. 実装とテストを追加
 4. `npm test`ですべてのテストが通ることを確認
-5. プルリクエストを作成
+5. プルリクエストを作成（本文はテンプレートの「何を・なぜ」「確かめたこと」「黙らせた検査・残したこと」に沿って書く）
 
 #### 注意事項
 
@@ -91,16 +86,16 @@ src/
 npm test
 
 # 特定のテストファイル実行
-npm test -- --grep "test-pattern"
+npx vitest run src/modules/issue
 ```
 
 ## 技術仕様
 
 - **言語**: TypeScript 5.x
-- **ランタイム**: Node.js >=18.0.0
+- **ランタイム**: Node.js >=22.0.0
 - **CLIフレームワーク**: oclif v4
-- **HTTPクライアント**: ky
-- **テスト**: Mocha + Chai
+- **HTTPクライアント**: Node.js 組み込みの fetch
+- **テスト**: Vitest
 
 ## 質問・相談
 

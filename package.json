@@ -21,6 +21,7 @@
     "eslint": "^9",
     "eslint-config-oclif": "^6",
     "eslint-config-prettier": "^10",
+    "lefthook": "2.1.10",
     "oclif": "^4",
     "prettier": "^3.6.2",
     "tsx": "^4.23.0",
@@ -70,9 +71,11 @@
     "postpack": "node -e \"fs.rmSync('oclif.manifest.json',{force:true})\"",
     "posttest": "npm run lint",
     "prepack": "oclif manifest && oclif readme",
+    "prepare": "lefthook install || true",
     "test": "vitest run",
     "version": "oclif readme && git add README.md",
-    "test:e2e": "npm run build && vitest run --config vitest.e2e.config.ts"
+    "test:e2e": "npm run build && vitest run --config vitest.e2e.config.ts",
+    "typecheck": "tsc --noEmit"
   },
   "types": "dist/index.d.ts"
 }
