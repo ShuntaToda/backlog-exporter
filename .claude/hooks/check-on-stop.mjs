@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+// 先頭に #! を置かない（node で呼ぶ。Windows の CRLF では vitest が #! を外せず、テストが SyntaxError になる）
 // Stop: AI が手を止める前に、まだコミットしていない変更を確かめる。
 //   1. 変更のあるファイルに eslint と prettier（Bash で書き換えたファイルは、編集のたびの hook を通らないため）
 //   2. .ts を変えていれば tsc（1 回に数秒かかるため、編集のたびではなくここで）

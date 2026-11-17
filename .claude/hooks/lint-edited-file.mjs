@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+// 先頭に #! を置かない（node で呼ぶ。Windows の CRLF では vitest が #! を外せず、テストが SyntaxError になる）
 // PostToolUse（Edit・Write・MultiEdit）: AI が編集したファイルだけに eslint と prettier をかけ、違反を AI に返す。
 // 終了コード 2 のとき、標準エラーの内容が AI に渡る。hook の中の失敗（道具が無い・時間切れ・入力が読めない）では 0 で終え、作業を止めない。
 // Bash で書き換えたファイルはここを通らない（Stop の hook と pre-commit が見つける）

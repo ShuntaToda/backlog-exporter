@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+// 先頭に #! を置かない（node で呼ぶ。Windows の CRLF では vitest が #! を外せず、テストが SyntaxError になる）
 // コミットメッセージの決まり（1 行・AI の署名なし）を確かめる（依存なし。Node の組み込みだけ）。
 // 手元では lefthook の commit-msg が、CI では PR のコミットの範囲に対してジョブ commit-messages が、同じこのスクリプトを呼ぶ。
 //
