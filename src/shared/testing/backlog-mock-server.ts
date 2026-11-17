@@ -9,9 +9,18 @@ export interface MockResponse {
 
 export type MockResponder = ((url: URL) => MockResponse) | MockResponse
 
+// URLだけでは確かめられない認証ヘッダーやトークンエンドポイントへのPOSTの中身を検証するために残す
+export interface ReceivedRequest {
+  body: string
+  headers: Record<string, string | string[] | undefined>
+  method: string
+  url: URL
+}
+
 // Backlog APIを模した極小HTTPサーバ。実HTTP通信でクライアント〜CLIを検証するテスト用。
 // 未定義のパスへのリクエストは404を返し、全リクエストを記録する。
 export class BacklogMockServer {
+  readonly received: ReceivedRequest[] = []
   readonly requests: URL[] = []
   private readonly onceRoutes: Array<{pathname: string; responder: MockResponder}> = []
   private readonly routes = new Map<string, MockResponder>()
@@ -29,6 +38,7 @@ export class BacklogMockServer {
   reset(): void {
     this.onceRoutes.length = 0
     this.routes.clear()
+    this.received.length = 0
     this.requests.length = 0
   }
 
@@ -41,9 +51,17 @@ export class BacklogMockServer {
   }
 
   async start(): Promise<void> {
-    this.server = createServer((req, res) => {
+    this.server = createServer(async (req, res) => {
       const url = new URL(req.url ?? '/', `http://${req.headers.host}`)
       this.requests.push(url)
+      const chunks: Buffer[] = []
+      for await (const chunk of req) chunks.push(chunk as Buffer)
+      this.received.push({
+        body: Buffer.concat(chunks).toString('utf8'),
+        headers: req.headers,
+        method: req.method ?? 'GET',
+        url,
+      })
 
       const onceIndex = this.onceRoutes.findIndex((route) => route.pathname === url.pathname)
       const responder =

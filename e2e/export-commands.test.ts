@@ -3,7 +3,16 @@ import * as fs from 'node:fs/promises'
 import {join} from 'node:path'
 import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it} from 'vitest'
 
-import {API_KEY, BacklogMockServer, documentPayload, issuePayload, makeTempDir, PROJECT_ID, PROJECT_KEY, runCli} from './helpers.js'
+import {
+  API_KEY,
+  BacklogMockServer,
+  documentPayload,
+  issuePayload,
+  makeTempDir,
+  PROJECT_ID,
+  PROJECT_KEY,
+  runCli,
+} from './helpers.js'
 
 const server = new BacklogMockServer()
 let outputDir: string
@@ -127,7 +136,9 @@ describe('documentコマンド', () => {
     server.respond('/api/v2/documents/tree', {
       body: {
         activeTree: {
-          children: [{children: [{children: [], id: 'child1', name: '子ドキュメント'}], id: 'parent1', name: '親フォルダ'}],
+          children: [
+            {children: [{children: [], id: 'child1', name: '子ドキュメント'}], id: 'parent1', name: '親フォルダ'},
+          ],
           id: 'root',
         },
         projectId: PROJECT_ID,
@@ -191,8 +202,8 @@ describe('documentコマンド', () => {
   })
 })
 
-describe('APIキー未指定', () => {
-  it('BACKLOG_API_KEYも未設定の場合はエラーになること', async () => {
+describe('認証情報が無い場合', () => {
+  it('APIキーもOAuthのログイン情報も無い場合はエラーになること', async () => {
     const saved = process.env.BACKLOG_API_KEY
     delete process.env.BACKLOG_API_KEY
 
@@ -207,7 +218,7 @@ describe('APIキー未指定', () => {
         outputDir,
       ])
 
-      expect(error?.message).to.include('APIキーが見つかりません')
+      expect(error?.message).to.include('認証情報が見つかりません')
     } finally {
       process.env.BACKLOG_API_KEY = saved
     }

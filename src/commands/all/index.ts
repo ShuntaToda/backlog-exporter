@@ -1,9 +1,11 @@
 import {Command, Flags} from '@oclif/core'
 
+import {backlogAuthDeps} from '../../composition/backlog-auth.js'
 import {createBacklogRepositories} from '../../composition/backlog-repositories.js'
 import {applyContentSelection, parseContentSelection} from '../../modules/all/domain/content-selection.js'
 import {exportAll, ExportTarget} from '../../modules/all/use-case/export-all.js'
-import {API_KEY_NOT_FOUND_MESSAGE, loadDotenv, resolveApiKey} from '../../shared/config/env.js'
+import {AUTH_NOT_FOUND_MESSAGE, resolveBacklogAuth} from '../../modules/auth/use-case/resolve-backlog-auth.js'
+import {loadDotenv} from '../../shared/config/env.js'
 import {isInteractiveStdin, readLine} from '../../shared/console/prompt.js'
 
 // .envファイルを読み込む
@@ -41,7 +43,8 @@ export default class All extends Command {
   ]
   static flags = {
     apiKey: Flags.string({
-      description: 'Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能)',
+      description:
+        'Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能。省略時は login で保存したOAuthのログイン情報を使う)',
       required: false,
     }),
     domain: Flags.string({
@@ -92,9 +95,10 @@ export default class All extends Command {
     try {
       const {domain, downloadAttachments, exclude, issueKeyFileName, issueKeyFolder, maxCount, only, projectIdOrKey} =
         flags
-      const apiKey =
-        resolveApiKey(flags.apiKey, () => this.log('環境変数 BACKLOG_API_KEY からAPIキーを使用します')) ??
-        this.error(API_KEY_NOT_FOUND_MESSAGE)
+      const logger = {log: (message: string) => this.log(message), warn: (message: string) => this.warn(message)}
+      const auth =
+        (await resolveBacklogAuth(backlogAuthDeps(logger), {apiKey: flags.apiKey, domain})) ??
+        this.error(AUTH_NOT_FOUND_MESSAGE)
       const outputRoot = flags.output || './backlog-data'
 
       let targets = this.determineTargets(only, exclude)
@@ -106,9 +110,8 @@ export default class All extends Command {
 
       this.log(`取得対象: ${targets.join(', ')}`)
 
-      const logger = {log: (message: string) => this.log(message), warn: (message: string) => this.warn(message)}
       const repositories = createBacklogRepositories({
-        apiKey,
+        auth,
         domain,
         onRateLimitExceeded: (waitSeconds: number) =>
           this.log(`レート制限の上限に達しました。${waitSeconds}秒待機します...`),
@@ -117,7 +120,6 @@ export default class All extends Command {
       await exportAll(
         {...repositories, logger},
         {
-          apiKey,
           domain,
           downloadAttachments,
           issueKeyFileName,
@@ -165,7 +167,9 @@ export default class All extends Command {
   }
 
   private async promptContentSelection() {
-    this.log('BacklogのWikiとドキュメントのどちらを取得しますか？（BacklogはWikiからドキュメントへの移行を予定しています）')
+    this.log(
+      'BacklogのWikiとドキュメントのどちらを取得しますか？（BacklogはWikiからドキュメントへの移行を予定しています）',
+    )
     this.log('  [1] 両方（デフォルト）  [2] Wikiのみ  [3] ドキュメントのみ')
     return parseContentSelection(await readLine())
   }

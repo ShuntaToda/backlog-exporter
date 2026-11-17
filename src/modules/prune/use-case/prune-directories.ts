@@ -1,6 +1,7 @@
-import {resolveApiKey} from '../../../shared/config/env.js'
+import {BacklogAuth} from '../../../shared/backlog/auth.js'
 import {Logger} from '../../../shared/ports.js'
 import {assertDirectoryExists} from '../../../shared/storage/markdown-store.js'
+import {AUTH_NOT_FOUND_MESSAGE} from '../../auth/use-case/resolve-backlog-auth.js'
 import {DocumentRepository} from '../../document/domain/document-repository.js'
 import {IssueRepository} from '../../issue/domain/issue-repository.js'
 import {ProjectRepository} from '../../project/domain/project-repository.js'
@@ -18,7 +19,7 @@ export interface PruneFlags {
 export interface PruneDeps {
   // ディレクトリごとに設定ファイルから接続情報が決まるため、repositoryはファクトリで注入する
   createRepositories: (connection: {
-    apiKey: string
+    auth: BacklogAuth
     domain: string
     onRateLimitExceeded?: (waitSeconds: number) => void
   }) => {
@@ -28,6 +29,8 @@ export interface PruneDeps {
     wikiRepository: WikiRepository
   }
   logger: Logger
+  // スペースごとにOAuthのログイン情報が分かれるため、ディレクトリのドメインが決まってから解決する
+  resolveAuth: (input: {apiKey?: string; domain: string}) => Promise<BacklogAuth | undefined>
 }
 
 export async function pruneDirectories(
@@ -91,14 +94,9 @@ async function pruneDirectory(
     return
   }
 
-  const apiKey =
-    flags.apiKey ||
-    settings.apiKey ||
-    resolveApiKey(undefined, () => logger.log('環境変数 BACKLOG_API_KEY からAPIキーを使用します'))
-  if (!apiKey) {
-    logger.warn(
-      `${targetDir}: APIキーが指定されていません。--apiKey フラグまたは BACKLOG_API_KEY 環境変数で設定してください。`,
-    )
+  const auth = await deps.resolveAuth({apiKey: flags.apiKey || settings.apiKey, domain})
+  if (!auth) {
+    logger.warn(`${targetDir}: 認証情報が見つかりません。スキップします。${AUTH_NOT_FOUND_MESSAGE}`)
     return
   }
 
@@ -108,9 +106,10 @@ async function pruneDirectory(
   }
 
   const {documentRepository, issueRepository, projectRepository, wikiRepository} = deps.createRepositories({
-    apiKey,
+    auth,
     domain,
-    onRateLimitExceeded: (waitSeconds: number) => logger.log(`レート制限の上限に達しました。${waitSeconds}秒待機します...`),
+    onRateLimitExceeded: (waitSeconds: number) =>
+      logger.log(`レート制限の上限に達しました。${waitSeconds}秒待機します...`),
   })
 
   if (target === 'wiki') {

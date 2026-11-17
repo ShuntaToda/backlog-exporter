@@ -4,9 +4,12 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it} from 'vitest'
 
+import {backlogAuthDeps} from '../../../composition/backlog-auth.js'
 import {createBacklogRepositories} from '../../../composition/backlog-repositories.js'
+import {BacklogAuth} from '../../../shared/backlog/auth.js'
 import {BacklogMockServer} from '../../../shared/testing/backlog-mock-server.js'
-import {stubLogger} from '../../../shared/testing/stub-logger.js'
+import {createRecordingLogger, stubLogger} from '../../../shared/testing/stub-logger.js'
+import {resolveBacklogAuth} from '../../auth/use-case/resolve-backlog-auth.js'
 import {updateExports} from './update-exports.js'
 
 const API_KEY = 'test-api-key'
@@ -40,11 +43,19 @@ describe('updateExports - downloadAttachmentsの伝播', () => {
   }
 
   const runUpdate = (flags: Record<string, unknown> = {}) =>
-    updateExports({createRepositories: createBacklogRepositories, logger: stubLogger}, targetDir, {
-      apiKey: API_KEY,
-      force: true,
-      ...flags,
-    })
+    updateExports(
+      {
+        createRepositories: createBacklogRepositories,
+        logger: stubLogger,
+        resolveAuth: (input) => resolveBacklogAuth(backlogAuthDeps(stubLogger), input),
+      },
+      targetDir,
+      {
+        apiKey: API_KEY,
+        force: true,
+        ...flags,
+      },
+    )
 
   it('設定ファイルのdownloadAttachmentsがWikiの添付ダウンロードに伝播すること', async () => {
     await writeSettings({downloadAttachments: true, folderType: 'wiki'})
@@ -106,5 +117,50 @@ describe('updateExports - downloadAttachmentsの伝播', () => {
 
     expect(server.requestedPaths()).to.not.include('/api/v2/wikis/111/attachments/9')
     expect(existsSync(join(targetDir, 'attachments'))).to.be.false
+  })
+})
+
+describe('updateExports - 認証情報', () => {
+  const server = new BacklogMockServer()
+  let targetDir: string
+
+  beforeAll(() => server.start())
+  afterAll(() => server.stop())
+
+  beforeEach(async () => {
+    server.reset()
+    targetDir = await fs.mkdtemp(join(tmpdir(), 'backlog-update-auth-test-'))
+    await fs.writeFile(
+      join(targetDir, 'backlog-settings.json'),
+      JSON.stringify({domain: server.domain, folderType: 'wiki', projectIdOrKey: PROJECT_KEY}),
+    )
+  })
+
+  afterEach(async () => {
+    await fs.rm(targetDir, {force: true, recursive: true})
+  })
+
+  it('認証情報が無いディレクトリはAPIを呼ばずにスキップし、ログイン方法を案内すること', async () => {
+    const logger = createRecordingLogger()
+    const requestedDomains: string[] = []
+    // APIキーも無く、どのスペースにもログインしていない状態
+    const loggedInSpaces = new Map<string, BacklogAuth>()
+
+    await updateExports(
+      {
+        createRepositories: createBacklogRepositories,
+        logger,
+        async resolveAuth({domain}) {
+          requestedDomains.push(domain)
+          return loggedInSpaces.get(domain)
+        },
+      },
+      targetDir,
+      {force: true},
+    )
+
+    expect(requestedDomains).to.deep.equal([server.domain])
+    expect(server.requests).to.have.length(0)
+    expect(logger.warnings.join('\n')).to.include('backlog-exporter login')
   })
 })
