@@ -134,7 +134,7 @@ $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY 
 ```
 
 - API キー（`--apiKey`・`BACKLOG_API_KEY`）が指定されているときは、ログイン済みでも API キーが優先されます
-- ログイン情報はスペースごとに `~/.config/backlog-exporter/oauth/` に本人だけが読める権限で保存されます（`XDG_CONFIG_HOME`・`BACKLOG_EXPORTER_CONFIG_DIR` で場所を変えられます）。トークンの更新に使うため Client ID / Secret も一緒に保存します。エクスポート先の `backlog-settings.json` には保存しません
+- ログイン情報はスペースごとに `~/.config/backlog-exporter/oauth/`（Windows は `%LOCALAPPDATA%\backlog-exporter\oauth\`）に本人だけが読める権限で保存されます（`XDG_CONFIG_HOME`・`BACKLOG_EXPORTER_CONFIG_DIR` で場所を変えられます）。トークンの更新に使うため Client ID / Secret も一緒に保存します。エクスポート先の `backlog-settings.json` には保存しません
 - Backlog の OAuth には権限を絞る仕組み（スコープ）がないため、トークンではログインしたユーザー本人と同じ操作ができます。backlog-exporter が行うのは読み取りだけです
 - 削除するときは `backlog-exporter logout --domain example.backlog.jp` を実行します。更新に失敗したと表示されたら、`login` をやり直してください
 

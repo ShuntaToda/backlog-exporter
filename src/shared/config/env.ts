@@ -14,9 +14,14 @@ export function readApiKeyFromEnv(): string | undefined {
   return process.env.BACKLOG_API_KEY || undefined
 }
 
-// 出力先ごとの backlog-settings.json はリポジトリに入れられることがあるため、ログイン情報は利用者の設定ディレクトリに分けて置く
-export function configDirectory(): string {
-  if (process.env.BACKLOG_EXPORTER_CONFIG_DIR) return process.env.BACKLOG_EXPORTER_CONFIG_DIR
-  const base = process.env.XDG_CONFIG_HOME || join(homedir(), '.config')
-  return join(base, 'backlog-exporter')
+// 出力先ごとの backlog-settings.json はリポジトリに入れられることがあるため、ログイン情報は利用者の設定ディレクトリに分けて置く。
+// Windows では %APPDATA% が移動プロファイルで他のPCへ同期されることがあるため、そのPCだけに残る %LOCALAPPDATA% を使う
+export function configDirectory(
+  env: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
+): string {
+  if (env.BACKLOG_EXPORTER_CONFIG_DIR) return env.BACKLOG_EXPORTER_CONFIG_DIR
+  if (env.XDG_CONFIG_HOME) return join(env.XDG_CONFIG_HOME, 'backlog-exporter')
+  if (platform === 'win32' && env.LOCALAPPDATA) return join(env.LOCALAPPDATA, 'backlog-exporter')
+  return join(homedir(), '.config', 'backlog-exporter')
 }
