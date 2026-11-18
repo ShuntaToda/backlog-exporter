@@ -43,8 +43,7 @@ import の向きは、外から内への一方向です。
 | `scripts/eslint-config.test.mjs`（`ESLint#lintText`）                                                | 足した設定が、oclif のルールや別の場所の決まりを黙って上書きすること                        | 決まりを足すたびに、落ちる例と通る例をここに足す                                                                                                                          |
 | prettier（CI の `npm run format:check`）                                                             | 整形の違い                                                                                  | 整っていない既存のファイルを `.prettierignore` に載せている。src を並行して直している PR が入ったあとに一括で整え、README.md 以外を消す                                   |
 | `npm run typecheck`（`tsc --noEmit`）                                                                | テスト・e2e の型の誤り（`npm run build` は `tsconfig.build.json` でテストを外すため見ない） | CI が数秒伸びる                                                                                                                                                           |
-| lefthook（`lefthook.yml`）                                                                           | 整形・lint の違反、決まりに合わないコミットメッセージが手元からそのまま入ること             | `npm install` の `prepare` で入る。入れたくないときは `LEFTHOOK=0`                                                                                                        |
-| CI の `commit-messages`（`.github/workflows/commit-messages.yml`）                                   | `--no-verify`・GitHub の画面で作ったコミット                                                | PR のコミットだけを見る（前からの履歴は見ない）。マージコミットは見ない（GitHub が作り、文面を選べない）                                                                  |
+| lefthook（`lefthook.yml`）                                                                           | 整形・lint の違反、型の誤り・落ちるテストが手元からそのまま入ること                         | `npm install` の `prepare` で入る。入れたくないときは `LEFTHOOK=0`                                                                                                        |
 
 ### Claude Code の hook
 
@@ -55,7 +54,7 @@ import の向きは、外から内への一方向です。
 
 道具は `node_modules` の中の JS の入口を Node で直に動かします（Windows の `.cmd` を shell で動かすと、空白を含むパスで誤った失敗を返すため）。hook の中の失敗（道具が無い・git が無い・時間切れ・入力が読めない）では 0 で終え、作業を止めません。`--untracked-files=all` で変更を拾うので、CLI を試すときはリポジトリの外に書き出します。
 
-同じ設定の `attribution` で、Claude Code がコミットに AI の署名（`Co-Authored-By`・セッションの URL）を付けないようにしています（コミットメッセージの決まりと合わせるため）。hook のテストは `.claude/hooks/hooks.test.mjs` です。
+hook のテストは `.claude/hooks/hooks.test.mjs` です。
 
 ## 道具で縛る決まりを足す
 

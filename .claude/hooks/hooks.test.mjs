@@ -17,7 +17,7 @@ describe('lintTargetOf', () => {
     ['src/modules/wiki/use-case/export-wikis.ts', {eslint: true, file: 'src/modules/wiki/use-case/export-wikis.ts'}],
     [path.join(root, 'src/index.ts'), {eslint: true, file: 'src/index.ts'}],
     ['e2e/helpers.ts', {eslint: true, file: 'e2e/helpers.ts'}],
-    ['scripts/check-commit-message.mjs', {eslint: true, file: 'scripts/check-commit-message.mjs'}],
+    ['scripts/eslint-config.test.mjs', {eslint: true, file: 'scripts/eslint-config.test.mjs'}],
     ['.claude/hooks/hook-util.mjs', {eslint: true, file: '.claude/hooks/hook-util.mjs'}],
     ['eslint.config.mjs', {eslint: true, file: 'eslint.config.mjs'}],
     ['vitest.config.ts', {eslint: true, file: 'vitest.config.ts'}],
@@ -89,7 +89,7 @@ describe('needsTypecheck', () => {
     [['src/modules/wiki/domain/wiki.ts'], true],
     [['e2e/helpers.ts'], true],
     [['tsconfig.build.json'], true],
-    [['README.md', 'scripts/check-commit-message.mjs'], false],
+    [['README.md', 'scripts/eslint-config.test.mjs'], false],
     [[], false],
   ])('[正常系]%j → %s', (files, expected) => {
     expect(needsTypecheck(files)).toBe(expected)

@@ -22,13 +22,6 @@ pre-commit:
       skip: [merge, rebase]
       fail_text: 'lint の決まりに合っていません。メッセージのとおりにコードを直してください（eslint-disable で黙らせない。決まりの一覧は AGENTS.md「道具で縛っている決まり」）'
 
-commit-msg:
-  jobs:
-    # メッセージは 1 行で、AI の署名の行（Co-Authored-By: のうち AI のもの・セッションの URL）を入れない。
-    # CI も PR のコミットに同じスクリプトをかける（--no-verify や GitHub の画面で作ったコミットも見る）
-    - name: commit-message
-      run: node scripts/check-commit-message.mjs {1}
-
 pre-push:
   parallel: true
   jobs:
@@ -36,7 +29,7 @@ pre-push:
       glob: '*.ts'
       run: npm run typecheck
 
-    # コミットメッセージの検査・hook のテストと、src のテスト（外につながない。数秒〜十数秒）
+    # eslint の設定・hook のテストと、src のテスト（外につながない。数秒〜十数秒）
     - name: test
       glob:
         - 'src/**/*.ts'

@@ -11,7 +11,7 @@ Backlog の課題・Wiki・ドキュメントを取得して Markdown に保存�
 - `src/modules/<名前>/` — 機能ごとのまとまり。`domain/`（判断・変換。入出力を持たない）・`use-case/`（手順。domain と repository をつなぐ）・`repository/`（Backlog API・ファイルとのやりとり）
 - `src/shared/` — modules から使う共通の部品（`backlog/` は HTTP クライアント、`storage/` はファイルへの保存、`console/` は進捗・入力、`config/` は環境変数、`testing/` はテスト用のモックサーバー）
 - `e2e/` — ビルドした CLI を、モックサーバーに向けて動かす結合テスト
-- `scripts/` — 開発用のスクリプト（`check-commit-message.mjs`: コミットメッセージの決まり）
+- `scripts/` — 開発用のスクリプトとテスト（`eslint-config.test.mjs`: eslint の設定が決めた場所に掛かっているか）
 - `.claude/` — Claude Code の hook（`hooks/`。編集のたびに検査を返す）とレビュー用のサブエージェント（`agents/`）
 
 層の向きと、どこに何を置くかは [docs/development.md](docs/development.md#層と置き場) にあります。
@@ -49,11 +49,10 @@ Backlog の課題・Wiki・ドキュメントを取得して Markdown に保存�
 | 直したあとに残った disable を残さない                                                                                                                      | eslint `reportUnusedDisableDirectives`                                                                                                    | `Unused eslint-disable directive`                                                  |
 | 型の厳しさ（`strict`）。テストと e2e も型を確かめる                                                                                                        | `tsc`（`npm run typecheck`）                                                                                                              | TypeScript のエラー                                                                |
 | 整形                                                                                                                                                       | prettier（`@oclif/prettier-config`。CI は `npm run format:check`）。整っていない既存のファイルは `.prettierignore` に理由つきで載せている | `Code style issues found`。hook と pre-commit は `npx prettier --write` を案内する |
-| コミットのメッセージは 1 行・AI の署名なし（マージコミットと、`git revert` の決まった本文を除く）                                                          | lefthook `commit-msg`・CI の `commit-messages`（`scripts/check-commit-message.mjs`）                                                      | 「コミットメッセージは 1 行にしてください」                                        |
 
 eslint の設定が決めた場所に決めたルールを掛けているかは、`scripts/eslint-config.test.mjs` が確かめます。
 
-Claude Code では、編集のたびにそのファイルの eslint・prettier が、手を止める前に変更したファイルの eslint・prettier と tsc が動き、違反が返ります（`.claude/settings.json` の hook。docs/development.md「Claude Code の hook」）。同じ設定で、コミットに AI の署名を付けないようにしています。
+Claude Code では、編集のたびにそのファイルの eslint・prettier が、手を止める前に変更したファイルの eslint・prettier と tsc が動き、違反が返ります（`.claude/settings.json` の hook。docs/development.md「Claude Code の hook」）。
 
 ## 確かめる
 
@@ -61,7 +60,7 @@ Claude Code では、編集のたびにそのファイルの eslint・prettier �
 npm install            # lefthook の hook も入る（prepare）
 npm run lint
 npm run typecheck
-npm test               # src のテスト・コミットメッセージの検査と hook のテスト（終わると lint も動く）
+npm test               # src のテスト・eslint の設定と hook のテスト（終わると lint も動く）
 npm run test:e2e       # ビルドして、CLI をモックサーバーに向けて動かす
 ```
 
