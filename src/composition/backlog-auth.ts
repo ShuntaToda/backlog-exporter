@@ -8,7 +8,7 @@ import {LoginDeps} from '../modules/auth/use-case/login.js'
 import {createOAuthAuth} from '../modules/auth/use-case/oauth-auth.js'
 import {ResolveBacklogAuthDeps} from '../modules/auth/use-case/resolve-backlog-auth.js'
 import {postTokenRequest} from '../shared/backlog/oauth-token-endpoint.js'
-import {readApiKeyFromEnv} from '../shared/config/env.js'
+import {readApiKeyFromEnv, readClientSecretFromEnv} from '../shared/config/env.js'
 import {Logger} from '../shared/ports.js'
 
 async function requestToken(domain: string, grant: URLSearchParams, nowMs: number) {
@@ -17,7 +17,8 @@ async function requestToken(domain: string, grant: URLSearchParams, nowMs: numbe
 
 export function backlogAuthDeps(logger: Logger): ResolveBacklogAuthDeps {
   return {
-    createOAuthAuth: (session) => createOAuthAuth({logger, now: Date.now, requestToken, saveSession}, session),
+    createOAuthAuth: (session) =>
+      createOAuthAuth({logger, now: Date.now, readClientSecretFromEnv, requestToken, saveSession}, session),
     loadSession,
     logger,
     readApiKeyFromEnv,

@@ -5,7 +5,7 @@ import {
   parseLoopbackRedirectUri,
   readAuthorizationCallback,
 } from '../domain/authorization.js'
-import {authorizationCodeGrant, OAuthClient, OAuthSession, OAuthToken} from '../domain/oauth-session.js'
+import {authorizationCodeGrant, OAuthClient, OAuthSession, OAuthToken, sessionToSave} from '../domain/oauth-session.js'
 import {CallbackListener} from '../repository/callback-listener.js'
 
 export interface LoginDeps {
@@ -21,8 +21,11 @@ export interface LoginDeps {
 // ブラウザでの許可を待つ上限。離席したまま待ち続けてポートを塞がないようにする
 const CALLBACK_TIMEOUT_MS = 5 * 60 * 1000
 
-export async function login(deps: LoginDeps, options: {client: OAuthClient; domain: string}): Promise<void> {
-  const {client, domain} = options
+export async function login(
+  deps: LoginDeps,
+  options: {client: OAuthClient; domain: string; saveClientSecret: boolean},
+): Promise<void> {
+  const {client, domain, saveClientSecret} = options
   const {logger} = deps
 
   // サーバを立てる前に形を確かめ、間違ったURIでブラウザを開かない
@@ -40,10 +43,15 @@ export async function login(deps: LoginDeps, options: {client: OAuthClient; doma
 
     const code = readAuthorizationCallback(await listener.callbackUrl, state)
     const token = await deps.requestToken(domain, authorizationCodeGrant(client, code), deps.now())
-    await deps.saveSession({client, domain, token})
+    await deps.saveSession(sessionToSave({client, domain, token}, saveClientSecret))
   } finally {
     await listener.close()
   }
 
   logger.log(`${domain} へのログインが完了しました`)
+  if (!saveClientSecret) {
+    logger.log(
+      'Client Secret は保存していません。トークンの更新のため、実行時は BACKLOG_OAUTH_CLIENT_SECRET を渡してください',
+    )
+  }
 }

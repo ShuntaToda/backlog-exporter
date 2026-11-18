@@ -134,9 +134,30 @@ $ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY 
 ```
 
 - API キー（`--apiKey`・`BACKLOG_API_KEY`）が指定されているときは、ログイン済みでも API キーが優先されます
-- ログイン情報はスペースごとに `~/.config/backlog-exporter/oauth/`（Windows は `%LOCALAPPDATA%\backlog-exporter\oauth\`）に本人だけが読める権限で保存されます（`XDG_CONFIG_HOME`・`BACKLOG_EXPORTER_CONFIG_DIR` で場所を変えられます）。トークンの更新に使うため Client ID / Secret も一緒に保存します。エクスポート先の `backlog-settings.json` には保存しません
+- ログイン情報はスペースごとに `~/.config/backlog-exporter/oauth/`（Windows は `%LOCALAPPDATA%\backlog-exporter\oauth\`）に本人だけが読める権限で保存されます（`XDG_CONFIG_HOME`・`BACKLOG_EXPORTER_CONFIG_DIR` で場所を変えられます）。トークンの更新に使うため、既定では Client ID / Secret も一緒に保存します（Secret を保存しない方法は次の節）。エクスポート先の `backlog-settings.json` には保存しません
 - Backlog の OAuth には権限を絞る仕組み（スコープ）がないため、トークンではログインしたユーザー本人と同じ操作ができます。backlog-exporter が行うのは読み取りだけです
 - 削除するときは `backlog-exporter logout --domain example.backlog.jp` を実行します。更新に失敗したと表示されたら、`login` をやり直してください
+
+### Client Secret を 1Password などに置く（手元のファイルに残さない）
+
+`login` に `--no-saveClientSecret` を付けると、Client Secret をログイン情報のファイルに保存しません。トークンの更新（1 時間ごと）には Secret が要るため、その後の実行では環境変数 `BACKLOG_OAUTH_CLIENT_SECRET` で渡します。
+
+1Password CLI（`op`）を使う場合は、`.env` に値の代わりに参照を書き、`op run` 経由で実行します。
+
+```sh
+# .env
+BACKLOG_OAUTH_CLIENT_ID=op://Private/backlog-oauth/username
+BACKLOG_OAUTH_CLIENT_SECRET=op://Private/backlog-oauth/credential
+```
+
+```sh
+$ op run --env-file=.env -- backlog-exporter login --domain example.backlog.jp --no-saveClientSecret
+$ op run --env-file=.env -- backlog-exporter update
+```
+
+- トークン（アクセストークンとリフレッシュトークン）は 1 時間ごとに新しいものに置き換わるため、1Password ではなくログイン情報のファイルに保存します
+- Secret を保存していないのに環境変数でも渡されていないときは、トークンの更新の前に止まり、渡し方を案内します
+- 保存していても、環境変数で渡された Secret があればそちらを優先します
 
 ## 課題のエクスポート (issue)
 

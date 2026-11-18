@@ -16,14 +16,18 @@ const TOKEN_BODY = JSON.parse(
 )
 
 // login で保存されるのと同じ形のログイン情報を、置き場に直接書く（ブラウザでの許可はE2Eで再現できないため）
-async function writeSession(expiresAt: string): Promise<string> {
+async function writeSession(expiresAt: string, options: {saveClientSecret?: boolean} = {}): Promise<string> {
   const {host} = new URL(server.domain)
   const sessionPath = join(configDir, 'oauth', `${host.replaceAll(':', '_')}.json`)
   await fs.mkdir(join(configDir, 'oauth'), {recursive: true})
   await fs.writeFile(
     sessionPath,
     JSON.stringify({
-      client: {clientId: 'client-id', clientSecret: 'client-secret', redirectUri: 'http://localhost:5033/callback'},
+      client: {
+        clientId: 'client-id',
+        ...(options.saveClientSecret === false ? {} : {clientSecret: 'client-secret'}),
+        redirectUri: 'http://localhost:5033/callback',
+      },
       domain: server.domain,
       token: {accessToken: 'saved-access', expiresAt, refreshToken: 'saved-refresh'},
     }),
@@ -98,6 +102,30 @@ describe('OAuthのログイン情報でのエクスポート', () => {
     expect(error).to.be.undefined
     expect(server.received[0].headers.authorization).to.be.undefined
     expect(server.requests[0].searchParams.get('apiKey')).to.equal('explicit-key')
+  })
+})
+
+describe('Client Secretを保存していないログイン情報', () => {
+  it('BACKLOG_OAUTH_CLIENT_SECRETで渡せば期限切れのトークンを更新できること', async () => {
+    await writeSession(new Date(Date.now() - 1000).toISOString(), {saveClientSecret: false})
+    server.respond('/api/v2/oauth2/token', {body: TOKEN_BODY})
+    process.env.BACKLOG_OAUTH_CLIENT_SECRET = 'secret-from-1password'
+
+    const {error} = await exportWiki()
+
+    expect(error).to.be.undefined
+    const tokenRequest = server.received.find((request) => request.url.pathname === '/api/v2/oauth2/token')
+    expect(new URLSearchParams(tokenRequest!.body).get('client_secret')).to.equal('secret-from-1password')
+  })
+
+  it('Client Secretが渡されなければ、更新を依頼せずに渡し方を案内すること', async () => {
+    await writeSession(new Date(Date.now() - 1000).toISOString(), {saveClientSecret: false})
+    delete process.env.BACKLOG_OAUTH_CLIENT_SECRET
+
+    const {error} = await exportWiki()
+
+    expect(error?.message).to.include('BACKLOG_OAUTH_CLIENT_SECRET')
+    expect(server.received.some((request) => request.url.pathname === '/api/v2/oauth2/token')).to.be.false
   })
 })
 

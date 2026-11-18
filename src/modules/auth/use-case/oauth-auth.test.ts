@@ -21,6 +21,7 @@ const newToken: OAuthToken = {
 function fakes(
   requestToken: () => Promise<OAuthToken> = async () => newToken,
   saveSession: (session: OAuthSession) => Promise<void> = async () => {},
+  envClientSecret?: string,
 ) {
   const grants: URLSearchParams[] = []
   const saved: OAuthSession[] = []
@@ -29,6 +30,7 @@ function fakes(
     deps: {
       logger,
       now: () => NOW,
+      readClientSecretFromEnv: () => envClientSecret,
       async requestToken(_domain: string, grant: URLSearchParams) {
         grants.push(grant)
         return requestToken()
@@ -100,5 +102,38 @@ describe('createOAuthAuth', () => {
 
     expect((await auth.credentials()).headers.authorization).to.equal('Bearer new-access')
     expect(logger.warnings.join('\n')).to.include('backlog-exporter login')
+  })
+
+  it('環境変数のClient Secretがあれば保存したものより優先すること', async () => {
+    const {deps, grants} = fakes(undefined, undefined, 'env-secret')
+    const auth = createOAuthAuth(deps, session(-1))
+
+    await auth.credentials()
+
+    expect(grants[0].get('client_secret')).to.equal('env-secret')
+  })
+
+  it('Client Secretを保存していなくても、環境変数から渡せば更新できること', async () => {
+    const {deps, grants} = fakes(undefined, undefined, 'env-secret')
+    const withoutSecret = session(-1)
+    const auth = createOAuthAuth(deps, {
+      ...withoutSecret,
+      client: {clientId: 'id', redirectUri: withoutSecret.client.redirectUri},
+    })
+
+    expect((await auth.credentials()).headers.authorization).to.equal('Bearer new-access')
+    expect(grants[0].get('client_secret')).to.equal('env-secret')
+  })
+
+  it('Client Secretがどこにも無ければ更新を依頼せず、環境変数での渡し方を案内すること', async () => {
+    const {deps, grants} = fakes()
+    const withoutSecret = session(-1)
+    const auth = createOAuthAuth(deps, {
+      ...withoutSecret,
+      client: {clientId: 'id', redirectUri: withoutSecret.client.redirectUri},
+    })
+
+    await expect(auth.credentials()).rejects.toThrow('BACKLOG_OAUTH_CLIENT_SECRET')
+    expect(grants).to.have.length(0)
   })
 })

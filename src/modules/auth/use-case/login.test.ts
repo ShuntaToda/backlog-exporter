@@ -35,14 +35,14 @@ function fakeDeps(options: {browserOpens?: boolean; callbackQuery: string}) {
       calls.saved.push(session)
     },
   }
-  return {calls, deps, warnings: logger.warnings}
+  return {calls, deps, logs: logger.logs, warnings: logger.warnings}
 }
 
 describe('login', () => {
   it('許可画面を開き、受け取った認可コードをトークンに換えて保存すること', async () => {
     const {calls, deps} = fakeDeps({callbackQuery: 'code=the-code&state=the-state'})
 
-    await login(deps, {client: CLIENT, domain: 'example.backlog.jp'})
+    await login(deps, {client: CLIENT, domain: 'example.backlog.jp', saveClientSecret: true})
 
     expect(new URL(calls.opened[0]).searchParams.get('state')).to.equal('the-state')
     expect(calls.grants[0].get('code')).to.equal('the-code')
@@ -53,7 +53,9 @@ describe('login', () => {
   it('stateが違えばトークンを取りに行かず、待ち受けを閉じること', async () => {
     const {calls, deps} = fakeDeps({callbackQuery: 'code=the-code&state=forged'})
 
-    await expect(login(deps, {client: CLIENT, domain: 'example.backlog.jp'})).rejects.toThrow('state')
+    await expect(login(deps, {client: CLIENT, domain: 'example.backlog.jp', saveClientSecret: true})).rejects.toThrow(
+      'state',
+    )
     expect(calls.grants).to.have.length(0)
     expect(calls.saved).to.have.length(0)
     expect(calls.closed).to.equal(1)
@@ -62,7 +64,7 @@ describe('login', () => {
   it('ブラウザを開けなくても、URLを案内して待ち続けること', async () => {
     const {calls, deps, warnings} = fakeDeps({browserOpens: false, callbackQuery: 'code=c&state=the-state'})
 
-    await login(deps, {client: CLIENT, domain: 'example.backlog.jp'})
+    await login(deps, {client: CLIENT, domain: 'example.backlog.jp', saveClientSecret: true})
 
     expect(warnings.some((message) => message.includes('手動で開いて'))).to.be.true
     expect(calls.saved).to.have.length(1)
@@ -72,9 +74,23 @@ describe('login', () => {
     const {calls, deps} = fakeDeps({callbackQuery: ''})
 
     await expect(
-      login(deps, {client: {...CLIENT, redirectUri: 'https://example.com/callback'}, domain: 'example.backlog.jp'}),
+      login(deps, {
+        client: {...CLIENT, redirectUri: 'https://example.com/callback'},
+        domain: 'example.backlog.jp',
+        saveClientSecret: true,
+      }),
     ).rejects.toThrow('http://localhost')
     expect(calls.opened).to.have.length(0)
     expect(calls.closed).to.equal(0)
+  })
+
+  it('Client Secretを保存しない選択では、Secretを除いて保存し、実行時の渡し方を案内すること', async () => {
+    const {calls, deps, logs} = fakeDeps({callbackQuery: 'code=c&state=the-state'})
+
+    await login(deps, {client: CLIENT, domain: 'example.backlog.jp', saveClientSecret: false})
+
+    expect(calls.grants[0].get('client_secret')).to.equal('secret')
+    expect(calls.saved[0].client).to.deep.equal({clientId: 'id', redirectUri: 'http://localhost:5033/callback'})
+    expect(logs.join('\n')).to.include('BACKLOG_OAUTH_CLIENT_SECRET')
   })
 })

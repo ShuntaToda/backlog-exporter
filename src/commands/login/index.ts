@@ -18,6 +18,9 @@ export default class Login extends Command {
     `<%= config.bin %> <%= command.id %> --domain example.backlog.jp --redirectUri http://localhost:8080/callback
 アプリケーションに登録したリダイレクトURIが既定値と違う場合に指定する
 `,
+    `op run --env-file=.env -- <%= config.bin %> <%= command.id %> --domain example.backlog.jp --no-saveClientSecret
+Client Secretを1Passwordから渡し、手元のファイルには保存しない
+`,
   ]
   static flags = {
     clientId: Flags.string({
@@ -42,6 +45,12 @@ export default class Login extends Command {
       env: 'BACKLOG_OAUTH_REDIRECT_URI',
       required: false,
     }),
+    saveClientSecret: Flags.boolean({
+      allowNo: true,
+      default: true,
+      description:
+        'Client Secretもログイン情報と一緒に保存する。--no-saveClientSecret で保存せず、トークンの更新時は環境変数 BACKLOG_OAUTH_CLIENT_SECRET から読む（1Passwordのop runなどで渡す場合）',
+    }),
   }
 
   async run(): Promise<void> {
@@ -52,6 +61,7 @@ export default class Login extends Command {
       await login(loginDeps(logger), {
         client: {clientId: flags.clientId, clientSecret: flags.clientSecret, redirectUri: flags.redirectUri},
         domain: flags.domain,
+        saveClientSecret: flags.saveClientSecret,
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)

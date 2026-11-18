@@ -1,10 +1,17 @@
 import {BacklogAuth} from '../../../shared/backlog/auth.js'
 import {Logger} from '../../../shared/ports.js'
-import {needsRefresh, OAuthSession, OAuthToken, refreshTokenGrant} from '../domain/oauth-session.js'
+import {
+  clientSecretForRefresh,
+  needsRefresh,
+  OAuthSession,
+  OAuthToken,
+  refreshTokenGrant,
+} from '../domain/oauth-session.js'
 
 export interface OAuthAuthDeps {
   logger: Logger
   now: () => number
+  readClientSecretFromEnv: () => string | undefined
   requestToken: (domain: string, grant: URLSearchParams, nowMs: number) => Promise<OAuthToken>
   saveSession: (session: OAuthSession) => Promise<void>
 }
@@ -17,11 +24,19 @@ export function createOAuthAuth(deps: OAuthAuthDeps, session: OAuthSession): Bac
 
   const refresh = (): Promise<void> => {
     refreshing ??= (async () => {
+      const clientSecret = clientSecretForRefresh(current, deps.readClientSecretFromEnv())
+      if (!clientSecret) {
+        // 再ログインでは解決しないため、更新の失敗とは分けて案内する
+        throw new Error(
+          'トークンの更新に Client Secret が必要です。BACKLOG_OAUTH_CLIENT_SECRET を設定してください（1Password を使う場合は op run 経由で実行してください）',
+        )
+      }
+
       let token: OAuthToken
       try {
         token = await deps.requestToken(
           current.domain,
-          refreshTokenGrant(current.client, current.token.refreshToken),
+          refreshTokenGrant({clientId: current.client.clientId, clientSecret}, current.token.refreshToken),
           deps.now(),
         )
       } catch (error) {

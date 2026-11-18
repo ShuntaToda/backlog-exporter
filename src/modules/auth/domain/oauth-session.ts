@@ -11,11 +11,32 @@ export interface OAuthToken {
   refreshToken: string
 }
 
-// 1つのBacklogスペースに対するログイン状態。トークンの更新にClient ID/Secretが要るため一緒に持つ
+// 保存するアプリケーションの情報。Client Secret を 1Password などに置きたい人のために、Secret は保存しないこともできる
+export interface SavedOAuthClient {
+  clientId: string
+  clientSecret?: string
+  redirectUri: string
+}
+
+// 1つのBacklogスペースに対するログイン状態。トークンの更新にClient IDが要るため一緒に持つ
 export interface OAuthSession {
-  client: OAuthClient
+  client: SavedOAuthClient
   domain: string
   token: OAuthToken
+}
+
+export function sessionToSave(
+  options: {client: OAuthClient; domain: string; token: OAuthToken},
+  saveClientSecret: boolean,
+): OAuthSession {
+  const {client, domain, token} = options
+  const {clientSecret, ...withoutSecret} = client
+  return {client: saveClientSecret ? {...withoutSecret, clientSecret} : withoutSecret, domain, token}
+}
+
+// 環境変数の値を優先する（1Password の op run などで渡された最新の Secret を使うため）。どちらにも無ければ undefined
+export function clientSecretForRefresh(session: OAuthSession, envClientSecret?: string): string | undefined {
+  return envClientSecret || session.client.clientSecret
 }
 
 // 期限ちょうどに送ると途中で切れるため、残りがこの時間を切ったら先に更新する
@@ -48,16 +69,18 @@ export function parseOAuthSession(value: unknown): OAuthSession | undefined {
   if (!isRecord(value) || !isRecord(value.client) || !isRecord(value.token)) return undefined
   const domain = nonEmptyString(value.domain)
   const clientId = nonEmptyString(value.client.clientId)
+  // Secret を保存しない選択をした場合は項目ごと無い
   const clientSecret = nonEmptyString(value.client.clientSecret)
   const redirectUri = nonEmptyString(value.client.redirectUri)
   const accessToken = nonEmptyString(value.token.accessToken)
   const expiresAt = nonEmptyString(value.token.expiresAt)
   const refreshToken = nonEmptyString(value.token.refreshToken)
-  if (!domain || !clientId || !clientSecret || !redirectUri || !accessToken || !expiresAt || !refreshToken) {
+  if (!domain || !clientId || !redirectUri || !accessToken || !expiresAt || !refreshToken) {
     return undefined
   }
 
-  return {client: {clientId, clientSecret, redirectUri}, domain, token: {accessToken, expiresAt, refreshToken}}
+  const client = clientSecret ? {clientId, clientSecret, redirectUri} : {clientId, redirectUri}
+  return {client, domain, token: {accessToken, expiresAt, refreshToken}}
 }
 
 export function needsRefresh(token: OAuthToken, nowMs: number): boolean {
@@ -78,7 +101,10 @@ export function authorizationCodeGrant(client: OAuthClient, code: string): URLSe
   ])
 }
 
-export function refreshTokenGrant(client: OAuthClient, refreshToken: string): URLSearchParams {
+export function refreshTokenGrant(
+  client: {clientId: string; clientSecret: string},
+  refreshToken: string,
+): URLSearchParams {
   return new URLSearchParams([
     ['grant_type', 'refresh_token'],
     ['refresh_token', refreshToken],
