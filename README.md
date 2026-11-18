@@ -101,6 +101,8 @@ $ backlog-exporter update
 
 API キーを発行できない・発行したくない場合は、OAuth 2.0 でログインして使えます。アクセストークンは 1 時間で切れ、自動で更新されます。
 
+![OAuth ログインの全体像](docs/images/oauth-overview.svg)
+
 ### 1. Backlog にアプリケーションを登録する（初回のみ）
 
 [Backlog Developer サイト](https://backlog.com/developer/applications/)に Nulab アカウントでログインし、アプリケーションを登録します。
