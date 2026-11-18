@@ -1,0 +1,38 @@
+assert_lefthook_installed: true
+
+pre-commit:
+  parallel: true
+  jobs:
+    # 既にあるファイルにも整形の違いが残っているため、コミットに入れるファイルだけを整えて入れ直す
+    - name: prettier
+      glob: '*.{ts,mjs,json,md,yml,yaml}'
+      run: npx prettier --cache --write --ignore-unknown {staged_files}
+      stage_fixed: true
+      skip: [merge, rebase]
+
+    - name: eslint
+      glob:
+        - 'src/**/*.ts'
+        - 'e2e/**/*.ts'
+        - '*.{ts,mjs}'
+        - 'scripts/*.mjs'
+        - '.claude/hooks/*.mjs'
+      run: npx eslint --cache --max-warnings 0 --no-warn-ignored --fix {staged_files}
+      stage_fixed: true
+      skip: [merge, rebase]
+      fail_text: 'lint の決まりに合っていません。メッセージのとおりにコードを直してください（eslint-disable で黙らせない。決まりの一覧は AGENTS.md「道具で縛っている決まり」）'
+
+pre-push:
+  parallel: true
+  jobs:
+    - name: tsc
+      glob: '*.ts'
+      run: npm run typecheck
+
+    # eslint の設定・hook のテストと、src のテスト（外につながない。数秒〜十数秒）
+    - name: test
+      glob:
+        - 'src/**/*.ts'
+        - 'scripts/*.mjs'
+        - '.claude/hooks/*.mjs'
+      run: npx vitest run
