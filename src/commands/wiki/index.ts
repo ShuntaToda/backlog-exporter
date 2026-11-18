@@ -1,10 +1,12 @@
 import {Command, Flags} from '@oclif/core'
 
+import {backlogAuthDeps} from '../../composition/backlog-auth.js'
 import {createBacklogRepositories} from '../../composition/backlog-repositories.js'
+import {AUTH_NOT_FOUND_MESSAGE, resolveBacklogAuth} from '../../modules/auth/use-case/resolve-backlog-auth.js'
 import {FolderType} from '../../modules/settings/domain/settings.js'
 import {updateSettings} from '../../modules/settings/repository/settings-store.js'
 import {exportWikis} from '../../modules/wiki/use-case/export-wikis.js'
-import {API_KEY_NOT_FOUND_MESSAGE, loadDotenv, resolveApiKey} from '../../shared/config/env.js'
+import {loadDotenv} from '../../shared/config/env.js'
 import {ensureDirectory} from '../../shared/storage/markdown-store.js'
 
 // .envファイルを読み込む
@@ -22,7 +24,8 @@ Wikiをダウンロードする
   ]
   static flags = {
     apiKey: Flags.string({
-      description: 'Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能)',
+      description:
+        'Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能。省略時は login で保存したOAuthのログイン情報を使う)',
       required: false,
     }),
     domain: Flags.string({
@@ -50,14 +53,14 @@ Wikiをダウンロードする
 
     try {
       const {domain, downloadAttachments, projectIdOrKey} = flags
-      const apiKey =
-        resolveApiKey(flags.apiKey, () => this.log('環境変数 BACKLOG_API_KEY からAPIキーを使用します')) ??
-        this.error(API_KEY_NOT_FOUND_MESSAGE)
+      const logger = {log: (message: string) => this.log(message), warn: (message: string) => this.warn(message)}
+      const auth =
+        (await resolveBacklogAuth(backlogAuthDeps(logger), {apiKey: flags.apiKey, domain})) ??
+        this.error(AUTH_NOT_FOUND_MESSAGE)
       const outputDir = flags.output || './wiki'
 
-      const logger = {log: (message: string) => this.log(message), warn: (message: string) => this.warn(message)}
       const {wikiRepository} = createBacklogRepositories({
-        apiKey,
+        auth,
         domain,
         onRateLimitExceeded: (waitSeconds: number) =>
           this.log(`レート制限の上限に達しました。${waitSeconds}秒待機します...`),
@@ -68,7 +71,6 @@ Wikiをダウンロードする
 
       // 設定ファイルを保存
       await updateSettings(outputDir, {
-        apiKey,
         domain,
         downloadAttachments,
         folderType: FolderType.WIKI,

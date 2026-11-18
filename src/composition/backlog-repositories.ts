@@ -6,10 +6,11 @@ import {ProjectRepository} from '../modules/project/domain/project-repository.js
 import {newBacklogProjectRepository} from '../modules/project/repository/backlog-project-repository.js'
 import {WikiRepository} from '../modules/wiki/domain/wiki-repository.js'
 import {newBacklogWikiRepository} from '../modules/wiki/repository/backlog-wiki-repository.js'
+import {BacklogAuth} from '../shared/backlog/auth.js'
 import {BacklogHttpClient} from '../shared/backlog/http-client.js'
 
 export interface BacklogConnection {
-  apiKey: string
+  auth: BacklogAuth
   domain: string
   onRateLimitExceeded?: (waitSeconds: number) => void
 }

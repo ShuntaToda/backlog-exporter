@@ -1,7 +1,9 @@
 import {Args, Command, Flags} from '@oclif/core'
 import process from 'node:process'
 
+import {backlogAuthDeps} from '../../composition/backlog-auth.js'
 import {createBacklogRepositories} from '../../composition/backlog-repositories.js'
+import {resolveBacklogAuth} from '../../modules/auth/use-case/resolve-backlog-auth.js'
 import {updateExports} from '../../modules/update/use-case/update-exports.js'
 import {loadDotenv} from '../../shared/config/env.js'
 
@@ -50,7 +52,8 @@ export default class Update extends Command {
   ]
   static flags = {
     apiKey: Flags.string({
-      description: 'Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能)',
+      description:
+        'Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能。省略時は login で保存したOAuthのログイン情報を使う)',
       required: false,
     }),
     documentId: Flags.string({
@@ -114,7 +117,15 @@ export default class Update extends Command {
     const logger = {log: (message: string) => this.log(message), warn: (message: string) => this.warn(message)}
 
     try {
-      await updateExports({createRepositories: createBacklogRepositories, logger}, targetDir, flags)
+      await updateExports(
+        {
+          createRepositories: createBacklogRepositories,
+          logger,
+          resolveAuth: (input) => resolveBacklogAuth(backlogAuthDeps(logger), input),
+        },
+        targetDir,
+        flags,
+      )
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       this.error(`更新に失敗しました: ${errorMessage}`)

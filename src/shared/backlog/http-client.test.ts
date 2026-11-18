@@ -1,6 +1,7 @@
 import {afterAll, beforeAll, beforeEach, describe, expect, it} from 'vitest'
 
 import {BacklogMockServer} from '../testing/backlog-mock-server.js'
+import {BacklogAuth} from './auth.js'
 import {BacklogHttpClient, HttpError, rateLimitWaitMs} from './http-client.js'
 
 const API_KEY = 'test-api-key'
@@ -162,5 +163,75 @@ describe('BacklogHttpClient', () => {
       expect((error as Error).message).to.include('apiKey=***')
       expect((error as Error).message).to.not.include(API_KEY)
     }
+  })
+})
+
+// 401を受けたら新しいトークンに切り替える、OAuthと同じ振る舞いの認証
+function rotatingAuth(): BacklogAuth & {recoveries: number} {
+  let token = 'expired-token'
+  const auth = {
+    async credentials() {
+      return {headers: {authorization: `Bearer ${token}`}, query: {}}
+    },
+    async recoverFromUnauthorized() {
+      auth.recoveries++
+      token = 'fresh-token'
+    },
+    recoveries: 0,
+  }
+  return auth
+}
+
+describe('BacklogHttpClient - OAuth', () => {
+  const server = new BacklogMockServer()
+
+  beforeAll(() => server.start())
+  afterAll(() => server.stop())
+
+  beforeEach(() => server.reset())
+
+  it('Authorizationヘッダーで送り、URLにapiKeyを付けないこと', async () => {
+    server.respond('/api/v2/projects/TEST', {body: {id: 1}})
+    const auth = rotatingAuth()
+
+    await new BacklogHttpClient({auth, domain: server.domain}).getJson('/projects/TEST')
+
+    expect(server.received[0].headers.authorization).to.equal('Bearer expired-token')
+    expect(server.requests[0].searchParams.has('apiKey')).to.be.false
+  })
+
+  it('401を受けたら認証情報を更新して1度だけ送り直すこと', async () => {
+    server.respondOnce('/api/v2/projects/TEST', {status: 401})
+    server.respond('/api/v2/projects/TEST', {body: {id: 1}})
+    const auth = rotatingAuth()
+
+    const result = await new BacklogHttpClient({auth, domain: server.domain}).getJson('/projects/TEST')
+
+    expect(result).to.deep.equal({id: 1})
+    expect(auth.recoveries).to.equal(1)
+    expect(server.received.map((request) => request.headers.authorization)).to.deep.equal([
+      'Bearer expired-token',
+      'Bearer fresh-token',
+    ])
+  })
+
+  it('更新後も401ならHttpErrorをスローすること', async () => {
+    server.respond('/api/v2/projects/TEST', {status: 401})
+    const auth = rotatingAuth()
+
+    await expect(new BacklogHttpClient({auth, domain: server.domain}).getJson('/projects/TEST')).rejects.toThrow(
+      'HTTP 401',
+    )
+    expect(auth.recoveries).to.equal(1)
+    expect(server.requests).to.have.length(2)
+  })
+
+  it('APIキーでは401を送り直さないこと', async () => {
+    server.respond('/api/v2/projects/TEST', {status: 401})
+
+    await expect(
+      new BacklogHttpClient({apiKey: API_KEY, domain: server.domain}).getJson('/projects/TEST'),
+    ).rejects.toThrow('HTTP 401')
+    expect(server.requests).to.have.length(1)
   })
 })

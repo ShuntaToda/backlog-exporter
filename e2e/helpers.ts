@@ -12,6 +12,9 @@ export const PROJECT_ID = 12_345
 
 // ユーザー環境の実APIキーをE2Eが拾わないように固定する
 process.env.BACKLOG_API_KEY = API_KEY
+// 開発者が手元でloginしたOAuthのログイン情報もE2Eが拾わないよう、存在しない置き場に向ける
+process.env.BACKLOG_EXPORTER_CONFIG_DIR = join(tmpdir(), 'backlog-exporter-e2e-config-unused')
+delete process.env.BACKLOG_OAUTH_CLIENT_SECRET
 
 // ビルド済みdistのコマンドをプロセス内で実行する
 export function runCli(args: string[]) {

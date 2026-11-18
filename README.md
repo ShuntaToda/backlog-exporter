@@ -12,6 +12,7 @@ Backlog のデータをエクスポートするためのコマンドラインツ
 - [インストール](#インストール)
 - [クイックスタート](#クイックスタート)
 - [コマンド一覧](#コマンド一覧)
+- [API キーを使わずに認証する (OAuth)](#api-キーを使わずに認証する-oauth)
 - [課題のエクスポート (issue)](#課題のエクスポート-issue)
 - [Wiki のエクスポート (wiki)](#wiki-のエクスポート-wiki)
 - [ドキュメントのエクスポート (document)](#ドキュメントのエクスポート-document)
@@ -54,7 +55,7 @@ USAGE
 
 ## クイックスタート
 
-利用には Backlog の **ドメイン**・**プロジェクト ID（またはキー）**・**API キー** が必要です。
+利用には Backlog の **ドメイン**・**プロジェクト ID（またはキー）**・**認証情報** が必要です。認証情報は API キーか、OAuth でのログイン（[詳細](#api-キーを使わずに認証する-oauth)）のどちらかを使います。
 
 API キーは以下のいずれかの方法で指定できます：
 
@@ -82,6 +83,8 @@ $ backlog-exporter update
 | `document` | ドキュメントをツリー構造を保持してエクスポート                           |
 | `update`   | エクスポート済みデータを差分更新                                         |
 | `prune`    | Backlog 上で削除・移動されたデータのローカルファイルを削除               |
+| `login`    | OAuth でログインし、API キー無しでエクスポートできるようにする           |
+| `logout`   | `login` で保存したログイン情報を削除                                     |
 | `help`     | ヘルプを表示                                                             |
 
 全エクスポートコマンドで共通のフラグ：
@@ -90,9 +93,71 @@ $ backlog-exporter update
 | --------------------------- | ------------------------------------------------ |
 | `--domain`                  | Backlog のドメイン（例: `example.backlog.jp`）   |
 | `--projectIdOrKey`          | プロジェクトキーまたは数値 ID                    |
-| `--apiKey`                  | API キー（環境変数でも指定可能）                 |
+| `--apiKey`                  | API キー（環境変数でも指定可能。省略時は OAuth のログイン情報を使う） |
 | `--output`                  | 出力先ディレクトリ                               |
 | `-d, --downloadAttachments` | 添付ファイルもダウンロード（[詳細](#添付ファイルのダウンロード)） |
+
+## API キーを使わずに認証する (OAuth)
+
+API キーを発行できない・発行したくない場合は、OAuth 2.0 でログインして使えます。アクセストークンは 1 時間で切れ、自動で更新されます。
+
+![OAuth ログインの全体像](docs/images/oauth-overview.svg)
+
+### 1. Backlog にアプリケーションを登録する（初回のみ）
+
+[Backlog Developer サイト](https://backlog.com/developer/applications/)に Nulab アカウントでログインし、アプリケーションを登録します。
+
+| 項目         | 値                                                         |
+| ------------ | ---------------------------------------------------------- |
+| Redirect URI | `http://localhost:5033/callback`（`login` の既定値と同じ） |
+
+登録すると Client ID と Client Secret が表示されます。Client Secret はパスワードと同じように扱ってください。
+
+### 2. ログインする
+
+```sh
+$ export BACKLOG_OAUTH_CLIENT_ID=あなたのClientID
+$ export BACKLOG_OAUTH_CLIENT_SECRET=あなたのClientSecret
+$ backlog-exporter login --domain example.backlog.jp
+```
+
+ブラウザで Backlog の許可画面が開くので、許可します（開かない場合は表示された URL を開いてください）。`.env` ファイルに書いておくこともできます。Client Secret はシェルの履歴に残らないよう、`--clientSecret` フラグより環境変数での指定をおすすめします。
+
+Redirect URI を `http://localhost:5033/callback` 以外で登録した場合は、`--redirectUri`（または環境変数 `BACKLOG_OAUTH_REDIRECT_URI`）で同じ値を指定します。`http://localhost:<ポート>/...` か `http://127.0.0.1:<ポート>/...` の形にしてください。
+
+### 3. いつもどおりエクスポートする
+
+`--apiKey` を付けずに実行すると、そのドメインのログイン情報が使われます。
+
+```sh
+$ backlog-exporter all --domain example.backlog.jp --projectIdOrKey PROJECT_KEY --output ./backlog-data
+```
+
+- API キー（`--apiKey`・`BACKLOG_API_KEY`）が指定されているときは、ログイン済みでも API キーが優先されます
+- ログイン情報はスペースごとに `~/.config/backlog-exporter/oauth/`（Windows は `%LOCALAPPDATA%\backlog-exporter\oauth\`）に本人だけが読める権限で保存されます（`XDG_CONFIG_HOME`・`BACKLOG_EXPORTER_CONFIG_DIR` で場所を変えられます）。トークンの更新に使うため、既定では Client ID / Secret も一緒に保存します（Secret を保存しない方法は次の節）。エクスポート先の `backlog-settings.json` には保存しません
+- Backlog の OAuth には権限を絞る仕組み（スコープ）がないため、トークンではログインしたユーザー本人と同じ操作ができます。backlog-exporter が行うのは読み取りだけです
+- 削除するときは `backlog-exporter logout --domain example.backlog.jp` を実行します。更新に失敗したと表示されたら、`login` をやり直してください
+
+### Client Secret を 1Password などに置く（手元のファイルに残さない）
+
+`login` に `--no-saveClientSecret` を付けると、Client Secret をログイン情報のファイルに保存しません。トークンの更新（1 時間ごと）には Secret が要るため、その後の実行では環境変数 `BACKLOG_OAUTH_CLIENT_SECRET` で渡します。
+
+1Password CLI（`op`）を使う場合は、`.env` に値の代わりに参照を書き、`op run` 経由で実行します。
+
+```sh
+# .env
+BACKLOG_OAUTH_CLIENT_ID=op://Private/backlog-oauth/username
+BACKLOG_OAUTH_CLIENT_SECRET=op://Private/backlog-oauth/credential
+```
+
+```sh
+$ op run --env-file=.env -- backlog-exporter login --domain example.backlog.jp --no-saveClientSecret
+$ op run --env-file=.env -- backlog-exporter update
+```
+
+- トークン（アクセストークンとリフレッシュトークン）は 1 時間ごとに新しいものに置き換わるため、1Password ではなくログイン情報のファイルに保存します
+- Secret を保存していないのに環境変数でも渡されていないときは、トークンの更新の前に止まり、渡し方を案内します
+- 保存していても、環境変数で渡された Secret があればそちらを優先します
 
 ## 課題のエクスポート (issue)
 

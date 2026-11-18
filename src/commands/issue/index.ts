@@ -1,10 +1,12 @@
 import {Command, Flags} from '@oclif/core'
 
+import {backlogAuthDeps} from '../../composition/backlog-auth.js'
 import {createBacklogRepositories} from '../../composition/backlog-repositories.js'
+import {AUTH_NOT_FOUND_MESSAGE, resolveBacklogAuth} from '../../modules/auth/use-case/resolve-backlog-auth.js'
 import {exportIssues} from '../../modules/issue/use-case/export-issues.js'
 import {FolderType} from '../../modules/settings/domain/settings.js'
 import {updateSettings} from '../../modules/settings/repository/settings-store.js'
-import {API_KEY_NOT_FOUND_MESSAGE, loadDotenv, resolveApiKey} from '../../shared/config/env.js'
+import {loadDotenv} from '../../shared/config/env.js'
 import {ensureDirectory} from '../../shared/storage/markdown-store.js'
 
 // .envファイルを読み込む
@@ -40,7 +42,8 @@ export default class Issue extends Command {
   ]
   static flags = {
     apiKey: Flags.string({
-      description: 'Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能)',
+      description:
+        'Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能。省略時は login で保存したOAuthのログイン情報を使う)',
       required: false,
     }),
     domain: Flags.string({
@@ -86,14 +89,14 @@ export default class Issue extends Command {
 
     try {
       const {domain, downloadAttachments, issueKeyFileName, issueKeyFolder, maxCount, projectIdOrKey, statusId} = flags
-      const apiKey =
-        resolveApiKey(flags.apiKey, () => this.log('環境変数 BACKLOG_API_KEY からAPIキーを使用します')) ??
-        this.error(API_KEY_NOT_FOUND_MESSAGE)
+      const logger = {log: (message: string) => this.log(message), warn: (message: string) => this.warn(message)}
+      const auth =
+        (await resolveBacklogAuth(backlogAuthDeps(logger), {apiKey: flags.apiKey, domain})) ??
+        this.error(AUTH_NOT_FOUND_MESSAGE)
       const outputDir = flags.output || './backlog-issues'
 
-      const logger = {log: (message: string) => this.log(message), warn: (message: string) => this.warn(message)}
       const {issueRepository, projectRepository} = createBacklogRepositories({
-        apiKey,
+        auth,
         domain,
         onRateLimitExceeded: (waitSeconds: number) =>
           this.log(`レート制限の上限に達しました。${waitSeconds}秒待機します...`),
@@ -108,7 +111,6 @@ export default class Issue extends Command {
 
       // 設定ファイルを保存
       await updateSettings(outputDir, {
-        apiKey,
         domain,
         downloadAttachments,
         folderType: FolderType.ISSUE,

@@ -1,7 +1,9 @@
 import {Args, Command, Flags} from '@oclif/core'
 import process from 'node:process'
 
+import {backlogAuthDeps} from '../../composition/backlog-auth.js'
 import {createBacklogRepositories} from '../../composition/backlog-repositories.js'
+import {resolveBacklogAuth} from '../../modules/auth/use-case/resolve-backlog-auth.js'
 import {pruneDirectories} from '../../modules/prune/use-case/prune-directories.js'
 import {loadDotenv} from '../../shared/config/env.js'
 import {isInteractiveStdin, readYesNo} from '../../shared/console/prompt.js'
@@ -31,7 +33,8 @@ export default class Prune extends Command {
   ]
   static flags = {
     apiKey: Flags.string({
-      description: 'Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能)',
+      description:
+        'Backlog API key (環境変数 BACKLOG_API_KEY からも自動読み取り可能。省略時は login で保存したOAuthのログイン情報を使う)',
       required: false,
     }),
     domain: Flags.string({
@@ -57,7 +60,11 @@ export default class Prune extends Command {
 
     try {
       await pruneDirectories(
-        {createRepositories: createBacklogRepositories, logger},
+        {
+          createRepositories: createBacklogRepositories,
+          logger,
+          resolveAuth: (input) => resolveBacklogAuth(backlogAuthDeps(logger), input),
+        },
         {
           confirmDirectory: (directory) => this.confirmPrune(directory, flags.force ?? false),
           flags: {
